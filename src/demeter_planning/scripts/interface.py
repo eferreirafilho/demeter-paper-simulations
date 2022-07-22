@@ -5,6 +5,8 @@ from turtle import distance
 import rospy
 
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseStamped
+
 
 class DemeterActionInterface(object):
 
@@ -30,7 +32,7 @@ class DemeterActionInterface(object):
 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
-        rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
+        self.pub=rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
 
         self._wait(2) 
             
@@ -65,10 +67,6 @@ class DemeterActionInterface(object):
         self.set_current_target_wp(waypoint)
 
         rospy.loginfo('Waypoints Set!!!')
-        rospy.loginfo('Waypoints Set!!!')
-        rospy.loginfo('Waypoints Set!!!')
-        rospy.loginfo('Waypoints Set!!!')
-        
                 
         # TODO: Send cmd_pose and verify if robot has reached the pose 
         # while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
@@ -76,11 +74,7 @@ class DemeterActionInterface(object):
         #     rospy.loginfo('Querying distance to waypoint...')
         #     self.wp_reached_query(waypoint)
         #     self._rate.sleep()
-        
-        
-        
-        
-        
+
         self.wp_reached=waypoint # MOCK SUCCESS 
         
         response = int(waypoint == self.wp_reached)
@@ -154,3 +148,17 @@ class DemeterActionInterface(object):
                 wp = idx
                 break
         self._current_wp = wp
+        
+    def publish_wp_cmd_pose(self,pub,waypoint):
+        cmd_pose=PoseStamped()
+        cmd_pose.pose.position.x=x
+        cmd_pose.pose.position.y=y
+        cmd_pose.pose.position.z=-0.5
+        cmd_pose.pose.orientation.x=0
+        cmd_pose.pose.orientation.y=0
+        cmd_pose.pose.orientation.z=0
+        cmd_pose.pose.orientation.w=1
+        rospy.loginfo('PoseStamped published')
+        pub.publish(cmd_pose)
+        #rospy.spin()
+        #rate.sleep()
