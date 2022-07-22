@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+
+        <!-- Launch gazebo and load the ocean world -->
+	<include file="$(find auv_gazebo)/launch/auv_world.launch">
+	</include>
+
+        <!-- Spawn the auv in gazebo -->
+	<include file="$(find auv_descriptions)/launch/upload_auv.launch">
+	</include>
+
+        <!-- Position control (launches uuv acceleration, velocity and position cascade control loops) -->
+	<include file="$(find auv_autonomy)/launch/auv_keyboard_teleop.launch">
+	</include>
+
+        <!-- Position control (launches uuv acceleration, velocity and position cascade control loops) -->
+	<include file="$(find auv_autonomy)/launch/aruco.launch">
+	</include>
+
+</launch>

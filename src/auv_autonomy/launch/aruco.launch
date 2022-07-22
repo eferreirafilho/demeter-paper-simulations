@@ -1,0 +1,14 @@
+<launch>
+
+<!-- ==================== Aruco =================== -->    
+  <node pkg="aruco_detect" name="aruco_detect" type="aruco_detect" respawn="false">
+    <param name="image_transport" value="raw"/>
+    <param name="publish_images" value="true" />
+    <param name="fiducial_len" value="0.3"/>
+    <param name="dictionary" value="0"/>
+    <param name="do_pose_estimation" value="true"/>
+    <remap from="/camera" to="/auv/auv/camera/camera_image"/>
+    <remap from="/camera_info" to="/auv/auv/camera/camera_info"/>
+  </node>
+
+</launch>

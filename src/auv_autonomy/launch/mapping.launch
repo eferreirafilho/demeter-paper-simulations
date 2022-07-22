@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+
+    <!-- Laser to pointcloud conversion-->
+    <include file="$(find laserscan_to_pointcloud)/launch/laserscan_to_pointcloud_assembler.launch">
+        <arg name="laser_scan_topics" value="/auv/sonar_horizontal+/auv/sonar_vertical"/>
+	<arg name="number_of_scans_to_assemble_per_cloud" default="2" /> 
+	<arg name="timeout_for_cloud_assembly" default="3.0" />
+        <arg name="dynamic_update_of_assembly_configuration_from_odometry_topic" default="/auv/pose_gt" />
+        <arg name="target_frame" default="world" />
+    </include>
+	
+</launch>

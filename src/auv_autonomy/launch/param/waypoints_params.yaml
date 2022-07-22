@@ -1,0 +1,12 @@
+loop_rate:  20
+
+odom_topic:         /auv/pose_gt
+cmd_pose_topic:     /auv/cmd_pose
+
+way_x: [25]
+way_y: [0]
+way_z: [-0.5,]
+
+way_delay: [5]
+
+Dwaypoint: 0.1
