@@ -65,8 +65,9 @@ class DemeterActionInterface(object):
         self.set_current_target_wp(waypoint)
 
         rospy.loginfo('Waypoints Set!!!')
+        rospy.loginfo('Waypoints Set!!!')
         
-        
+                
         # TODO: Send cmd_pose and verify if robot has reached the pose 
         # while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
         #     rospy.loginfo('Send cmd_pose')          
@@ -77,12 +78,7 @@ class DemeterActionInterface(object):
         self.wp_reached=waypoint # MOCK SUCCESS 
         
         response = int(waypoint == self.wp_reached)
-        
-        
-        
-        
-        
-        
+                
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
  
