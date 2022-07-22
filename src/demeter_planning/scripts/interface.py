@@ -66,6 +66,8 @@ class DemeterActionInterface(object):
 
         rospy.loginfo('Waypoints Set!!!')
         rospy.loginfo('Waypoints Set!!!')
+        rospy.loginfo('Waypoints Set!!!')
+        rospy.loginfo('Waypoints Set!!!')
         
                 
         # TODO: Send cmd_pose and verify if robot has reached the pose 
@@ -74,6 +76,10 @@ class DemeterActionInterface(object):
         #     rospy.loginfo('Querying distance to waypoint...')
         #     self.wp_reached_query(waypoint)
         #     self._rate.sleep()
+        
+        
+        
+        
         
         self.wp_reached=waypoint # MOCK SUCCESS 
         
