@@ -149,16 +149,16 @@ class DemeterActionInterface(object):
                 break
         self._current_wp = wp
         
-    def publish_wp_cmd_pose(self,pub,waypoint):
+    def publish_wp_cmd_pose(self,waypoint):
         cmd_pose=PoseStamped()
-        cmd_pose.pose.position.x=x
-        cmd_pose.pose.position.y=y
-        cmd_pose.pose.position.z=-0.5
-        cmd_pose.pose.orientation.x=0
-        cmd_pose.pose.orientation.y=0
-        cmd_pose.pose.orientation.z=0
-        cmd_pose.pose.orientation.w=1
-        rospy.loginfo('PoseStamped published')
-        pub.publish(cmd_pose)
-        #rospy.spin()
+        # cmd_pose.pose.position.x=x
+        # cmd_pose.pose.position.y=y
+        # cmd_pose.pose.position.z=-0.5
+        # cmd_pose.pose.orientation.x=0
+        # cmd_pose.pose.orientation.y=0
+        # cmd_pose.pose.orientation.z=0
+        # cmd_pose.pose.orientation.w=1
+        # rospy.loginfo('PoseStamped published')
+        self.pub.publish(cmd_pose)
+        # #rospy.spin()
         #rate.sleep()
