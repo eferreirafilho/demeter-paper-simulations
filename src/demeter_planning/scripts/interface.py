@@ -78,6 +78,11 @@ class DemeterActionInterface(object):
         
         response = int(waypoint == self.wp_reached)
         
+        
+        
+        
+        
+        
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
  
