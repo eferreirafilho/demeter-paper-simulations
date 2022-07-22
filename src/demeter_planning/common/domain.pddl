@@ -26,7 +26,7 @@
     ;define actions here
     (:durative-action move
         :parameters (?v - vehicle ?y ?z - waypoint)
-        :duration(= ?duration 2)
+        :duration(= ?duration 55)
         :condition (and 
             (over all (can-move ?y ?z)) 
             (at start (at ?v ?y))

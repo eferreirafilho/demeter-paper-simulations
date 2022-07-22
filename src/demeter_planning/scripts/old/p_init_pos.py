@@ -19,7 +19,7 @@ def callback(msg):
     rospy.loginfo('x: {}, y:{}, z:{},' .format(x,y,z))
 
     # TODO: verify all waypoints
-    if z >= -0.6:
+    if z >= -1.2:
         rospy.loginfo("Vehicle on the Surface = wp0")
         add_fact('at','vehicle1','wp0')
         rospy.loginfo("Add Fact: (at vehicle1 wp0)")
