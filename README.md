@@ -2,29 +2,55 @@
 
 ## Simple simulation, actions: move, get_data, transmit_data
 Goal: get_data that is at a specific waypoint.
-Vehicle can only move between allowed waypoints (as described in common/problem.pddl).
+
+Vehicle can only move between allowed waypoints (as will be created in common/problem.pddl).
 
 ## Prerequisite (all in this repo):
 
 -ROSPlan: 
-  git clone https://github.com/KCL-Planning/ROSPlan.git
+```sh
+git clone https://github.com/KCL-Planning/ROSPlan.git
+```
+
 -ROSPlan Demos: 
-  git clone https://github.com/KCL-Planning/rosplan_demos.git
+```sh
+git clone https://github.com/KCL-Planning/rosplan_demos.git
+```
 -Auv Sim:
-  git clone https://github.com/codres-ali/auv_sim.git
+```sh
+git clone https://github.com/codres-ali/auv_sim.git
+```
 -Occupancy grid utils
+```sh
+git clone https://github.com/clearpathrobotics/occupancy_grid_utils
+```
 -demeter_planning
 
 ## To run:
 
 ### 1st terminal:
-  roslaunch auv_autonomy waypoints.launch
-  wait until last waypoint is 
+Run position_hold.launch
+```sh
+roslaunch auv_autonomy position_hold.launch
+```
 
-### 2st terminal:
-  roslaunch demeter_planning planning.launch
+### 2nd terminal:
+```sh
+roslaunch demeter_planning planning.launch
+```
+
+### 3rd terminal (Optional):
+To follow the execution of the plan graphically, one can run:
+```sh
+rqt
+```
+and select plugins > ROSPlan > ROSPlan esterel plan viewer
+
+## Comments:
 
 This creates a problem file (commom/problem.pddl), generates a plan (commom/plan.pddl) and execute the plan in Gazebo.
+
+The plan is a sequence of actions with maximum time for completion. The plan can be seem 
 
 Action **move** return success if vehicle has reached the waypoint within the time described in commom/domain.pddl. Plan fails otherwise.
 
