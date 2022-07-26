@@ -5,6 +5,10 @@ Goal: get_data that is at a specific waypoint.
 
 Vehicle can only move between allowed waypoints (as will be created in common/problem.pddl).
 
+For now, the generated plan will always be a sequence of **move** actions than a **get_data** action and a **transmit_data** action. 
+The aim here is to exemplify the integration of systems. 
+Future work will deal with more complex actions and systems, in which automated planning will have a greater impact.
+
 ## Prerequisite (all in this repo):
 
 -ROSPlan: 
@@ -48,11 +52,11 @@ and select plugins > ROSPlan > ROSPlan esterel plan viewer
 
 ## Comments:
 
-This creates a problem file (commom/problem.pddl), generates a plan (commom/plan.pddl) and execute the plan in Gazebo.
+This creates a problem file (common/problem.pddl), generates a plan (common/plan.pddl) and execute the plan in Gazebo.
 
-The plan is a sequence of actions with maximum time for completion. The plan can be seem 
+The plan is a sequence of actions with maximum time for completion.
 
-Action **move** return success if vehicle has reached the waypoint within the time described in commom/domain.pddl. Plan fails otherwise.
+Action **move** return success if vehicle has reached the waypoint within the time described in common/domain.pddl. Plan fails otherwise.
 
 Actions **get_data** and **transmit_data** are simulated, vehicle just wait in position and action always returns as sucessfull.
 
