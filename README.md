@@ -66,6 +66,6 @@ For now, the vehicle is assumed to start at the surface and problem.pddl is gene
 
 TODO: Deal with situations in which the plan fail.
 
-TODO: Add other goals (data in other wapoints, move goal, etc.)
+TODO: Add a interface to allow other goals (data in other wapoints, move goal, etc.)
 
 TODO: Remove the assumption that vehicle must start at the surface.
