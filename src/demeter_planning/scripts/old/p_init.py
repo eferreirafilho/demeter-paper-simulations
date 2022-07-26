@@ -111,7 +111,7 @@ if __name__ == '__main__':
     rospy.loginfo('Problem file created')
     
     # Add goal
-    add_goal('data-sent','data1')
+    # add_goal('data-sent','data1')
     
     # Add minimize total time to problem file
     add_metric_min_total_time()

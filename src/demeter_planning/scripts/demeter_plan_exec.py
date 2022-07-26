@@ -62,6 +62,21 @@ class DemeterExec(object):
            rospy.loginfo('Mission Failed')
         return response.goal_achieved
 
+    def get_data_mission(self):
+        """
+        Spike Demo mission: Retrieve data from a WP and transmit from the surface
+        """
+        pred_names = [
+            'data-sent'
+        ]
+        params = [[KeyValue('d', 'data1')]]
+        self.goal_state = (pred_names, params)
+        update_types = [
+            KnowledgeUpdateServiceRequest.ADD_GOAL,
+        ]
+        succeed = self.demeter.update_predicates(pred_names,params,update_types)
+        self._rate.sleep()
+        return succeed
 
 if __name__ == '__main__':
     rospy.init_node('demeter_executive')
@@ -71,6 +86,6 @@ if __name__ == '__main__':
     rospy.sleep(3) # Wait for planning
     demeter = DemeterExec()
     
-    # TODO: function that sets the objective
+    demeter.get_data_mission() # function that sets the objective
     demeter.execute()
     rospy.spin()
