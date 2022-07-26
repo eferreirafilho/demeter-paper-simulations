@@ -89,7 +89,7 @@ class DemeterInterface(object):
         """
         Function for action_dispatch callback
         """
-        rospy.loginfo('%s: action received' % self.name)
+        # rospy.loginfo('%s: action received' % self.name)
         duration = rospy.Duration(msg.duration)
         # parse action message
         if msg.name == 'move':
@@ -98,13 +98,10 @@ class DemeterInterface(object):
             self._action(msg, self.get_data, [duration])
         if msg.name == 'transmit_data':
             self._action(msg, self.transmit_data, [duration])
-        #TODO elif msg.name == 'guide_mode':
-                #self._action(msg, self.uav.guided_mode, [duration])
                 
     def _action(self, action_dispatch, action_func, action_params=list()):
         """
-        Template uav action for generic uav action
-        such as request_arm, takeoff etc
+        Template vehicle action for generic action
         """
         self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_ENABLED)
         start_time = rospy.Time(action_dispatch.dispatch_time)
@@ -215,7 +212,6 @@ class DemeterInterface(object):
         feedback.status = fbstatus
         self._feedback_publisher.publish(feedback)
 
-
     def move(self, dispatch_params, duration=rospy.Duration(60, 0)):
         """
         Go to waypoint action for Vehicle
@@ -225,7 +221,6 @@ class DemeterInterface(object):
             if param.key == 'z': # to Waypoint z
                 waypoint = int(param.value[2:])
                 break
-        rospy.loginfo('rosplan_interface: move ')
         response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
 
@@ -233,8 +228,6 @@ class DemeterInterface(object):
         """
         Get data action for Vehicle
         """
- 
-        rospy.loginfo('rosplan_interface: get_data ')
         response = self.demeter.do_get_data(duration)
         return response
     
@@ -242,7 +235,5 @@ class DemeterInterface(object):
         """
         Get data action for Vehicle
         """
- 
-        rospy.loginfo('rosplan_interface: transmit_data ')
         response = self.demeter.do_transmit_data(duration)
         return response

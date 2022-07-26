@@ -3,6 +3,8 @@
 from cmath import sqrt
 from sre_constants import SUCCESS
 from turtle import distance
+
+from httplib2 import Response
 import rospy
 
 from nav_msgs.msg import Odometry
@@ -67,7 +69,6 @@ class DemeterActionInterface(object):
         """
         Go to specific waypoint action
         """
-        rospy.logdebug('Interface: WP'+ str(waypoint) + ' inside \'Go To\' Action')
         self.wp_reached = -1
         start = rospy.Time.now()
         self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
@@ -78,8 +79,10 @@ class DemeterActionInterface(object):
             self.update_wp_position(waypoint)
             if self._current_wp==waypoint: # Query if vehicle is at target WP
                 self.wp_reached=waypoint # SUCCESS
-                rospy.loginfo('Waypoint' + str(waypoint) + 'reached!')
+                rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
             self._rate.sleep()
+            rospy.loginfo_throttle(5,'Moving ... ' )
+            
 
         response = int(waypoint == self.wp_reached)
                 
@@ -94,10 +97,17 @@ class DemeterActionInterface(object):
         """
         rospy.logdebug('Interface: Mock \'Get Data\' Action')
         start = rospy.Time.now()
-
-        if (rospy.Time.now() - start) > duration:
-            response = self.OUT_OF_DURATION
-        response = self.ACTION_SUCCESS #MOCK SUCCESS # TODO
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+            self._rate.sleep()
+            completion_percentage = 'Getting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            rospy.loginfo_throttle(1,completion_percentage)
+            
+        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+        rospy.loginfo('Data acquired!')
+        
+        # if (rospy.Time.now() - start) > duration:
+        #     response = self.OUT_OF_DURATION        
+        
         return response
     
     def do_transmit_data(self, duration=rospy.Duration(60, 0)):
@@ -106,12 +116,18 @@ class DemeterActionInterface(object):
         """
         rospy.logdebug('Interface: Mock \'Transmit\' Action')
         start = rospy.Time.now()
-
-        if (rospy.Time.now() - start) > duration:
-            response = self.OUT_OF_DURATION
-        response = self.ACTION_SUCCESS #MOCK SUCCESS # TODO
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+            self._rate.sleep()
+            completion_percentage = 'Transmitting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            rospy.loginfo_throttle(1,completion_percentage)
+            
+        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+        rospy.loginfo('Data transmitted!')
+        
+        # if (rospy.Time.now() - start) > duration:
+        #     response = self.OUT_OF_DURATION        
+        
         return response
-    
     def set_current_target_wp_param(self, wp_index):
         """
         Set target wp parameter for vehicle to go

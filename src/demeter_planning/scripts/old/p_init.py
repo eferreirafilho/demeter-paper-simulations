@@ -108,6 +108,7 @@ if __name__ == '__main__':
     # TODO: Automatically add robot to waypoint!
     add_fact('at','vehicle1','wp0') # simulated fact!!!
     
+    rospy.loginfo('Problem file created')
     
     # Add goal
     add_goal('data-sent','data1')

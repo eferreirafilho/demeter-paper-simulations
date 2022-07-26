@@ -65,10 +65,10 @@ class DemeterExec(object):
 
 if __name__ == '__main__':
     rospy.init_node('demeter_executive')
-
-    #rospy.set_param('~wp_file', args.wp_file)
     
-    rospy.sleep(2)
+    rospy.loginfo('Exec started')
+        
+    rospy.sleep(3) # Wait for planning
     demeter = DemeterExec()
     
     # TODO: function that sets the objective
