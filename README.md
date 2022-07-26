@@ -5,7 +5,7 @@ Goal: get_data that is at a specific waypoint.
 
 Vehicle can only move between allowed waypoints (as will be created in common/problem.pddl).
 
-For now, the generated plan will always be a sequence of **move** actions than a **get_data** action and a **transmit_data** action. 
+For now, the generated plan will always be a sequence of **move** actions then a **get_data** action and a **transmit_data** action. 
 The aim here is to exemplify the integration of systems. 
 Future work will deal with more complex actions and systems, in which automated planning will have a greater impact.
 
