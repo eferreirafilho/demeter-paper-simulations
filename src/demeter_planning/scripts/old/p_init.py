@@ -110,19 +110,6 @@ if __name__ == '__main__':
     
     rospy.loginfo('Problem file created')
     
-    # Add goal
-    # add_goal('data-sent','data1')
-    
     # Add minimize total time to problem file
     add_metric_min_total_time()
     
-    # Automatically generate PDDL problem from KB snapshot (e.g. fetch knowledge from KB and create problem.pddl)
-    # problem_generation()
-    
-    # Initialize Node
-    #rospy.init_node('problem_init', anonymous=True)
-    # Subscribe to Pose
-    #sub = rospy.Subscriber('auv/pose_gt', Odometry, callback)
-    
-    #rospy.loginfo('Spin')
-    #rospy.spin()

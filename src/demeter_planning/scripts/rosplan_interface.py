@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from argparse import Action
+from sre_constants import SUCCESS
 from threading import Lock
 
 # 3rd Party Packages
@@ -32,6 +32,9 @@ class DemeterInterface(object):
         self.name = name
         self.demeter_arrived = False
         self.demeter_wp = -1
+        
+        # Verify initial position of robot
+        # self.init_position()
 
         # Service proxies (KB: update, predicate and operator details)
         rospy.loginfo('Waiting for service /rosplan_knowledge_base/update ...')
@@ -127,10 +130,10 @@ class DemeterInterface(object):
         pred_names = list()
         params = list()
         update_types = list()
-        # demeter position in waypoints update
+        # demeter position in waypoint update
         wp_seq = self.demeter._current_wp
         
-        # only update when self.uav_wp != wp_seq
+        # only update when self.demeter_wp != wp_seq
         if wp_seq != -1 and self.demeter_wp != wp_seq:
             # add current wp that demeter resides
             pred_names.append('at')
@@ -146,12 +149,6 @@ class DemeterInterface(object):
                     KeyValue('wp', 'wp%d' % self.demeter_wp)
                 ])
                 update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
-            # update visited state
-            pred_names.append('visited')
-            params.append(
-                [KeyValue('v', self.name),
-                 KeyValue('wp', 'wp%d' % wp_seq)])
-            update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
             self.uav_wp = wp_seq
 
     def update_instances(self, ins_types, ins_names, update_types):
@@ -237,3 +234,15 @@ class DemeterInterface(object):
         """
         response = self.demeter.do_transmit_data(duration)
         return response
+    
+    def initial_position(self):
+        success = True
+        if not self.demeter.is_submerged():
+            rospy.logwarn('Vehicle at the surface')
+            # TODO Add fact to KB
+            return success
+        else:
+            rospy.logwarn('Vehicle is submerged')
+            while self.demeter.is_submerged() and not (rospy.is_shutdown()):
+                self.demeter.goto_surface()
+            return success

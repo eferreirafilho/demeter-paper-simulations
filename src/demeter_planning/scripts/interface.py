@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
 from cmath import sqrt
-from sre_constants import SUCCESS
-from turtle import distance
 
-from httplib2 import Response
 import rospy
 
 from nav_msgs.msg import Odometry
@@ -17,6 +14,8 @@ class DemeterActionInterface(object):
     ACTION_SUCCESS = 1
     ACTION_FAIL = 0
     EPS_DISTANCE = 1e-01 # Distance we consider that vehicle is at a waypoint
+    SUBMERGED_Z = -0.5 # Distance we consider that vehicle is on surface
+
 
     def __init__(self, update_frequency=10.):
         """
@@ -31,8 +30,6 @@ class DemeterActionInterface(object):
         self.target_wp = -1
         self.odom_pose = Odometry()
 
-        # TODO: UUV Service proxies
-
         self._rate = rospy.Rate(update_frequency)
 
         # Subscribers
@@ -40,7 +37,6 @@ class DemeterActionInterface(object):
         rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
         # Publisher
         self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose/',PoseStamped,queue_size=10)
-        
 
         self._wait(2) 
             
@@ -57,7 +53,6 @@ class DemeterActionInterface(object):
         """
         self.odom_pose = msg
     
-    # TODO: 
     def load_wp_config_from_file(self):
         """
         Load waypoints configuration from file under params folder
@@ -156,19 +151,16 @@ class DemeterActionInterface(object):
         """
         wp = -1
         dist=sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
-        # x_cond = abs(self.odom_pose.pose.pose.position.x - self.target_wp[0]) < self.EPS_DISTANCE
-        # y_cond = abs(self.odom_pose.pose.pose.position.y - self.target_wp[1]) < self.EPS_DISTANCE
-        # z_cond = abs(self.odom_pose.pose.pose.position.z - self.target_wp[2]) < self.EPS_DISTANCE
-        # # rospy.loginfo(abs(self.odom_pose.pose.pose.position.x - self.target_wp[0]))
-        # rospy.loginfo(abs(self.odom_pose.pose.pose.position.y - self.target_wp[1]))
-        # rospy.loginfo(abs(self.odom_pose.pose.pose.position.z - self.target_wp[2]))
         if dist.real < self.EPS_DISTANCE:
             wp = waypoint
         self._current_wp = wp
         rospy.loginfo_once('Distance to target WP: ' + str(dist.real))
         
     def publish_wp_cmd_pose(self,waypoint):
-        cmd_pose=PoseStamped()
+        """
+        Publish target position and fixed orientation to cmd_pose
+        """
+        cmd_pose=PoseStamped()      
         cmd_pose.pose.position.x=self.target_wp[0]
         cmd_pose.pose.position.y=self.target_wp[1]
         cmd_pose.pose.position.z=self.target_wp[2]
@@ -178,5 +170,43 @@ class DemeterActionInterface(object):
         cmd_pose.pose.orientation.w=1
         #rospy.loginfo('PoseStamped cmd_pose published')
         self.cmd_pose_pub.publish(cmd_pose)
-        # #rospy.spin()
-        #rate.sleep()
+        
+    def publish_cmd_pose(self,pos):
+        """
+        Publish target position and fixed orientation to cmd_pose
+        """
+        cmd_pose=PoseStamped()      
+        cmd_pose.pose.position.x=pos[0]
+        cmd_pose.pose.position.y=pos[1]
+        cmd_pose.pose.position.z=pos[2]
+        cmd_pose.pose.orientation.x=0
+        cmd_pose.pose.orientation.y=0
+        cmd_pose.pose.orientation.z=0
+        cmd_pose.pose.orientation.w=1
+        #rospy.loginfo('PoseStamped cmd_pose published')
+        self.cmd_pose_pub.publish(cmd_pose)
+    
+    def get_position(self):
+        """
+        Get position of vehicle
+        """
+        return self.odom_pose.pose.pose.position
+    
+    def is_submerged(self):
+        """
+        Check if vehicle is on surface or submerged
+        """
+        position=self.get_position()
+        if position.z<self.SUBMERGED_Z:
+            return True
+        else:
+            return False
+        
+    def goto_surface(self):
+        """
+        Send vehicle to surface
+        """
+        position=self.get_position()
+        position.z=self.SUBMERGED_Z # Submerge while in the same X and Y
+        self.publish_cmd_pose(position)
+        

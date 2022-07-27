@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 # 3rd Party Packages
-import argparse
 
 # ROS Packages
+from turtle import position
+
+from dbus import Interface
 import rospy
 from diagnostic_msgs.msg import KeyValue
 from rosplan_dispatch_msgs.srv import DispatchService
@@ -33,7 +35,7 @@ class DemeterExec(object):
         # Auto call functions
         self._rate = rospy.Rate(update_frequency)
         #rospy.Timer(self._rate.sleep_dur, self.lowbat_return)
-
+        
     def resume_plan(self, req):
         """
         Function to flag down external intervention, and replan
@@ -77,15 +79,38 @@ class DemeterExec(object):
         succeed = self.demeter.update_predicates(pred_names,params,update_types)
         self._rate.sleep()
         return succeed
+    
+    def set_init_position(self):
+        """
+        Spike Demo mission: Set initial position as WP0
+        """
+        # print(Interface.)
+        self.demeter.initial_position()
+        # print(position)
+        # pred_names = [
+        #     'at'
+        # ]
+        # params = [[KeyValue('v', self.demeter.name),KeyValue('w','wp0')]]
+        # self.goal_state = (pred_names, params)
+        # update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+
+        # succeed = self.demeter.knowledge_update(pred_names,params,update_types)
+        self._rate.sleep()
+        # return succeed
+        
 
 if __name__ == '__main__':
     rospy.init_node('demeter_executive')
     
-    rospy.loginfo('Exec started')
         
-    rospy.sleep(3) # Wait for planning
+    rospy.loginfo('Exec started')
+    rospy.sleep(1) # Wait for planning
     demeter = DemeterExec()
     
-    demeter.get_data_mission() # function that sets the objective
-    demeter.execute()
+    demeter.set_init_position() # Sets the initial position in KB
+    
+    demeter.get_data_mission() # Sets the objective
+    if not demeter.execute():
+        rospy.logwarn_once('Planner Failed, submerging ... ')
+        # submerge()
     rospy.spin()

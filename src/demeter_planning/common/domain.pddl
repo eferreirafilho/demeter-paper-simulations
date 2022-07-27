@@ -72,7 +72,7 @@
     ; Transmit Sensor from surface
     (:durative-action transmit_data
         :parameters (?v - vehicle ?d - data ?w - waypoint)
-        :duration (= ?duration 20)
+        :duration (= ?duration 10)
         :condition (and 
             (at start (is-at-surface ?w))
             (over all (at ?v ?w))
