@@ -107,10 +107,15 @@ if __name__ == '__main__':
     rospy.sleep(1) # Wait for planning
     demeter = DemeterExec()
     
-    demeter.set_init_position() # Sets the initial position in KB
+    # demeter.set_init_position() # Sets the initial position in KB
     
     demeter.get_data_mission() # Sets the objective
     if not demeter.execute():
         rospy.logwarn_once('Planner Failed, submerging ... ')
+    else:
+        rospy.logwarn('Planner Succeded ')
         # submerge()
+        
+    rospy.logwarn('Spin')
+    
     rospy.spin()

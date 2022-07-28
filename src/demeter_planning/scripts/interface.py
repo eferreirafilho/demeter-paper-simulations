@@ -176,9 +176,9 @@ class DemeterActionInterface(object):
         Publish target position and fixed orientation to cmd_pose
         """
         cmd_pose=PoseStamped()      
-        cmd_pose.pose.position.x=pos[0]
-        cmd_pose.pose.position.y=pos[1]
-        cmd_pose.pose.position.z=pos[2]
+        cmd_pose.pose.position.x=pos.x
+        cmd_pose.pose.position.y=pos.y
+        cmd_pose.pose.position.z=pos.z
         cmd_pose.pose.orientation.x=0
         cmd_pose.pose.orientation.y=0
         cmd_pose.pose.orientation.z=0
