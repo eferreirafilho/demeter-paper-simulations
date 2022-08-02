@@ -208,6 +208,7 @@ class DemeterInterface(object):
         feedback.action_id = action_id
         feedback.status = fbstatus
         self._feedback_publisher.publish(feedback)
+           
 
     def move(self, dispatch_params, duration=rospy.Duration(60, 0)):
         """

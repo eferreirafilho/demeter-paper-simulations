@@ -152,7 +152,7 @@ class DemeterActionInterface(object):
         wp = -1
         dist=sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
         if dist.real < self.EPS_DISTANCE:
-            wp = waypoint
+            wp = waypoint          
         self._current_wp = wp
         rospy.loginfo_once('Distance to target WP: ' + str(dist.real))
         

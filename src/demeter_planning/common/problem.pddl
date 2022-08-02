@@ -23,22 +23,30 @@
     (can-find wp2 wp3)
     (can-find wp5 wp6)
 
-    (is-in data1 wp6)
+    (is-in data1 wp1)
 
+    (been-at vehicle1 wp0)
+    (been-at vehicle1 wp1)
+    (been-at vehicle1 wp2)
+    (been-at vehicle1 wp3)
+    (been-at vehicle1 wp4)
+    (been-at vehicle1 wp5)
+    (been-at vehicle1 wp6)
 
 
 
     (at vehicle1 wp0)
 
-    (is-at-surface wp0)
     (is-at-surface wp1)
 
+    (data-sent data1)
 
     (empty vehicle1)
 
 )
 (:goal (and
     (data-sent data1)
+    (at vehicle1 wp0)
 ))
 (:metric minimize (total-time))
 )

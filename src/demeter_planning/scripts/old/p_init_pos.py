@@ -8,7 +8,7 @@ from nav_msgs.msg import Odometry
 from rosplan_knowledge_msgs.srv import *
 from rosplan_knowledge_msgs.msg import KnowledgeItem
 from diagnostic_msgs.msg import KeyValue
-from p_init import add_fact
+from demeter_planning.scripts.p_init import add_fact
 
 def callback(msg):
     x=msg.pose.pose.position.x

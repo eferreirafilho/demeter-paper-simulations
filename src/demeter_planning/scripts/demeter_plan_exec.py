@@ -3,6 +3,7 @@
 # 3rd Party Packages
 
 # ROS Packages
+from signal import pause
 from turtle import position
 
 from dbus import Interface
@@ -13,7 +14,6 @@ from rosplan_knowledge_msgs.srv import KnowledgeUpdateServiceRequest
 from std_srvs.srv import Empty
 from interface import DemeterActionInterface
 from rosplan_interface import DemeterInterface
-
 
 class DemeterExec(object):
     def __init__(self, update_frequency=4.):
@@ -34,7 +34,7 @@ class DemeterExec(object):
         rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
         # Auto call functions
         self._rate = rospy.Rate(update_frequency)
-        #rospy.Timer(self._rate.sleep_dur, self.lowbat_return)
+                
         
     def resume_plan(self, req):
         """
@@ -43,6 +43,7 @@ class DemeterExec(object):
         self.demeter.resume_plan()
         rospy.Timer(self._rate.sleep_dur, self.execute, oneshot=True)
         return list()
+    
 
     def execute(self, event=True):
         """
@@ -52,7 +53,10 @@ class DemeterExec(object):
         self._problem_proxy()
         self._rate.sleep()
         rospy.loginfo('Planning ...')
-        self._planner_proxy()
+        try: 
+            self._planner_proxy()
+        except:
+            rospy.logwarn('Planning attempt failed')
         self._rate.sleep()
         rospy.loginfo('Execute mission plan ...')
         self._parser_proxy()
@@ -64,6 +68,18 @@ class DemeterExec(object):
            rospy.loginfo('Mission Failed')
         return response.goal_achieved
 
+    def clear_mission(self):
+        """
+        Clear all goals
+        """
+        update_types = [
+            KnowledgeUpdateServiceRequest.REMOVE_GOAL,
+        ]
+        for goal in self.goal_state:
+            self.demeter.update_predicates(goal[0], goal[1], update_types) # pred_names, params, update_type
+        
+        self.goal_state = [list(), list()]
+        
     def get_data_mission(self):
         """
         Spike Demo mission: Retrieve data from a WP and transmit from the surface
@@ -72,7 +88,7 @@ class DemeterExec(object):
             'data-sent'
         ]
         params = [[KeyValue('d', 'data1')]]
-        self.goal_state = (pred_names, params)
+        self.goal_state.append(list([pred_names, params]))
         update_types = [
             KnowledgeUpdateServiceRequest.ADD_GOAL,
         ]
@@ -80,25 +96,30 @@ class DemeterExec(object):
         self._rate.sleep()
         return succeed
     
-    def set_init_position(self):
+    def goto_wp_mission(self,goal_wp):
         """
-        Spike Demo mission: Set initial position as WP0
+        Toy mission
         """
-        # print(Interface.)
-        self.demeter.initial_position()
-        # print(position)
-        # pred_names = [
-        #     'at'
-        # ]
-        # params = [[KeyValue('v', self.demeter.name),KeyValue('w','wp0')]]
+        pred_names = [
+            'at'
+        ]
+        params = [[KeyValue('v', 'vehicle1'), KeyValue('w',goal_wp)]]
         # self.goal_state = (pred_names, params)
-        # update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-
-        # succeed = self.demeter.knowledge_update(pred_names,params,update_types)
-        self._rate.sleep()
-        # return succeed
+        self.goal_state.append(list([pred_names, params]))
         
-
+        update_types = [
+            KnowledgeUpdateServiceRequest.ADD_GOAL,
+        ]
+        succeed = self.demeter.update_predicates(pred_names,params,update_types)
+        self._rate.sleep()
+        return succeed
+    
+    def set_home(self,goal_wp):
+        """
+        Define wp0 as 'home', 
+        """
+        pass
+ 
 if __name__ == '__main__':
     rospy.init_node('demeter_executive')
     
@@ -106,16 +127,26 @@ if __name__ == '__main__':
     rospy.loginfo('Exec started')
     rospy.sleep(1) # Wait for planning
     demeter = DemeterExec()
-    
+       
     # demeter.set_init_position() # Sets the initial position in KB
     
-    demeter.get_data_mission() # Sets the objective
-    if not demeter.execute():
+    demeter.get_data_mission() # Sets goal    
+    demeter.goto_wp_mission('wp1') # Sets goal
+    demeter.goto_wp_mission('wp2') # Sets goal
+    
+    rospy.sleep(1) # Wait for planning
+    
+    while not demeter.execute():
         rospy.logwarn_once('Planner Failed, submerging ... ')
-    else:
-        rospy.logwarn('Planner Succeded ')
+        demeter.clear_mission() # Clear all goals
         # submerge()
+        rospy.sleep(1) # Wait for planning
+        demeter.get_data_mission() # Sets goal    
+        
+        demeter.goto_wp_mission('wp0') # Sets goal
+        demeter.execute() # Replan
+    else:
+        rospy.logwarn('Planner Succeded ')   
         
     rospy.logwarn('Spin')
-    
     rospy.spin()
