@@ -60,12 +60,6 @@ Action **move** return success if vehicle has reached the waypoint within the ti
 
 Actions **get_data** and **transmit_data** are simulated, vehicle just wait in position and action always returns as sucessfull.
 
-For now, the vehicle is assumed to start at the surface and problem.pddl is generated accordindly.
-
 ### To do:
 
-TODO: Deal with situations in which the plan fail.
-
-TODO: Add a interface to allow other goals (data in other wapoints, move goal, etc.)
-
-TODO: Remove the assumption that vehicle must start at the surface.
+TODO: Add some kind of interface to easily allow other goals (data in other wapoints, move to waypoint goal, etc.)
