@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
 # 3rd Party Packages
-
-# ROS Packages
-from signal import pause
 from turtle import position
 
-from dbus import Interface
+# ROS Packages
+
 import rospy
 from diagnostic_msgs.msg import KeyValue
 from rosplan_dispatch_msgs.srv import DispatchService
@@ -135,11 +133,11 @@ if __name__ == '__main__':
     
     demeter.get_data_set_goal() # Sets goal    
     demeter.goto_wp_set_goal('wp1') # Sets goal
-    # demeter.goto_wp_set_goal('wp2') # Sets goal (Two WP at the same time forces a plan failure)
+    demeter.goto_wp_set_goal('wp2') # Sets goal (Two WP at the same time forces a plan failure)
+    rospy.loginfo('Mission: Get Data')
     
     rospy.sleep(1) # Wait for planning
        
-    rospy.logwarn_once('Mission: Get Data')
     while not demeter.execute():
         demeter.clear_mission() # Clear all goals
         demeter.goto_wp_set_goal('wp1') # Sets goal
@@ -147,7 +145,7 @@ if __name__ == '__main__':
         # demeter.vehicle_surface()
         rospy.sleep(1) # Wait for planning
     else:
-        rospy.logwarn('Mission Get Data Succeded ')   
+        rospy.loginfo('Mission Succeded ')   
         
     rospy.logwarn('Spin')
     rospy.spin()

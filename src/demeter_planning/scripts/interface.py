@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 
 from cmath import sqrt
-
 import rospy
-
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
-
-
 class DemeterActionInterface(object):
 
     OUT_OF_DURATION = -1
@@ -30,7 +26,6 @@ class DemeterActionInterface(object):
         self._current_wp = -1
         self.target_wp = -1
         self.odom_pose = Odometry()
-
         self._rate = rospy.Rate(update_frequency)
 
         # Subscribers
@@ -117,7 +112,6 @@ class DemeterActionInterface(object):
             
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
         rospy.loginfo('Data transmitted!')
-        
         # if (rospy.Time.now() - start) > duration:
         #     response = self.OUT_OF_DURATION        
         
@@ -126,8 +120,6 @@ class DemeterActionInterface(object):
         """
         Set target wp parameter for vehicle to go
         """
-        #print('Set current target WP: ', wp_index)
-        
         waypoints=self.load_wp_config_from_file() # Load the waypoints yaml everytime a new WP will be set
         wp_set=[item[wp_index] for item in waypoints] # Get specified waypoint
         rospy.set_param('wp_plan_set',wp_set)       
@@ -155,7 +147,7 @@ class DemeterActionInterface(object):
         if dist.real < self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        rospy.logwarn_throttle(3,'WP: ' + str(wp))                
+        # rospy.logwarn_throttle(3,'WP: ' + str(wp))                
         rospy.loginfo_once('Distance to target WP: ' + str(dist.real))
         
     def publish_wp_cmd_pose(self,waypoint):
@@ -170,7 +162,6 @@ class DemeterActionInterface(object):
         cmd_pose.pose.orientation.y=0
         cmd_pose.pose.orientation.z=0
         cmd_pose.pose.orientation.w=1
-        #rospy.loginfo('PoseStamped cmd_pose published')
         self.cmd_pose_pub.publish(cmd_pose)
         
     def publish_cmd_pose(self,pos):
@@ -185,7 +176,6 @@ class DemeterActionInterface(object):
         cmd_pose.pose.orientation.y=0
         cmd_pose.pose.orientation.z=0
         cmd_pose.pose.orientation.w=1
-        #rospy.loginfo('PoseStamped cmd_pose published')
         self.cmd_pose_pub.publish(cmd_pose)
     
     def get_position(self):

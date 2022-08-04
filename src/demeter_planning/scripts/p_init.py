@@ -106,7 +106,7 @@ if __name__ == '__main__':
     add_fact('can-find','wp5','wp6')
     
     # TODO: Automatically add robot to waypoint!
-    add_fact('at','vehicle1','wp0') # simulated fact!!!
+    add_fact('at','vehicle1','wp0') # Simulated fact!!!
     
     rospy.loginfo('Problem file created')
     

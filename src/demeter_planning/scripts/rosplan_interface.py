@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
+# 3rd Party Packages
 from sre_constants import SUCCESS
 from threading import Lock
-
-# 3rd Party Packages
 
 # ROS Packages
 import rospy
@@ -15,7 +14,6 @@ from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
                                         KnowledgeUpdateService,
                                         KnowledgeUpdateServiceRequest)
 from interface import DemeterActionInterface
-
 
 class DemeterInterface(object):
 
