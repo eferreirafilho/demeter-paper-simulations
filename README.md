@@ -13,6 +13,7 @@ Future work will deal with more complex actions and systems, in which automated 
 
 -ROSPlan: 
 ```sh
+sudo apt install flex bison freeglut3-dev libbdd-dev python-catkin-tools ros-$ROS_DISTRO-tf2-bullet
 git clone https://github.com/KCL-Planning/ROSPlan.git
 ```
 -Auv Sim:
