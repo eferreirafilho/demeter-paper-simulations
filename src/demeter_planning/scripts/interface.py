@@ -15,6 +15,7 @@ class DemeterActionInterface(object):
     ACTION_FAIL = 0
     EPS_DISTANCE = 1e-01 # Distance we consider that vehicle is at a waypoint
     SUBMERGED_Z = -0.5 # Distance we consider that vehicle is on surface
+    SUBMERGED_Z_CMD = -0.4 # Distance we send vehicle to surface
 
 
     def __init__(self, update_frequency=10.):
@@ -68,7 +69,6 @@ class DemeterActionInterface(object):
         start = rospy.Time.now()
         self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
               
-        # TODO: Send cmd_pose and verify if robot has reached the pose 
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
             self.publish_wp_cmd_pose(waypoint)
             self.update_wp_position(waypoint)
@@ -77,7 +77,6 @@ class DemeterActionInterface(object):
                 rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
             self._rate.sleep()
             rospy.loginfo_throttle(5,'Moving ... ' )
-            
 
         response = int(waypoint == self.wp_reached)
                 
@@ -150,10 +149,13 @@ class DemeterActionInterface(object):
         Update vehicle position in terms of waypoint
         """
         wp = -1
+        if not self.is_submerged():
+            wp = 0 # Waypoint 0 is all the surface minus wp1
         dist=sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
         if dist.real < self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
+        rospy.logwarn_throttle(3,'WP: ' + str(wp))                
         rospy.loginfo_once('Distance to target WP: ' + str(dist.real))
         
     def publish_wp_cmd_pose(self,waypoint):
@@ -207,6 +209,6 @@ class DemeterActionInterface(object):
         Send vehicle to surface
         """
         position=self.get_position()
-        position.z=self.SUBMERGED_Z # Submerge while in the same X and Y
+        position.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
         self.publish_cmd_pose(position)
         

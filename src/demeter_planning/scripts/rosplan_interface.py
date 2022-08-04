@@ -32,9 +32,6 @@ class DemeterInterface(object):
         self.name = name
         self.demeter_arrived = False
         self.demeter_wp = -1
-        
-        # Verify initial position of robot
-        # self.init_position()
 
         # Service proxies (KB: update, predicate and operator details)
         rospy.loginfo('Waiting for service /rosplan_knowledge_base/update ...')
@@ -92,9 +89,8 @@ class DemeterInterface(object):
         """
         Function for action_dispatch callback
         """
-        # rospy.loginfo('%s: action received' % self.name)
         duration = rospy.Duration(msg.duration)
-        # parse action message
+        # Parse action message
         if msg.name == 'move':
             self._action(msg, self.move, [msg.parameters, duration])
         if msg.name == 'get_data':
@@ -141,7 +137,7 @@ class DemeterInterface(object):
                 [KeyValue('v', self.name),
                  KeyValue('wp', 'wp%d' % wp_seq)])
             update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-            # remove previous wp that demeter resided
+            # Remove previous wp that demeter resided
             if self.demeter_wp != -1:
                 pred_names.append('at')
                 params.append([
@@ -149,14 +145,12 @@ class DemeterInterface(object):
                     KeyValue('wp', 'wp%d' % self.demeter_wp)
                 ])
                 update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
-            self.uav_wp = wp_seq
+            self.demeter_wp = wp_seq
 
     def update_instances(self, ins_types, ins_names, update_types):
         """
         Add / remove instances
-        """
-        rospy.loginfo('update instances method')
-        
+        """      
         success = True
         for idx, ins_type in enumerate(ins_types):
             req = KnowledgeUpdateServiceRequest()
@@ -236,14 +230,10 @@ class DemeterInterface(object):
         response = self.demeter.do_transmit_data(duration)
         return response
     
-    def initial_position(self):
-        success = True
-        if not self.demeter.is_submerged():
-            rospy.logwarn('Vehicle at the surface')
-            # TODO Add fact to KB
-            return success
-        else:
-            rospy.logwarn('Vehicle is submerged')
-            while self.demeter.is_submerged() and not (rospy.is_shutdown()):
-                self.demeter.goto_surface()
-            return success
+        
+    def surface(self):
+        """
+        Get data action for Vehicle
+        """
+        self.demeter.goto_surface()
+        return True

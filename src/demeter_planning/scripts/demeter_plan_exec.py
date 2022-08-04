@@ -76,11 +76,12 @@ class DemeterExec(object):
             KnowledgeUpdateServiceRequest.REMOVE_GOAL,
         ]
         for goal in self.goal_state:
-            self.demeter.update_predicates(goal[0], goal[1], update_types) # pred_names, params, update_type
+            if not goal==[]:
+                self.demeter.update_predicates(goal[0], goal[1], update_types) # pred_names, params, update_type        
+        self.goal_state = []
+        return True
         
-        self.goal_state = [list(), list()]
-        
-    def get_data_mission(self):
+    def get_data_set_goal(self):
         """
         Spike Demo mission: Retrieve data from a WP and transmit from the surface
         """
@@ -96,9 +97,9 @@ class DemeterExec(object):
         self._rate.sleep()
         return succeed
     
-    def goto_wp_mission(self,goal_wp):
+    def goto_wp_set_goal(self,goal_wp):
         """
-        Toy mission
+        Toy mission: Go to especific waypoint
         """
         pred_names = [
             'at'
@@ -116,37 +117,37 @@ class DemeterExec(object):
     
     def set_home(self,goal_wp):
         """
-        Define wp0 as 'home', 
+        TODO: Define wp0 as 'home', 
         """
         pass
+ 
+    def vehicle_surface(self):
+        """
+        Send vehicle to surface 
+        """
+        self.demeter.surface()
  
 if __name__ == '__main__':
     rospy.init_node('demeter_executive')
     
-        
-    rospy.loginfo('Exec started')
-    rospy.sleep(1) # Wait for planning
+    rospy.loginfo('Executive started')
     demeter = DemeterExec()
-       
-    # demeter.set_init_position() # Sets the initial position in KB
     
-    demeter.get_data_mission() # Sets goal    
-    demeter.goto_wp_mission('wp1') # Sets goal
-    demeter.goto_wp_mission('wp2') # Sets goal
+    demeter.get_data_set_goal() # Sets goal    
+    demeter.goto_wp_set_goal('wp1') # Sets goal
+    # demeter.goto_wp_set_goal('wp2') # Sets goal (Two WP at the same time forces a plan failure)
     
     rospy.sleep(1) # Wait for planning
-    
+       
+    rospy.logwarn_once('Mission: Get Data')
     while not demeter.execute():
-        rospy.logwarn_once('Planner Failed, submerging ... ')
         demeter.clear_mission() # Clear all goals
-        # submerge()
+        demeter.goto_wp_set_goal('wp1') # Sets goal
+        rospy.logwarn_once('Mission Failed. New plan: going to waypoint 1 ... ')       
+        # demeter.vehicle_surface()
         rospy.sleep(1) # Wait for planning
-        demeter.get_data_mission() # Sets goal    
-        
-        demeter.goto_wp_mission('wp0') # Sets goal
-        demeter.execute() # Replan
     else:
-        rospy.logwarn('Planner Succeded ')   
+        rospy.logwarn('Mission Get Data Succeded ')   
         
     rospy.logwarn('Spin')
     rospy.spin()

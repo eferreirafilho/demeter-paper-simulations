@@ -1,7 +1,7 @@
 ; Simple Demeter read sensor tank domain
 ; With durative actions
 ; To be used in the Spike Demo
-; Actions: Move, get data, transmit data
+; Actions: Move, find, get data, transmit data
 ; edsonbffilho@gmail.com
 
 (define (domain d_tank) 
@@ -13,6 +13,7 @@
 
     (:predicates
         (can-move ?x - waypoint ?y - waypoint)
+        (can-find ?x - waypoint ?y - waypoint)
         (is-in ?d - data ?w - waypoint)
         (been-at ?v - vehicle ?w - waypoint) ; been at waypoint
         (has-found ?v - vehicle ?w - waypoint) ; been at waypoint
@@ -34,6 +35,21 @@
             (at end (at ?v ?z))
             (at end (been-at ?v ?y))
             (at start (not (at ?v ?y)))
+            )
+    )
+
+    (:durative-action find
+        :parameters (?v - vehicle ?y ?z - waypoint)
+        :duration(= ?duration 15)
+        :condition (and 
+            (over all (can-find ?y ?z)) 
+            (at start (at ?v ?y))
+        )
+        :effect (and 
+            ;(at end (at ?v ?z))
+            (at end (has-found ?v ?y))
+            (at end (can-move ?y ?z)) ; allow moviment from-middle 
+            ;(at end (can-move ?w ?z)) ; allow moviment middle-to  
             )
     )
         
