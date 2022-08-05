@@ -133,7 +133,7 @@ if __name__ == '__main__':
     
     demeter.get_data_set_goal() # Sets goal    
     demeter.goto_wp_set_goal('wp1') # Sets goal
-    demeter.goto_wp_set_goal('wp2') # Sets goal (Two WP at the same time forces a plan failure)
+    # demeter.goto_wp_set_goal('wp2') # Sets goal (Two WP at the same time forces a plan failure)
     rospy.loginfo('Mission: Get Data')
     
     rospy.sleep(1) # Wait for planning
