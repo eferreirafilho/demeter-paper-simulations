@@ -23,7 +23,6 @@ git clone https://github.com/codres-ali/auv_sim.git
 -demeter_planning
 
 ## To run:
-
 ### 1st terminal:
 Run position_hold.launch
 ```sh
