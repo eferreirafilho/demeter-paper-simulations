@@ -34,7 +34,6 @@
 )
 (:goal (and
     (data-sent data1)
-    (at vehicle1 wp1)
 ))
 (:metric minimize (total-time))
 )
