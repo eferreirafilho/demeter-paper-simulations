@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 # 3rd Party Packages
-from sre_constants import SUCCESS
 from threading import Lock
 
 # ROS Packages
 import rospy
 from diagnostic_msgs.msg import KeyValue
+from std_srvs.srv import Empty
 from rosplan_dispatch_msgs.msg import ActionDispatch, ActionFeedback
 from rosplan_knowledge_msgs.msg import KnowledgeItem
 from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
@@ -19,15 +19,14 @@ class DemeterInterface(object):
 
     mutex = Lock()
 
-
-    def __init__(self, name='DEMETER1', demeter=None, update_frequency=10.):
+    def __init__(self, demeter=None, update_frequency=10.):
         """
         A Class that interfaces ROSPlan and DEMETER for executing actions
         """
         if demeter is None:
             self.demeter = DemeterActionInterface()
         self.demeter = demeter
-        self.name = name
+        # self.name = name
         self.demeter_arrived = False
         self.demeter_wp = -1
 
@@ -44,7 +43,6 @@ class DemeterInterface(object):
         rospy.Subscriber('/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self._dispatch_cb, queue_size=10)
         # Publishers
         self._feedback_publisher = rospy.Publisher('/rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
-
         self._rate = rospy.Rate(update_frequency)
 
         # Auto call functions
@@ -111,11 +109,20 @@ class DemeterInterface(object):
                 self.publish_feedback(action_dispatch.action_id,ActionFeedback.ACTION_SUCCEEDED_TO_GOAL_STATE)
             else:
                 self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
-                rospy.loginfo('Action Failed 1')
-                
+                rospy.logwarn('Action Failed')
+                self.cancel_plan()
+
         else:
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
-            rospy.loginfo('Action Failed 2')
+            rospy.logwarn('Action Failed - Timeout')
+            self.cancel_plan()
+
+    def cancel_plan(self):
+        """
+        Cancel plan
+        """
+        _cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)
+        _cancel_plan_proxy()
 
     def knowledge_update(self, event):
         """
@@ -124,11 +131,9 @@ class DemeterInterface(object):
         pred_names = list()
         params = list()
         update_types = list()
-        # demeter position in waypoint update
-        wp_seq = self.demeter._current_wp
+        wp_seq = self.demeter._current_wp  # demeter position in waypoint update
         
-        # only update when self.demeter_wp != wp_seq
-        if wp_seq != -1 and self.demeter_wp != wp_seq:
+        if wp_seq != -1 and self.demeter_wp != wp_seq: # only update when self.demeter_wp != wp_seq
             # add current wp that demeter resides
             pred_names.append('at')
             params.append(
@@ -227,7 +232,6 @@ class DemeterInterface(object):
         """
         response = self.demeter.do_transmit_data(duration)
         return response
-    
         
     def surface(self):
         """

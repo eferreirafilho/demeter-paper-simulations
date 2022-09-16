@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 # 3rd Party Packages
-from turtle import position
 
 # ROS Packages
 
 import rospy
 from diagnostic_msgs.msg import KeyValue
 from rosplan_dispatch_msgs.srv import DispatchService
+from rosplan_dispatch_msgs.msg import ActionFeedback
 from rosplan_knowledge_msgs.srv import KnowledgeUpdateServiceRequest
 from std_srvs.srv import Empty
 from interface import DemeterActionInterface
@@ -16,7 +16,9 @@ from rosplan_interface import DemeterInterface
 class DemeterExec(object):
     def __init__(self, update_frequency=4.):
         self.goal_state = list()
-        self.demeter = DemeterInterface(name='demeter1',demeter=DemeterActionInterface())
+        self.demeter = DemeterInterface(demeter=DemeterActionInterface())
+        self.mission_success=False
+
         # Service proxies: Problem Generation, Planning, Parsing, Dispatching
         rospy.loginfo('Waiting for rosplan services...')
         rospy.wait_for_service('/rosplan_problem_interface/problem_generation_server')
@@ -30,18 +32,45 @@ class DemeterExec(object):
         self._cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)
         # Service
         rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
+
+        # Subscribers
+        rospy.Subscriber('/rosplan_plan_dispatcher/action_feedback', ActionFeedback, self.check_action_feedback, queue_size=10)
+
         # Auto call functions
         self._rate = rospy.Rate(update_frequency)
                 
-        
-    def resume_plan(self, req):
+    def check_action_feedback(self,msg):
+        """
+        Check action feedback
+        """
+        if msg.status == ActionFeedback.ACTION_FAILED:
+            self._rate.sleep()
+
+    def resume_plan(self):
         """
         Function to flag down external intervention, and replan
         """
-        self.demeter.resume_plan()
         rospy.Timer(self._rate.sleep_dur, self.execute, oneshot=True)
-        return list()
-    
+
+    def get_data_mission(self):
+        """
+        Cancel current plan and define goal to get and transmit the data in the last waypoint in the yaml file
+        """
+        self._cancel_plan_proxy()
+        demeter.clear_mission() # Clear all goals
+        demeter.get_data_set_goal() # Sets goal   
+        self._rate.sleep()
+        demeter.execute()
+
+    def go_to_wp_mission(self,wp):
+        """
+        Cancel current plan and define goal: go to specified waypoint
+        """
+        self._cancel_plan_proxy()
+        demeter.clear_mission() # Clear all goals
+        demeter.goto_wp_set_goal(wp) # Sets goal
+        self._rate.sleep()
+        demeter.execute()
 
     def execute(self, event=True):
         """
@@ -62,8 +91,10 @@ class DemeterExec(object):
         response = self._dispatch_proxy()
         if response.goal_achieved:
            rospy.loginfo('Mission Succeed')
+           self.mission_success=True
         else:
            rospy.loginfo('Mission Failed')
+           self.mission_success=False
         return response.goal_achieved
 
     def clear_mission(self):
@@ -97,7 +128,7 @@ class DemeterExec(object):
     
     def goto_wp_set_goal(self,goal_wp):
         """
-        Toy mission: Go to especific waypoint
+        Go to especific waypoint
         """
         pred_names = [
             'at'
@@ -112,12 +143,6 @@ class DemeterExec(object):
         succeed = self.demeter.update_predicates(pred_names,params,update_types)
         self._rate.sleep()
         return succeed
-    
-    def set_home(self,goal_wp):
-        """
-        TODO: Define wp0 as 'home', 
-        """
-        pass
  
     def vehicle_surface(self):
         """
@@ -126,26 +151,17 @@ class DemeterExec(object):
         self.demeter.surface()
  
 if __name__ == '__main__':
-    rospy.init_node('demeter_executive')
     
+    rospy.init_node('demeter_executive')
     rospy.loginfo('Executive started')
     demeter = DemeterExec()
-    
-    demeter.get_data_set_goal() # Sets goal    
-    # demeter.goto_wp_set_goal('wp1') # Sets goal
-    # demeter.goto_wp_set_goal('wp2') # Sets goal (Two WP at the same time forces a plan failure)
-    rospy.loginfo('Mission: Get Data')
-    
     rospy.sleep(1) # Wait for planning
-       
-    while not demeter.execute():
-        demeter.clear_mission() # Clear all goals
-        demeter.goto_wp_set_goal('wp1') # Sets goal
-        rospy.logwarn_once('Mission Failed. New plan: going to waypoint 1 ... ')       
-        # demeter.vehicle_surface()
+    
+    while demeter.mission_success == False:
+        demeter.get_data_mission() # Sets mission to get data in the last Waypoint
+        # demeter.go_to_wp_mission('wp6') # Sets mission to go to specified Waypoint
         rospy.sleep(1) # Wait for planning
     else:
-        rospy.loginfo('Mission Succeded ')   
-        
-    rospy.logwarn('Spin')
+        rospy.loginfo('Mission Completed!')   
+
     rospy.spin()
