@@ -3,7 +3,6 @@
 # 3rd Party Packages
 
 # ROS Packages
-
 import rospy
 from diagnostic_msgs.msg import KeyValue
 from rosplan_dispatch_msgs.srv import DispatchService
@@ -15,6 +14,9 @@ from rosplan_interface import DemeterInterface
 
 class DemeterExec(object):
     def __init__(self, update_frequency=4.):
+        rospy.init_node('demeter_executive')
+        rospy.loginfo('Executive started')
+        rospy.sleep(1) # Wait for planning
         self.goal_state = list()
         self.demeter = DemeterInterface(demeter=DemeterActionInterface())
         self.mission_success=False
@@ -149,11 +151,20 @@ class DemeterExec(object):
         Send vehicle to surface 
         """
         self.demeter.surface()
- 
+
+    
+    def cancel_mission(self):
+        """
+        Cancel and clear mission 
+        """
+        self._cancel_plan_proxy()
+        demeter.clear_mission() # Clear all goals
+        self._rate.sleep()
+
 if __name__ == '__main__':
     
-    rospy.init_node('demeter_executive')
-    rospy.loginfo('Executive started')
+    # rospy.init_node('demeter_executive')
+    # rospy.loginfo('Executive started')
     demeter = DemeterExec()
     rospy.sleep(1) # Wait for planning
     

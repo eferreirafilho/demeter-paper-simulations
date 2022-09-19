@@ -18,8 +18,8 @@
     (can-move wp5 wp0)
     (can-move wp5 wp6)
     (can-move wp6 wp0)
-    (can-move wp1 wp7)
-    (can-move wp7 wp1)
+    (can-move wp4 wp7)
+    (can-move wp7 wp4)
 
     (is-in data1 wp6)
 
