@@ -67,9 +67,9 @@ class DemeterActionInterface(object):
         self.waypoints_position[0].append(int(round(position.x)))
         self.waypoints_position[1].append(int(round(position.y)))
         self.waypoints_position[2].append(int(round(position.z)))
-        rospy.set_param('plan_wp_x', self.waypoints_position[0])
-        rospy.set_param('plan_wp_y', self.waypoints_position[1])
-        rospy.set_param('plan_wp_z', self.waypoints_position[2])
+        rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[0])
+        rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[1])
+        rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[2])
 
     def append_to_waypoint_position(self,position):
         """
@@ -172,14 +172,14 @@ class DemeterActionInterface(object):
         """
         Set the initial position to param
         """      
-        rospy.set_param('planning_initial_position', [position.x, position.y, position.z])       
+        rospy.set_param('/planning/initial_position', [position.x, position.y, position.z])       
         rospy.loginfo('Initial position set to param file')
 
     def get_init_position_param(self):
         """
         Get the initial position param
         """      
-        self.init_position = rospy.get_param('planning_initial_position')       
+        self.init_position = rospy.get_param('/planning/initial_position')       
 
     def update_wp_position(self,waypoint):
         """

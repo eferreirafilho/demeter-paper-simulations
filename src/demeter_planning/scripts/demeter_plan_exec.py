@@ -3,6 +3,7 @@
 # 3rd Party Packages
 
 # ROS Packages
+from logging.config import listen
 import rospy
 from diagnostic_msgs.msg import KeyValue
 from rosplan_dispatch_msgs.srv import DispatchService
@@ -11,6 +12,8 @@ from rosplan_knowledge_msgs.srv import KnowledgeUpdateServiceRequest
 from std_srvs.srv import Empty
 from interface import DemeterActionInterface
 from rosplan_interface import DemeterInterface
+import rospy
+from std_msgs.msg import String
 
 class DemeterExec(object):
     def __init__(self, update_frequency=4.):
@@ -20,6 +23,9 @@ class DemeterExec(object):
         self.goal_state = list()
         self.demeter = DemeterInterface(demeter=DemeterActionInterface())
         self.mission_success=False
+
+        rospy.loginfo('Executive started111')
+
 
         # Service proxies: Problem Generation, Planning, Parsing, Dispatching
         rospy.loginfo('Waiting for rosplan services...')
@@ -152,7 +158,6 @@ class DemeterExec(object):
         """
         self.demeter.surface()
 
-    
     def cancel_mission(self):
         """
         Cancel and clear mission 
@@ -160,6 +165,44 @@ class DemeterExec(object):
         self._cancel_plan_proxy()
         demeter.clear_mission() # Clear all goals
         self._rate.sleep()
+        rospy.loginfo('Cancel Mission!')    
+        
+
+    def gui_callback_listener(self, data):
+        demeter.cancel_mission()
+        self._rate.sleep()
+        print(data.data)
+        if data.data[0:14]=="Go To Waypoint":
+            demeter.cancel_mission()
+            rospy.sleep(1) # Wait for planning
+            wp = data.data[16:]
+            print(wp)
+            demeter.go_to_wp_mission('wp'+str(wp))
+            rospy.loginfo(data.data)    
+
+        if data.data=="Go To Waypoint 3":
+            demeter.cancel_mission()
+            rospy.sleep(1) # Wait for planning
+            demeter.go_to_wp_mission('wp3')
+            rospy.loginfo(data.data)
+
+        if data.data=="Cancel Mission":
+            demeter.cancel_mission()
+            rospy.sleep(1) # Wait for planning
+            rospy.loginfo(data.data)    
+            return
+            
+        rospy.loginfo('callback')    
+
+        # demeter.listener()
+
+    def gui_listener(self):
+        # rospy.init_node('gui_subscriber', anonymous=True)
+        rospy.Subscriber("planning/gui", String, self.gui_callback_listener)
+        self._rate.sleep()
+        rospy.loginfo('inside listener method')    
+
+        rospy.spin()
 
 if __name__ == '__main__':
     
@@ -167,12 +210,14 @@ if __name__ == '__main__':
     # rospy.loginfo('Executive started')
     demeter = DemeterExec()
     rospy.sleep(1) # Wait for planning
+    demeter.get_data_mission()
     
-    while demeter.mission_success == False:
-        demeter.get_data_mission() # Sets mission to get data in the last Waypoint
-        # demeter.go_to_wp_mission('wp6') # Sets mission to go to specified Waypoint
-        rospy.sleep(1) # Wait for planning
-    else:
-        rospy.loginfo('Mission Completed!')   
+    # while demeter.mission_success == False:
+    # rospy.loginfo_throttle('Listening')   
+    # demeter.gui_listener()
 
+    #     demeter.get_data_mission() # Sets mission to get data in the last Waypoint
+    #     # demeter.go_to_wp_mission('wp6') # Sets mission to go to specified Waypoint
+    #     rospy.sleep(1) # Wait for planning
+    # else:
     rospy.spin()
