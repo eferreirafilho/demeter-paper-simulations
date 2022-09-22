@@ -101,7 +101,7 @@ if __name__ == '__main__':
         
     #Add facts
     add_fact('empty','vehicle1') # Define vehicle has no data
-    add_fact('is-in','data1','wp'+str(n_waypoints-1)) # Define position of sensor (in last Waypoint)
+    # add_fact('is-in','data1','wp'+str(n_waypoints-1)) # Define position of sensor (in last Waypoint)
     # add_fact('is-at-surface','wp0') # Define wp0 is at the surface        
     add_fact('is-at-surface','wp0') # Define wp1 is at the surface 
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import sys
 import rospy
 from std_msgs.msg import String
@@ -12,7 +14,8 @@ from PySide2.QtWidgets import (
     QLabel,
     QFrame,
     QPlainTextEdit,
-    QComboBox
+    QComboBox,
+    QCheckBox
 )
 
 
@@ -23,11 +26,12 @@ class MainWindow(QMainWindow):
 
         self.selected_dropdown_waypoint=0 # Default WP0 (Surface)
 
-        self.setWindowTitle("Spike Demo GUI")
+        self.setWindowTitle("DEMETER Spike Demo Planning GUI")
         self.resize(500,200)
         layout = QVBoxLayout()
         self.frame = QFrame()
         self.PUBLISH_N=1
+        self.replanning_active = 2
 
         waypoints_position = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
         # init_position = [rospy.get_param("/planning/initial_position")]
@@ -56,7 +60,14 @@ class MainWindow(QMainWindow):
         self.widgets.append(QPushButton(self.frame))
         layout.addWidget(self.widgets[3])
         self.widgets[3].clicked.connect(self.button3_action)
-        self.widgets[3].setText("Cancel Mission")
+        self.widgets[3].setText("Clear Mission")
+
+        self.widgets.append(QCheckBox(self.frame))
+        layout.addWidget(self.widgets[4])
+        self.widgets[4].setText("Replanning")
+        self.widgets[4].setChecked(True)
+
+        self.widgets[4].stateChanged.connect(self.show_state)
 
         self.widgets.append(self.frame)
         
@@ -74,29 +85,32 @@ class MainWindow(QMainWindow):
         rospy.init_node('planning_gui_publisher', anonymous=True)
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
-            gui_msg = ("Go To Waypoint "+ str(self.selected_dropdown_waypoint))
+            gui_msg = (str(self.replanning_active)+"Go To Waypoint "+ str(self.selected_dropdown_waypoint))
             rospy.loginfo(gui_msg)
             pub.publish(gui_msg)
 
     def button2_action(self):
-        rospy.loginfo("Go To Waypoint 3")
         pub = rospy.Publisher('planning/gui', String, queue_size=10)
         rospy.init_node('planning_gui_publisher', anonymous=True)
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
-            start_executive = "Go To Waypoint 3"
-            rospy.loginfo(start_executive)
-            pub.publish(start_executive)
+            gui_msg = (str(self.replanning_active)+"Get Data "+ str(self.selected_dropdown_waypoint))
+            rospy.loginfo(gui_msg)
+            pub.publish(gui_msg)
 
     def button3_action(self):
-        rospy.loginfo("Cancel Mission")
+        rospy.loginfo("Clear Mission")
         pub = rospy.Publisher('planning/gui', String, queue_size=10)
         rospy.init_node('planning_gui_publisher', anonymous=True)
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
-            start_executive = "Cancel Mission"
+            start_executive = "Clear Mission"
             rospy.loginfo(start_executive)
             pub.publish(start_executive)
+    def show_state(self,s):
+        print(s == Qt.Checked)
+        self.replanning_active=s
+        print(self.replanning_active)
 
 if __name__ == '__main__':
 

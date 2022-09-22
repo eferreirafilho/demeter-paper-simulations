@@ -8,11 +8,12 @@ import rospy
 from diagnostic_msgs.msg import KeyValue
 from std_srvs.srv import Empty
 from rosplan_dispatch_msgs.msg import ActionDispatch, ActionFeedback
-from rosplan_knowledge_msgs.msg import KnowledgeItem
+from rosplan_knowledge_msgs.msg import KnowledgeItem, diagnostic_msgs
 from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
                                         GetDomainPredicateDetailsService,
                                         KnowledgeUpdateService,
-                                        KnowledgeUpdateServiceRequest)
+                                        KnowledgeUpdateServiceRequest,
+                                        KnowledgeQueryService)
 from interface import DemeterActionInterface
 
 class DemeterInterface(object):
@@ -29,6 +30,7 @@ class DemeterInterface(object):
         # self.name = name
         self.demeter_arrived = False
         self.demeter_wp = -1
+        self.query = []
 
         # Service proxies (KB: update, predicate and operator details)
         rospy.loginfo('Waiting for service /rosplan_knowledge_base/update ...')
@@ -124,6 +126,60 @@ class DemeterInterface(object):
         _cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)
         _cancel_plan_proxy()
 
+    def call_query_service(self):
+        rospy.loginfo("Waiting for Query Service")
+        rospy.wait_for_service('/rosplan_knowledge_base/query_state')
+        try:
+            rospy.loginfo("Calling Service")
+            query_proxy = rospy.ServiceProxy('rosplan_knowledge_base/query_state', KnowledgeQueryService)
+            resp1 = query_proxy(self.query)
+            rospy.loginfo(resp1.results)
+            return resp1.results
+        except rospy.ServiceException:
+            rospy.loginfo("Service query call failed")
+
+    def data_sent_query(self):
+        """
+        Spike Demo mission: query if data sent is in KB
+        """
+        query1 = KnowledgeItem()
+        query1.knowledge_type = KnowledgeItem.FACT
+        query1.attribute_name = "data-sent"
+        query1.values.append(diagnostic_msgs.msg.KeyValue("d","data1"))
+        self.query.append(query1)
+        self._rate.sleep()
+        result = self.call_query_service()
+        rospy.logwarn(result)
+        rospy.logwarn(result[-1])
+        return result[-1]
+
+    def clear_data_sent_fact(self):
+        """
+        Clear data-sent in KB
+        """
+        if self.call_query_service():
+            pred_names = [
+            'data-sent'
+            ]
+            params = [[KeyValue('d', 'data1')]]
+            update_types = [
+                KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
+            ]
+            self.update_predicates(pred_names,params,update_types)
+
+    def add_empty_vehicle_fact(self):
+        """
+        Add the fact that the vehicle is empty to the KB
+        """
+        pred_names = [
+        'empty'
+        ]
+        params = [[KeyValue('v', 'vehicle1')]]
+        update_types = [
+            KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE,
+        ]
+        self.update_predicates(pred_names,params,update_types)
+
     def knowledge_update(self, event):
         """
         Add or remove facts related to this vehicle at ROSPlan knowledge base
@@ -137,14 +193,14 @@ class DemeterInterface(object):
             # add current wp that demeter resides
             pred_names.append('at')
             params.append(
-                [KeyValue('v', self.name),
+                [KeyValue('v'),
                  KeyValue('wp', 'wp%d' % wp_seq)])
             update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
             # Remove previous wp that demeter resided
             if self.demeter_wp != -1:
                 pred_names.append('at')
                 params.append([
-                    KeyValue('v', self.name),
+                    KeyValue('v'),
                     KeyValue('wp', 'wp%d' % self.demeter_wp)
                 ])
                 update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
