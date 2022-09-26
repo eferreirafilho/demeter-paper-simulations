@@ -1,9 +1,3 @@
-; Simple Demeter read sensor tank domain
-; With durative actions
-; To be used in the Spike Demo
-; Actions: Move, get data, transmit data
-; edsonbffilho@gmail.com
-
 (define (domain d_tank) 
     (:requirements :typing :fluents :durative-actions :duration-inequalities :negative-preconditions)
 
@@ -14,25 +8,22 @@
     (:predicates
         (can-move ?x - waypoint ?y - waypoint)
         (is-in ?d - data ?w - waypoint)
-        (been-at ?v - vehicle ?w - waypoint) ; been at waypoint
-        (has-found ?v - vehicle ?w - waypoint) ; been at waypoint
         (carry ?v - vehicle ?d - data)
         (at ?v - vehicle ?w - waypoint)
         (is-at-surface ?w - waypoint)
         (data-sent ?d - data)
         (empty ?v - vehicle)
     )
-    ;define actions here
+    ; Action Move
     (:durative-action move
         :parameters (?v - vehicle ?y ?z - waypoint)
-        :duration(= ?duration 5)
+        :duration(= ?duration 6)
         :condition (and 
             (over all (can-move ?y ?z)) 
             (at start (at ?v ?y))
         )
         :effect (and 
             (at end (at ?v ?z))
-            (at end (been-at ?v ?y))
             (at start (not (at ?v ?y)))
             )
     )
@@ -50,7 +41,6 @@
             (at end (not (is-in ?d ?w)))
             (at end (carry ?v ?d))
             (at end (not (empty ?v)))
-
     )
     )
     ; Transmit Sensor from surface
@@ -63,11 +53,9 @@
             (at start (carry ?v ?d)))
         
         :effect (and 
-            (at end (is-in ?d ?w))
             (at end (not (carry ?v ?d)))
             (at end (data-sent ?d))
             (at end (empty ?v))     
-
             )
     
     )

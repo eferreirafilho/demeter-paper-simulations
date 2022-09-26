@@ -3,7 +3,6 @@ from cmath import sqrt
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
-import yaml
 
 class DemeterActionInterface(object):
 
@@ -40,29 +39,17 @@ class DemeterActionInterface(object):
         self._wait(2) 
             
     def _wait(self, n_rate):
-        """
-        Sleep for n times rate
-        """
         for _ in range(n_rate):
             self._rate.sleep()
         
     def _pose_gt_cb(self, msg):
-        """
-        Demeter pose callback
-        """
         self.odom_pose = msg
     
     def load_wp_config_from_file(self):
-        """
-        Load waypoints configuration from file under params folder
-        """
         waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
         return waypoints
 
     def append_to_plan_wp(self,position):
-        """
-        Append waypoint to plan_wp parameter
-        """
         self.waypoints_position=self.load_wp_config_from_file()
         self.waypoints_position[0].append(int(round(position.x)))
         self.waypoints_position[1].append(int(round(position.y)))
@@ -72,19 +59,12 @@ class DemeterActionInterface(object):
         rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[2])
 
     def append_to_waypoint_position(self,position):
-        """
-        Append waypoint to waypoint position variable
-        """
         self.waypoints_position=self.load_wp_config_from_file()
         self.waypoints_position[0].append(int(round(position[0])))
         self.waypoints_position[1].append(int(round(position[1])))
         self.waypoints_position[2].append(int(round(position[2])))
 
     def closer_wp(self,position):
-        """
-        Closer waypoint
-        """
-        # waypoints=self.load_wp_config_from_file()
         dist=[]
         closer_wp=[]
         for i in range(len(self.waypoints_position[0])-1): # Don't compare with itself
@@ -96,22 +76,17 @@ class DemeterActionInterface(object):
         return closer_wp
 
     def do_move(self, waypoint, duration=rospy.Duration()):
-        """
-        Go to specific waypoint action
-        """
         self.wp_reached = -1
         start = rospy.Time.now()
         self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
               
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
-            self.publish_wp_cmd_pose(waypoint)
+            self.publish_wp_cmd_pose_fixed_orientation(waypoint)
             self.update_wp_position(waypoint)
             if self._current_wp==waypoint: # Query if vehicle is at target WP
                 self.wp_reached=waypoint # SUCCESS
                 rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
             self._rate.sleep()
-            rospy.loginfo_throttle(5,'Moving ... ' )
-
         response = int(waypoint == self.wp_reached)
                 
         if (rospy.Time.now() - start) > duration:
@@ -120,9 +95,6 @@ class DemeterActionInterface(object):
         return response
     
     def do_get_data(self, duration=rospy.Duration()):
-        """
-        Get data action
-        """
         rospy.logdebug('Interface: Mock \'Get Data\' Action')
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
@@ -139,9 +111,6 @@ class DemeterActionInterface(object):
         return response
     
     def do_transmit_data(self, duration=rospy.Duration()):
-        """
-        Go to specific waypoint action
-        """
         rospy.logdebug('Interface: Mock \'Transmit\' Action')
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
@@ -153,52 +122,31 @@ class DemeterActionInterface(object):
         rospy.loginfo('Data transmitted!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
-        
         return response
         
-    def set_current_target_wp(self, wp_index):
-        """
-        Set target wp for vehicle to go
-        """      
+    def set_current_target_wp(self, wp_index):     
         self.get_init_position_param()
         self.append_to_waypoint_position(self.init_position)
-
         wp_set=[item[wp_index] for item in self.waypoints_position] # Get specified waypoint
         self.target_wp=wp_set
 
-        rospy.loginfo('Target waypoint set to self.target_wp')
-
     def set_init_position_param(self, position):
-        """
-        Set the initial position to param
-        """      
         rospy.set_param('/planning/initial_position', [position.x, position.y, position.z])       
-        rospy.loginfo('Initial position set to param file')
 
     def get_init_position_param(self):
-        """
-        Get the initial position param
-        """      
         self.init_position = rospy.get_param('/planning/initial_position')       
 
     def update_wp_position(self,waypoint):
-        """
-        Update vehicle position in terms of waypoint
-        """
         wp = -1
         if not self.is_submerged():
-            wp = 0 # Waypoint 0 is all the surface minus wp1
+            wp = 0 # Waypoint 0 is at the surface
         dist=sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
         if dist.real < self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        # rospy.logwarn_throttle(3,'WP: ' + str(wp))                
-        rospy.loginfo_once('Distance to target WP: ' + str(dist.real))
+        rospy.loginfo_throttle(2,'Distance to target WP: ' + str(dist.real))
         
-    def publish_wp_cmd_pose(self,waypoint):
-        """
-        Publish target position and fixed orientation to cmd_pose
-        """
+    def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      
         cmd_pose.pose.position.x=self.target_wp[0]
         cmd_pose.pose.position.y=self.target_wp[1]
@@ -209,10 +157,7 @@ class DemeterActionInterface(object):
         cmd_pose.pose.orientation.w=1
         self.cmd_pose_pub.publish(cmd_pose)
         
-    def publish_cmd_pose(self,pos):
-        """
-        Publish target position and fixed orientation to cmd_pose
-        """
+    def publish_position_fixed_orientation(self,pos):
         cmd_pose=PoseStamped()      
         cmd_pose.pose.position.x=pos.x
         cmd_pose.pose.position.y=pos.y
@@ -222,17 +167,26 @@ class DemeterActionInterface(object):
         cmd_pose.pose.orientation.z=0
         cmd_pose.pose.orientation.w=1
         self.cmd_pose_pub.publish(cmd_pose)
+
+    def publish_cmd_pose(self,pos,ori):
+
+        cmd_pose=PoseStamped()      
+        cmd_pose.pose.position.x=pos.x
+        cmd_pose.pose.position.y=pos.y
+        cmd_pose.pose.position.z=pos.z
+        cmd_pose.pose.orientation.x=ori.x
+        cmd_pose.pose.orientation.y=ori.y
+        cmd_pose.pose.orientation.z=ori.z
+        cmd_pose.pose.orientation.w=ori.w
+        self.cmd_pose_pub.publish(cmd_pose)
     
     def get_position(self):
-        """
-        Get position of vehicle
-        """
         return self.odom_pose.pose.pose.position
+
+    def get_orientation(self):
+        return self.odom_pose.pose.pose.orientation
     
     def is_submerged(self):
-        """
-        Check if vehicle is on surface or submerged
-        """
         position=self.get_position()
         if position.z<self.SUBMERGED_Z:
             return True
@@ -240,10 +194,13 @@ class DemeterActionInterface(object):
             return False
         
     def goto_surface(self):
-        """
-        Send vehicle to surface
-        """
         position=self.get_position()
         position.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
-        self.publish_cmd_pose(position)
+        self.publish_position_fixed_orientation(position)
         
+    
+    def command_halt_vehicle(self):
+        position=self.get_position()
+        orientation=self.get_orientation()
+        rospy.loginfo('Vehicle Halted! Position: ' + str(position))
+        self.publish_cmd_pose(position,orientation)

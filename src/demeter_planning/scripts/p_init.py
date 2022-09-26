@@ -8,7 +8,6 @@ from rosplan_knowledge_msgs.srv import *
 from rosplan_knowledge_msgs.msg import KnowledgeItem
 from diagnostic_msgs.msg import KeyValue
 from geometry_msgs.msg import Pose
-# from init_position import InitPosition
 from interface import DemeterActionInterface
 
 def add_goal(goal_fact, goal_obj):   
@@ -95,15 +94,14 @@ if __name__ == '__main__':
     
     # Add waypoints objects
     n_waypoints=len(waypoints_position[0])
-    rospy.logwarn(n_waypoints)
     for i in range(n_waypoints+1): # Last waypoint is the initial position
         add_object('wp'+str(i),'waypoint')
         
     #Add facts
-    add_fact('empty','vehicle1') # Define vehicle has no data
+    add_fact('empty','vehicle1')
     # add_fact('is-in','data1','wp'+str(n_waypoints-1)) # Define position of sensor (in last Waypoint)
-    # add_fact('is-at-surface','wp0') # Define wp0 is at the surface        
-    add_fact('is-at-surface','wp0') # Define wp1 is at the surface 
+    add_fact('is-at-surface','wp0')        
+    add_fact('is-at-surface','wp1') 
 
     # Allowed moviments            
     n_canmove=n_waypoints-1
