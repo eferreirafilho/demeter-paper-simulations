@@ -59,6 +59,9 @@
 	<node pkg="demeter_planning" type="demeter_plan_exec.py" name="rosplan_demeter_exec" output="screen">
 		<rosparam file="$(find demeter_planning)/params/plan_wp.yaml" command="load"/>
 	</node>
+
+	<node pkg="demeter_planning" type="gui.py" name="planning_gui" output="screen"> </node>
+
 	
 
 </launch>

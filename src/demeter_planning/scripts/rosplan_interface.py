@@ -1,35 +1,36 @@
 #!/usr/bin/env python
 
 # 3rd Party Packages
-from sre_constants import SUCCESS
 from threading import Lock
 
 # ROS Packages
 import rospy
 from diagnostic_msgs.msg import KeyValue
+from std_srvs.srv import Empty
 from rosplan_dispatch_msgs.msg import ActionDispatch, ActionFeedback
-from rosplan_knowledge_msgs.msg import KnowledgeItem
+from rosplan_knowledge_msgs.msg import KnowledgeItem, diagnostic_msgs
 from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
                                         GetDomainPredicateDetailsService,
                                         KnowledgeUpdateService,
-                                        KnowledgeUpdateServiceRequest)
+                                        KnowledgeUpdateServiceRequest,
+                                        KnowledgeQueryService)
 from interface import DemeterActionInterface
 
 class DemeterInterface(object):
 
     mutex = Lock()
 
-
-    def __init__(self, name='DEMETER1', demeter=None, update_frequency=10.):
+    def __init__(self, demeter=None, update_frequency=10.):
         """
         A Class that interfaces ROSPlan and DEMETER for executing actions
         """
         if demeter is None:
             self.demeter = DemeterActionInterface()
         self.demeter = demeter
-        self.name = name
+        # self.name = name
         self.demeter_arrived = False
         self.demeter_wp = -1
+        self.query = []
 
         # Service proxies (KB: update, predicate and operator details)
         rospy.loginfo('Waiting for service /rosplan_knowledge_base/update ...')
@@ -44,16 +45,12 @@ class DemeterInterface(object):
         rospy.Subscriber('/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self._dispatch_cb, queue_size=10)
         # Publishers
         self._feedback_publisher = rospy.Publisher('/rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
-
         self._rate = rospy.Rate(update_frequency)
 
         # Auto call functions
         rospy.Timer(self._rate.sleep_dur, self.knowledge_update)
 
     def _apply_operator_effect(self, op_name, dispatch_params):
-        """
-        Add / remove knowledge based on operator effect and parameters from dispatched action
-        """
         predicate_names = list()
         parameters = list()
         update_types = list()
@@ -84,9 +81,6 @@ class DemeterInterface(object):
         return succeed
 
     def _dispatch_cb(self, msg):
-        """
-        Function for action_dispatch callback
-        """
         duration = rospy.Duration(msg.duration)
         # Parse action message
         if msg.name == 'move':
@@ -97,9 +91,6 @@ class DemeterInterface(object):
             self._action(msg, self.transmit_data, [duration])
                 
     def _action(self, action_dispatch, action_func, action_params=list()):
-        """
-        Template vehicle action for generic action
-        """
         self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_ENABLED)
         start_time = rospy.Time(action_dispatch.dispatch_time)
         duration = rospy.Duration(action_dispatch.duration)
@@ -111,44 +102,94 @@ class DemeterInterface(object):
                 self.publish_feedback(action_dispatch.action_id,ActionFeedback.ACTION_SUCCEEDED_TO_GOAL_STATE)
             else:
                 self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
-                rospy.loginfo('Action Failed 1')
-                
+                rospy.logwarn('Action Failed')
+                self.cancel_plan()
+
         else:
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
-            rospy.loginfo('Action Failed 2')
+            rospy.logwarn('Action Failed - Timeout')
+            self.cancel_plan()
+
+    def cancel_plan(self):
+        _cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)
+        _cancel_plan_proxy()
+
+    def call_query_service(self):
+        rospy.wait_for_service('/rosplan_knowledge_base/query_state')
+        try:
+            query_proxy = rospy.ServiceProxy('rosplan_knowledge_base/query_state', KnowledgeQueryService)
+            resp1 = query_proxy(self.query)
+            return resp1.results
+        except rospy.ServiceException:
+            rospy.loginfo("Service query call failed")
+
+    def data_sent_kb_query(self):
+        query1 = KnowledgeItem()
+        query1.knowledge_type = KnowledgeItem.FACT
+        query1.attribute_name = "data-sent"
+        query1.values.append(diagnostic_msgs.msg.KeyValue("d","data1"))
+        self.query.append(query1)
+        self._rate.sleep()
+        result = self.call_query_service()
+        return result[-1]
+
+    def clear_data_sent_fact(self):
+        self.data_sent_kb_query()
+        if self.call_query_service():
+            pred_names = [
+            'data-sent'
+            ]
+            params = [[KeyValue('d', 'data1')]]
+            update_types = [
+                KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
+            ]
+            self.update_predicates(pred_names,params,update_types)
+
+    def clear_carry_vehicle_fact(self):
+        if self.call_query_service():
+            pred_names = [
+            'carry'
+            ]
+            params = [[KeyValue('v', 'vehicle1'), KeyValue('d', 'data1')]]
+            update_types = [
+                KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
+            ]
+            self.update_predicates(pred_names,params,update_types)
+
+    def add_empty_vehicle_fact(self):
+        pred_names = [
+        'empty'
+        ]
+        params = [[KeyValue('v', 'vehicle1')]]
+        update_types = [
+            KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE,
+        ]
+        self.update_predicates(pred_names,params,update_types)
 
     def knowledge_update(self, event):
-        """
-        Add or remove facts related to this vehicle at ROSPlan knowledge base
-        """
         pred_names = list()
         params = list()
         update_types = list()
-        # demeter position in waypoint update
-        wp_seq = self.demeter._current_wp
+        wp_seq = self.demeter._current_wp  # demeter position in waypoint update
         
-        # only update when self.demeter_wp != wp_seq
-        if wp_seq != -1 and self.demeter_wp != wp_seq:
+        if wp_seq != -1 and self.demeter_wp != wp_seq: # only update when self.demeter_wp != wp_seq
             # add current wp that demeter resides
             pred_names.append('at')
             params.append(
-                [KeyValue('v', self.name),
+                [KeyValue('v'),
                  KeyValue('wp', 'wp%d' % wp_seq)])
             update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
             # Remove previous wp that demeter resided
             if self.demeter_wp != -1:
                 pred_names.append('at')
                 params.append([
-                    KeyValue('v', self.name),
+                    KeyValue('v'),
                     KeyValue('wp', 'wp%d' % self.demeter_wp)
                 ])
                 update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
             self.demeter_wp = wp_seq
 
-    def update_instances(self, ins_types, ins_names, update_types):
-        """
-        Add / remove instances
-        """      
+    def update_instances(self, ins_types, ins_names, update_types):   
         success = True
         for idx, ins_type in enumerate(ins_types):
             req = KnowledgeUpdateServiceRequest()
@@ -160,9 +201,6 @@ class DemeterInterface(object):
         return success
 
     def update_predicates(self, pred_names, parameters, update_types):
-        """
-        Add / remove first order facts or goals
-        """
         self.mutex.acquire()
         success = True
         for idx, pred_name in enumerate(pred_names):
@@ -176,9 +214,6 @@ class DemeterInterface(object):
         return success
 
     def update_functions(self, func_names, params, func_values, update_types):
-        """
-        Add / remove functions
-        """
         self.mutex.acquire()
         success = True
         for idx, func_name in enumerate(func_names):
@@ -193,19 +228,12 @@ class DemeterInterface(object):
         return success
 
     def publish_feedback(self, action_id, fbstatus):
-        """
-        Function to publish action feedback to action_feedback topic
-        """
         feedback = ActionFeedback()
         feedback.action_id = action_id
         feedback.status = fbstatus
-        self._feedback_publisher.publish(feedback)
-           
+        self._feedback_publisher.publish(feedback)         
 
     def move(self, dispatch_params, duration=rospy.Duration(60, 0)):
-        """
-        Go to waypoint action for Vehicle
-        """
         waypoint = -1
         for param in dispatch_params:
             if param.key == 'z': # to Waypoint z
@@ -215,23 +243,17 @@ class DemeterInterface(object):
         return response
 
     def get_data(self, duration=rospy.Duration(60, 0)):
-        """
-        Get data action for Vehicle
-        """
         response = self.demeter.do_get_data(duration)
         return response
     
     def transmit_data(self, duration=rospy.Duration(60, 0)):
-        """
-        Get data action for Vehicle
-        """
         response = self.demeter.do_transmit_data(duration)
         return response
-    
         
     def surface(self):
-        """
-        Get data action for Vehicle
-        """
         self.demeter.goto_surface()
+        return True
+
+    def interface_halt(self):
+        self.demeter.command_halt_vehicle()
         return True

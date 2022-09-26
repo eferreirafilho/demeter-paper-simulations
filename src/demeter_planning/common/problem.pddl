@@ -2,7 +2,7 @@
 (:domain d_tank)
 (:objects
     vehicle1 - vehicle
-    wp0 wp1 wp2 wp3 wp4 wp5 wp6 - waypoint
+    wp0 wp1 wp2 wp3 wp4 wp5 wp6 wp7 - waypoint
     data1 - data
 )
 (:init
@@ -18,14 +18,14 @@
     (can-move wp5 wp0)
     (can-move wp5 wp6)
     (can-move wp6 wp0)
-
-    (is-in data1 wp6)
-
-
+    (can-move wp1 wp7)
+    (can-move wp7 wp1)
 
 
-    (at vehicle1 wp0)
 
+    (at vehicle1 wp5)
+
+    (is-at-surface wp0)
     (is-at-surface wp1)
 
 
@@ -33,7 +33,7 @@
 
 )
 (:goal (and
-    (data-sent data1)
+    (at vehicle1 wp6)
 ))
 (:metric minimize (total-time))
 )
