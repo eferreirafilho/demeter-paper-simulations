@@ -1,6 +1,6 @@
 # DEMETER planning simulation
 
-## Simple simulation, actions: move, get_data, transmit_data
+## Actions: move, get_data, transmit_data
 Main objetive: get_data that is at a specific waypoint.
 
 Vehicle can only move between allowed waypoints (as will be created in common/problem.pddl).
@@ -39,11 +39,15 @@ Run position_demo.launch
 ```sh
 roslaunch auv_autonomy position_demo.launch
 ```
+This package launches gazebo, the vehicle and the enviroment. This package is able to receive a pose through /auv/cmd_pose and guide the vehicle to the received pose.
 
 ### 2nd terminal:
 ```sh
 roslaunch demeter_planning gui_planning.launch
 ```
+This package launches the planner and a GUI to send missions to the vehicle:
+![image](https://user-images.githubusercontent.com/92797165/192337251-d9ab2764-231f-4d33-927a-3f0e65948d1b.png)
+
 
 ### 3rd terminal (Optional):
 To follow the execution of the plan graphically, one can run in a sourced terminal:
@@ -51,6 +55,9 @@ To follow the execution of the plan graphically, one can run in a sourced termin
 rqt
 ```
 and select plugins > ROSPlan > ROSPlan esterel plan viewer.
+![image](https://user-images.githubusercontent.com/92797165/192337883-9ab04f2f-6621-49b0-943b-e2489c155849.png)
+In green are the completed actions. In yellow the dispatched actions. In white the next planned actions.
+
 
 ## Comments:
 
@@ -65,4 +72,6 @@ If planning or an action fail and replanning is active (GUI checkbox), the progr
 Action **move** return success if vehicle has reached the waypoint within the time described in common/domain.pddl. Plan fails otherwise.
 
 Actions **get_data** and **transmit_data** are simulated, vehicle just wait in position for some time (as defined in common/domain.pddl) and the action always returns as sucessfull.
+
+
 
