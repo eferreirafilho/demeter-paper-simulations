@@ -1,5 +1,10 @@
 # DEMETER planning package
 
+Package responsible for planning. To be used in the DEMETER Spike Demo (October 2022).
+
+
+![demeter_tank2](https://user-images.githubusercontent.com/92797165/192383504-d70cca79-b639-4cb6-a7f0-90dcb56cfeb1.png)
+
 ## Prerequisite:
 
 -ROSPlan: 
