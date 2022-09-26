@@ -17,7 +17,7 @@
     ; Action Move
     (:durative-action move
         :parameters (?v - vehicle ?y ?z - waypoint)
-        :duration(= ?duration 6)
+        :duration(= ?duration 60)
         :condition (and 
             (over all (can-move ?y ?z)) 
             (at start (at ?v ?y))
@@ -31,7 +31,7 @@
     ; Get sensor data form underwater waypoint - Fixed time
     (:durative-action get_data
         :parameters (?v - vehicle ?d - data ?w - waypoint)
-        :duration(= ?duration 1)
+        :duration(= ?duration 10)
         :condition (and 
             (at start (is-in ?d ?w))
             (over all (at ?v ?w))
@@ -46,7 +46,7 @@
     ; Transmit Sensor from surface
     (:durative-action transmit_data
         :parameters (?v - vehicle ?d - data ?w - waypoint)
-        :duration (= ?duration 1)
+        :duration (= ?duration 10)
         :condition (and 
             (at start (is-at-surface ?w))
             (over all (at ?v ?w))
