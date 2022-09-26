@@ -74,4 +74,6 @@ In green are the completed actions. In yellow the dispatched actions. In white t
 ## Demo
 
 A demontration of the data retrieval mission (data in WP6). The video is acellerated 3x.
-https://user-images.githubusercontent.com/92797165/192371838-b66ce526-f305-4002-8ab8-3be90134a323.mp4
+
+![Gazebo3x](https://user-images.githubusercontent.com/92797165/192372867-8df159a4-4557-40fe-ba30-0094fe7a9c2a.gif)
+
