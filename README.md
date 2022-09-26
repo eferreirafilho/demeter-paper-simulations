@@ -48,21 +48,10 @@ roslaunch demeter_planning gui_planning.launch
 This package launches the planner and a GUI to send missions to the vehicle:
 ![image](https://user-images.githubusercontent.com/92797165/192337251-d9ab2764-231f-4d33-927a-3f0e65948d1b.png)
 
-
-### 3rd terminal (Optional):
-To follow the execution of the plan graphically, one can run in a sourced terminal:
-```sh
-rqt
-```
-and select plugins > ROSPlan > ROSPlan esterel plan viewer.
-![image](https://user-images.githubusercontent.com/92797165/192337883-9ab04f2f-6621-49b0-943b-e2489c155849.png)
-In green are the completed actions. In yellow the dispatched actions. In white the next planned actions.
-
-
-## Comments:
-
+#### Comments:
 This package creates a problem file (common/problem.pddl), generates a plan (common/plan.pddl) and execute the plan in Gazebo.
-Position is subscribed from topic /auv/pose_gt and a desired pose is published in topic /auv/cmd_pose (a desired position and a fixed orientation). 
+
+**Position is subscribed from topic /auv/pose_gt and a desired pose is published in topic /auv/cmd_pose (a desired position and a fixed orientation).**
 
 When the vehicle is not positioned at a waypoint and planning is required, a waypoint with the current position of the vehicle is created. From this waypoint, the vehicle can move to the surface (wp0) or to the closer waypoint in the yaml file.
 
@@ -73,5 +62,16 @@ Action **move** return success if vehicle has reached the waypoint within the ti
 
 Actions **get_data** and **transmit_data** are simulated, vehicle just wait in position for some time (as defined in common/domain.pddl) and the action always returns as sucessfull.
 
+### 3rd terminal (Optional):
+To follow the execution of the plan graphically, one can run in a sourced terminal:
+```sh
+rqt
+```
+and select plugins > ROSPlan > ROSPlan esterel plan viewer.
 
+In green are the completed actions. In yellow the dispatched actions. In white the next planned actions.
 
+## Demo
+
+A demontration of the data retrieval mission (data in WP6). The video is acellerated 3x.
+https://user-images.githubusercontent.com/92797165/192371838-b66ce526-f305-4002-8ab8-3be90134a323.mp4
