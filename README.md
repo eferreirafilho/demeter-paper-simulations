@@ -1,13 +1,21 @@
 # DEMETER planning simulation
 
 ## Simple simulation, actions: move, get_data, transmit_data
-Goal: get_data that is at a specific waypoint.
+Main objetive: get_data that is at a specific waypoint.
 
 Vehicle can only move between allowed waypoints (as will be created in common/problem.pddl).
 
-For now, the generated plan will always be a sequence of **move** actions then a **get_data** action and a **transmit_data** action. 
+For now, there are basically only two possible missions: "get data mission" and "go to waypoint mission". In the "get data mission", the generated plan will always be a sequence of **move** actions then a **get_data** action and a **transmit_data** action. 
 The aim here is to exemplify the integration of systems. 
 Future work will deal with more complex actions and systems, in which automated planning will have a greater impact.
+
+## Waypoints
+
+Inside folder /params, a YAML file define the waypoints.
+
+The first waypoint defined in this file will be defined as a "surface waypoint". The vehicle can move from any waypoint to the "surface waypoint". Data can only be transmitted from this waypoint.
+
+The location of the data to be retrieved is set by the GUI dropdown menu.
 
 ## Prerequisite:
 
@@ -20,37 +28,41 @@ git clone https://github.com/KCL-Planning/ROSPlan.git
 ```sh
 git clone https://github.com/codres-ali/auv_sim.git
 ```
--demeter_planning
 
 ## To run:
-### 1st terminal:
-Run position_hold.launch
 ```sh
-roslaunch auv_autonomy position_hold.launch
+Change branch to: /rhul
+```
+
+### 1st terminal:
+Run position_demo.launch
+```sh
+roslaunch auv_autonomy position_demo.launch
 ```
 
 ### 2nd terminal:
 ```sh
-roslaunch demeter_planning planning.launch
+roslaunch demeter_planning gui_planning.launch
 ```
 
 ### 3rd terminal (Optional):
-To follow the execution of the plan graphically, one can run:
+To follow the execution of the plan graphically, one can run in a sourced terminal:
 ```sh
 rqt
 ```
-and select plugins > ROSPlan > ROSPlan esterel plan viewer
+and select plugins > ROSPlan > ROSPlan esterel plan viewer.
 
 ## Comments:
 
-This creates a problem file (common/problem.pddl), generates a plan (common/plan.pddl) and execute the plan in Gazebo.
-Position is subscribed from topi /auv/pose_gt and pose is published in topic /auv/cmd_pose.  
+This package creates a problem file (common/problem.pddl), generates a plan (common/plan.pddl) and execute the plan in Gazebo.
+Position is subscribed from topic /auv/pose_gt and a desired pose is published in topic /auv/cmd_pose (a desired position and a fixed orientation). 
 
-The plan is a sequence of actions with maximum time for completion.
+When the vehicle is not positioned at a waypoint and planning is required, a waypoint with the current position of the vehicle is created. From this waypoint, the vehicle can move to the surface (wp0) or to the closer waypoint in the yaml file.
+
+The plan is a sequence of actions with maximum time for completion. If an action exceeds the time allocated for it (in the domain.pddl file), the action will fail. 
+If planning or an action fail and replanning is active (GUI checkbox), the program will keep trying to replan until it is manually halted or it is completed sucessfully.
 
 Action **move** return success if vehicle has reached the waypoint within the time described in common/domain.pddl. Plan fails otherwise.
 
-Actions **get_data** and **transmit_data** are simulated, vehicle just wait in position and action always returns as sucessfull.
+Actions **get_data** and **transmit_data** are simulated, vehicle just wait in position for some time (as defined in common/domain.pddl) and the action always returns as sucessfull.
 
-### To do:
-TODO: Add some kind of interface to easily allow other goals (data in other wapoints, move to waypoint goal, etc.)
