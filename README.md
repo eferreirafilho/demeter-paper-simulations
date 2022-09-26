@@ -2,8 +2,9 @@
 
 Package responsible for planning. To be used in the DEMETER Spike Demo (October 2022).
 
-
-![demeter_tank2](https://user-images.githubusercontent.com/92797165/192383504-d70cca79-b639-4cb6-a7f0-90dcb56cfeb1.png)
+<p align="center">
+  <img width="500" height="270" src="https://user-images.githubusercontent.com/92797165/192383504-d70cca79-b639-4cb6-a7f0-90dcb56cfeb1.png">
+</p>
 
 ## Prerequisite:
 
@@ -52,7 +53,10 @@ This package launches gazebo, the vehicle and the environment. This package is a
 roslaunch demeter_planning gui_planning.launch
 ```
 This package launches the planner and a GUI to select mission and start the planner.
-![image](https://user-images.githubusercontent.com/92797165/192337251-d9ab2764-231f-4d33-927a-3f0e65948d1b.png)
+
+<p align="center">
+  <img width="300" height="130" src="https://user-images.githubusercontent.com/92797165/192337251-d9ab2764-231f-4d33-927a-3f0e65948d1b.png">
+</p>
 
 #### Comments:
 - This package creates a problem file (common/problem.pddl), generates a plan (common/plan.pddl) and execute the plan by publishing poses to /auv/cmd_pose.
@@ -81,10 +85,16 @@ rqt
 ```
 and select plugins > ROSPlan > ROSPlan esterel plan viewer.
 
+<p align="center">
+  <img width="300" height="400" src="https://user-images.githubusercontent.com/92797165/192385121-7833e3c9-0568-4d8e-815c-033d6a51d753.png">
+</p>
+
 Green are the completed actions. Yellow the dispatched actions. In white, the next planned actions.
 
 ## Demo
 
 A demonstration of the data retrieval mission (data in WP6). The video is accelerated 3 times.
 
-![Gazebo3x](https://user-images.githubusercontent.com/92797165/192372867-8df159a4-4557-40fe-ba30-0094fe7a9c2a.gif)
+<p align="center">
+  <img width="600" height="350" src="https://user-images.githubusercontent.com/92797165/192372867-8df159a4-4557-40fe-ba30-0094fe7a9c2a.gif">
+</p>
