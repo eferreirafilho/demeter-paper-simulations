@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # ROS
-import rospy
+import rospy, sys
 from diagnostic_msgs.msg import KeyValue
 from std_srvs.srv import Empty
 from std_msgs.msg import String
@@ -21,6 +21,8 @@ class DemeterExec(object):
         self.data_in_predicate = list()
         self.demeter = DemeterInterface(demeter=DemeterActionInterface())
         self.mission_success=False
+        self.replanning=False
+        self.allow_backwards_movement = False
 
         # Service proxies: Problem Generation, Planning, Parsing, Dispatching
         rospy.loginfo('Waiting for rosplan services...')
@@ -73,7 +75,14 @@ class DemeterExec(object):
         rospy.loginfo('Execute mission plan ...')
         self._parser_proxy()
         self._rate.sleep()
-        response = self._dispatch_proxy()
+        if self.replanning==True:
+            if self.plan_approved():
+                response = self._dispatch_proxy()
+            else:
+                return False
+        else:
+            response = self._dispatch_proxy()
+            
         if response.goal_achieved:
            rospy.loginfo('Mission Succeed')
            self.mission_success=True
@@ -81,6 +90,18 @@ class DemeterExec(object):
            rospy.logwarn('Mission Failed')
            self.mission_success=False
         return response.goal_achieved
+
+
+    def plan_approved(self):
+        rospy.logwarn("Accept plan? [y] or [n]")
+        i = 0
+        while i < 2:
+            answer = raw_input("Question? (yes or no)")
+            if any(answer.lower() == f for f in ["yes", 'y', '1', 'ye']):
+                print("Yes")
+                return True
+            else:
+                return False
 
     def clear_goals(self):
         update_types = [
@@ -165,29 +186,40 @@ class DemeterExec(object):
 
     def gui_callback_listener(self, data):
         self._rate.sleep()
-        if data.data[1:15]=="Go To Waypoint":
-            wp = data.data[16:]
-            if data.data[0]==str(0): # Replanning Inactive
+        if data.data[0]==str(0): # Replanning Inactive
+            self.replanning=False
+        elif data.data[0]==str(2): # Replanning Active
+            self.replanning=True
+        if data.data[1]==str(0): # Don't allow backwards moviment
+            self.allow_backwards_movement=False
+        elif data.data[1]==str(2): # Allow backwards moviment
+            self.allow_backwards_movement=True
+
+        if data.data[2:16]=="Go To Waypoint":
+            wp = data.data[17:]
+            if self.replanning==False:
                 demeter.go_to_wp_mission('wp'+str(wp))
-            elif data.data[0]==str(2): # Replanning Active
+            elif self.replanning==True:
                 if demeter.mission_success==True:
                     rospy.logwarn('Mission Succeded! Clear Mission to continue')
                 while demeter.mission_success == False:
                     demeter.go_to_wp_mission('wp'+str(wp))
+                    # raw_input("Press Enter to continue...")
         
-        if data.data[1:9]=="Get Data":
-            wp = data.data[10:]
-            if data.data[0]==str(0): # Replanning Inactive
+        if data.data[2:10]=="Get Data":
+            wp = data.data[11:]
+            if self.replanning==False:
                 demeter.clear_data_is_in_fact()
                 demeter.add_data_is_in_fact('wp'+str(wp))
                 demeter.get_data_mission()
-            elif data.data[0]==str(2): # Replanning Active
+            elif self.replanning==True:
                 if demeter.mission_success==True:
                     rospy.logwarn('Mission Succeded! Clear Mission to continue')
                 while demeter.mission_success == False:
                     demeter.clear_data_is_in_fact()
                     demeter.add_data_is_in_fact('wp'+str(wp))
                     demeter.get_data_mission()
+                    # raw_input("Press Enter to continue...")
 
         if data.data=="Clear Mission":
             self.demeter.clear_data_sent_fact()

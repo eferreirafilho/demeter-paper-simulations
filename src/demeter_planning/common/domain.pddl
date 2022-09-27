@@ -17,7 +17,7 @@
     ; Action Move
     (:durative-action move
         :parameters (?v - vehicle ?y ?z - waypoint)
-        :duration(= ?duration 60)
+        :duration(= ?duration 6)
         :condition (and 
             (over all (can-move ?y ?z)) 
             (at start (at ?v ?y))

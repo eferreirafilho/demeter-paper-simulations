@@ -12,7 +12,8 @@ from PySide2.QtWidgets import (
     QFrame,
     QPlainTextEdit,
     QComboBox,
-    QCheckBox
+    QCheckBox,
+    QSlider
 )
 
 # Subclass QMainWindow to customize your application's main window
@@ -27,6 +28,7 @@ class MainWindow(QMainWindow):
         self.frame = QFrame()
         self.PUBLISH_N=1
         self.replanning_active = 0 # Default replanning: Not Active
+        self.allow_backwards_movement_toggle = 0 # Default replanning: Not Allow (DVL localization, only move forwards through WPs)
         self._cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)
 
         waypoints_position = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
@@ -58,11 +60,22 @@ class MainWindow(QMainWindow):
         self.widgets[4].clicked.connect(self.button4_action)
         self.widgets[4].setText("External: Send Vehicle To Surface")
 
-        self.widgets.append(QCheckBox(self.frame)) # Check Box
+        self.widgets.append(QPushButton(self.frame)) # Button 5
         layout.addWidget(self.widgets[5])
-        self.widgets[5].setText("Replanning")
-        self.widgets[5].setChecked(False)
-        self.widgets[5].stateChanged.connect(self.replanning_toggle)
+        self.widgets[5].clicked.connect(self.button5_action)
+        self.widgets[5].setText("External: Send Vehicle To Initial Position")
+
+        self.widgets.append(QCheckBox(self.frame)) # Check Box
+        layout.addWidget(self.widgets[6])
+        self.widgets[6].setText("Replanning")
+        self.widgets[6].setChecked(False)
+        self.widgets[6].stateChanged.connect(self.replanning_toggle)
+        
+        self.widgets.append(QCheckBox(self.frame)) # Check Box
+        layout.addWidget(self.widgets[7])
+        self.widgets[7].setText("Allow Moving Back Through WPs (For Localizing With Markers)")
+        self.widgets[7].setChecked(False)
+        self.widgets[7].stateChanged.connect(self.localization_choice)
 
         self.widgets.append(self.frame)
         self.text = QPlainTextEdit()
@@ -78,7 +91,7 @@ class MainWindow(QMainWindow):
         rospy.init_node('planning_gui_publisher', anonymous=True)
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
-            gui_msg = (str(self.replanning_active)+"Go To Waypoint "+ str(self.selected_dropdown_waypoint))
+            gui_msg = (str(self.replanning_active)+str(self.allow_backwards_movement_toggle)+"Go To Waypoint "+ str(self.selected_dropdown_waypoint))
             pub.publish(gui_msg)
 
     def button2_action(self):
@@ -86,7 +99,7 @@ class MainWindow(QMainWindow):
         rospy.init_node('planning_gui_publisher', anonymous=True)
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
-            gui_msg = (str(self.replanning_active)+"Get Data "+ str(self.selected_dropdown_waypoint))
+            gui_msg = (str(self.replanning_active)+str(self.allow_backwards_movement_toggle)+"Get Data "+ str(self.selected_dropdown_waypoint))
             pub.publish(gui_msg)
 
     def button3_action(self):
@@ -106,8 +119,21 @@ class MainWindow(QMainWindow):
             start_executive = "Surface"
             pub.publish(start_executive)
 
+    def button5_action(self):
+        rospy.loginfo("Initial Position")
+        pub = rospy.Publisher('planning/gui', String, queue_size=10)
+        rospy.init_node('planning_gui_publisher', anonymous=True)
+        for i in range(self.PUBLISH_N):
+            rate = rospy.Rate(10)
+            start_executive = "Initial Position"
+            pub.publish(start_executive)
+
     def replanning_toggle(self,replanning_check_box):
         self.replanning_active=replanning_check_box
+
+    def localization_choice(self,localization_slider):
+        self.allow_backwards_movement_toggle=localization_slider
+        print(localization_slider)
 
 if __name__ == '__main__':
 
