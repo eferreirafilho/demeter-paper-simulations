@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # ROS
-import rospy, sys
+import rospy
 from diagnostic_msgs.msg import KeyValue
 from std_srvs.srv import Empty
 from std_msgs.msg import String
@@ -11,6 +11,7 @@ from rosplan_knowledge_msgs.srv import KnowledgeUpdateServiceRequest
 # Project
 from interface import DemeterActionInterface
 from rosplan_interface import DemeterInterface
+from p_init import InitProblem
 
 class DemeterExec(object):
     def __init__(self, update_frequency=4.):
@@ -168,6 +169,9 @@ class DemeterExec(object):
     def vehicle_surface(self):
         self.demeter.surface()
     
+    def vehicle_localize_rotate(self):
+        self.demeter.localize_rotate()
+
     def halt_vehicle(self):
         self.demeter.interface_halt()
 
@@ -184,6 +188,11 @@ class DemeterExec(object):
         self.demeter.clear_data_sent_fact()
         self.cancel_mission()
 
+    def allow_backwards_movement_problem_file_correction(self):
+        problem = InitProblem()
+        # problem.add_can_move_backwards()
+        problem.allow_backwards_moviment()
+
     def gui_callback_listener(self, data):
         self._rate.sleep()
         if data.data[0]==str(0): # Replanning Inactive
@@ -194,6 +203,7 @@ class DemeterExec(object):
             self.allow_backwards_movement=False
         elif data.data[1]==str(2): # Allow backwards moviment
             self.allow_backwards_movement=True
+            self.allow_backwards_movement_problem_file_correction()
 
         if data.data[2:16]=="Go To Waypoint":
             wp = data.data[17:]
@@ -232,6 +242,10 @@ class DemeterExec(object):
         if data.data=="Surface":
             self.vehicle_surface()
             rospy.logwarn('Vehicle sent to surface')
+
+        if data.data=="Localize":
+            self.vehicle_localize_rotate()
+            rospy.logwarn('Localize Vehicle (Rotate)')
 
     def gui_listener(self):
         rospy.Subscriber("planning/gui", String, self.gui_callback_listener)

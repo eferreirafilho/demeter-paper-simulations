@@ -23,7 +23,7 @@ class MainWindow(QMainWindow):
         self.selected_dropdown_waypoint=0 # Default WP0 (Surface)
 
         self.setWindowTitle("DEMETER Spike Demo Planning GUI")
-        self.resize(500,200)
+        self.resize(600,300)
         layout = QVBoxLayout()
         self.frame = QFrame()
         self.PUBLISH_N=1
@@ -65,17 +65,22 @@ class MainWindow(QMainWindow):
         self.widgets[5].clicked.connect(self.button5_action)
         self.widgets[5].setText("External: Send Vehicle To Initial Position")
 
-        self.widgets.append(QCheckBox(self.frame)) # Check Box
+        self.widgets.append(QPushButton(self.frame)) # Button 6
         layout.addWidget(self.widgets[6])
-        self.widgets[6].setText("Replanning")
-        self.widgets[6].setChecked(False)
-        self.widgets[6].stateChanged.connect(self.replanning_toggle)
-        
+        self.widgets[6].clicked.connect(self.button6_action)
+        self.widgets[6].setText("External: Localize Markers (Rotate Vehicle)")
+
         self.widgets.append(QCheckBox(self.frame)) # Check Box
         layout.addWidget(self.widgets[7])
-        self.widgets[7].setText("Allow Moving Back Through WPs (For Localizing With Markers)")
+        self.widgets[7].setText("Replanning")
         self.widgets[7].setChecked(False)
-        self.widgets[7].stateChanged.connect(self.localization_choice)
+        self.widgets[7].stateChanged.connect(self.replanning_toggle)
+        
+        self.widgets.append(QCheckBox(self.frame)) # Check Box
+        layout.addWidget(self.widgets[8])
+        self.widgets[8].setText("Allow Moving Back Through WPs (For Localizing With Markers)")
+        self.widgets[8].setChecked(False)
+        self.widgets[8].stateChanged.connect(self.localization_choice)
 
         self.widgets.append(self.frame)
         self.text = QPlainTextEdit()
@@ -126,6 +131,15 @@ class MainWindow(QMainWindow):
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
             start_executive = "Initial Position"
+            pub.publish(start_executive)
+
+    def button6_action(self):
+        rospy.loginfo("Localize Vehicle (Rotate)")
+        pub = rospy.Publisher('planning/gui', String, queue_size=10)
+        rospy.init_node('planning_gui_publisher', anonymous=True)
+        for i in range(self.PUBLISH_N):
+            rate = rospy.Rate(10)
+            start_executive = "Localize"
             pub.publish(start_executive)
 
     def replanning_toggle(self,replanning_check_box):

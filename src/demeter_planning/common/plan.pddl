@@ -6,6 +6,6 @@ All the ground actions in this problem are compression-safe
 Initial heuristic = 1.000
 ;;;; Solution Found
 ; States evaluated: 2
-; Cost: 6.000
+; Cost: 60.000
 ; Time 0.00
-0.000: (move vehicle1 wp2 wp0)  [6.000]
+0.000: (move vehicle1 wp0 wp1)  [60.000]

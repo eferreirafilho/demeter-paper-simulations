@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-from cmath import sqrt
+from cmath import pi, sqrt
+from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Quaternion, Twist
+from tf.transformations import quaternion_from_euler, quaternion_multiply
 
 class DemeterActionInterface(object):
 
@@ -35,6 +37,7 @@ class DemeterActionInterface(object):
         rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
         # Publisher
         self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose/',PoseStamped, queue_size=10)
+        self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
 
         self._wait(2) 
             
@@ -186,6 +189,9 @@ class DemeterActionInterface(object):
     def get_orientation(self):
         return self.odom_pose.pose.pose.orientation
     
+    def get_linear_velocity(self):
+        return self.odom_pose.pose.pose.position
+
     def is_submerged(self):
         position=self.get_position()
         if position.z<self.SUBMERGED_Z:
@@ -197,8 +203,19 @@ class DemeterActionInterface(object):
         position=self.get_position()
         position.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
         self.publish_position_fixed_orientation(position)
-        
-    
+
+    def rotate_yaw(self,degrees):
+        # TODO while with: http://wiki.ros.org/tf2/Tutorials/Quaternions#Relative_rotations
+
+            # self.publish_cmd_pose(position, orientation)
+            orientation=self.get_orientation()
+            self._rate.sleep()
+            
+    def rotate_in_place(self):
+        # TODO  rotate 
+        print('30')
+        self.rotate_yaw(30)
+
     def command_halt_vehicle(self):
         position=self.get_position()
         orientation=self.get_orientation()
