@@ -3,6 +3,7 @@ from cmath import pi, sqrt
 from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
+from std_msgs.msg import Float32
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist
 from tf.transformations import quaternion_from_euler, quaternion_multiply
 
@@ -35,6 +36,7 @@ class DemeterActionInterface(object):
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
         rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
+        rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publisher
         self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose/',PoseStamped, queue_size=10)
         self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
@@ -48,6 +50,11 @@ class DemeterActionInterface(object):
     def _pose_gt_cb(self, msg):
         self.odom_pose = msg
     
+    def _localization_callback(self,msg):
+        self.localization_error=msg
+        print(self.localization_error)
+        print(type(self.localization_error))
+
     def load_wp_config_from_file(self):
         waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
         return waypoints
@@ -75,14 +82,12 @@ class DemeterActionInterface(object):
             if dist_aux.real<dist:
                 dist=dist_aux.real
                 closer_wp=i
-
         return closer_wp
 
     def do_move(self, waypoint, duration=rospy.Duration()):
         self.wp_reached = -1
         start = rospy.Time.now()
         self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
-              
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
             self.publish_wp_cmd_pose_fixed_orientation(waypoint)
             self.update_wp_position(waypoint)
@@ -91,10 +96,8 @@ class DemeterActionInterface(object):
                 rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
             self._rate.sleep()
         response = int(waypoint == self.wp_reached)
-                
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
- 
         return response
     
     def do_get_data(self, duration=rospy.Duration()):
@@ -104,13 +107,10 @@ class DemeterActionInterface(object):
             self._rate.sleep()
             completion_percentage = 'Getting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
-            
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
         rospy.loginfo('Data acquired!')
-        
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
-        
         return response
     
     def do_transmit_data(self, duration=rospy.Duration()):
