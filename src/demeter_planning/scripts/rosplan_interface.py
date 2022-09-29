@@ -6,6 +6,7 @@ from threading import Lock
 # ROS Packages
 import rospy
 from diagnostic_msgs.msg import KeyValue
+from std_msgs.msg import Float32
 from std_srvs.srv import Empty
 from rosplan_dispatch_msgs.msg import ActionDispatch, ActionFeedback
 from rosplan_knowledge_msgs.msg import KnowledgeItem, diagnostic_msgs
@@ -31,6 +32,9 @@ class DemeterInterface(object):
         self.demeter_arrived = False
         self.demeter_wp = -1
         self.query = []
+        self.localization_error_log=[]
+        self.FILTER_FACTOR = 50 # Filter takes the mean of last FILTER_FACTOR element
+        self.LOCALIZATION_THREDSHOLD = 10 # Localization error is too big
 
         # Service proxies (KB: update, predicate and operator details)
         rospy.loginfo('Waiting for service /rosplan_knowledge_base/update ...')
@@ -43,6 +47,7 @@ class DemeterInterface(object):
         self._operator_proxy = rospy.ServiceProxy('/rosplan_knowledge_base/domain/operator_details', GetDomainOperatorDetailsService)
         # Subscribers
         rospy.Subscriber('/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self._dispatch_cb, queue_size=10)
+        rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publishers
         self._feedback_publisher = rospy.Publisher('/rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
         self._rate = rospy.Rate(update_frequency)
@@ -91,24 +96,51 @@ class DemeterInterface(object):
             self._action(msg, self.transmit_data, [duration])
                 
     def _action(self, action_dispatch, action_func, action_params=list()):
+        self.current_action_id=action_dispatch.action_id
+        print(self.current_action_id)
         self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_ENABLED)
         start_time = rospy.Time(action_dispatch.dispatch_time)
         duration = rospy.Duration(action_dispatch.duration)
         self._rate.sleep()
         rospy.loginfo('Dispatching %s action at %s with duration %s ...' %(action_dispatch.name, str(start_time.secs), str(duration.to_sec())))   
         
-        if action_func(*action_params) == self.demeter.ACTION_SUCCESS:
+        if action_func(*action_params) == self.demeter.ACTION_SUCCESS and self.localization_error_too_big()==False:
             if self._apply_operator_effect(action_dispatch.name,action_dispatch.parameters):
                 self.publish_feedback(action_dispatch.action_id,ActionFeedback.ACTION_SUCCEEDED_TO_GOAL_STATE)
             else:
                 self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
                 rospy.logwarn('Action Failed')
                 self.cancel_plan()
-
+        elif self.localization_error_too_big():
+            self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
+            rospy.logwarn('Action Failed - Localization error')
+            self.cancel_plan()
         else:
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
             rospy.logwarn('Action Failed - Timeout')
             self.cancel_plan()
+    
+    def _localization_callback(self,msg):
+        self.localization_error_log.append(msg.data)
+
+        # if self.localization_error_too_big():
+        #     print(self.filter_localization_error())
+        #     self.publish_feedback(self.current_action_id, ActionFeedback.ACTION_FAILED)
+        #     rospy.logwarn('Action Failed - Localization error has grow too much')
+        #     self.cancel_plan()
+
+    def filter_localization_error(self):
+        if(len(self.localization_error_log))<self.FILTER_FACTOR:
+            return sum(self.localization_error_log) / len(self.localization_error_log)
+        else:
+            return sum(self.localization_error_log[-self.FILTER_FACTOR:]) / len(self.localization_error_log[-self.FILTER_FACTOR:])
+
+    def localization_error_too_big(self):
+        if(self.filter_localization_error())>self.LOCALIZATION_THREDSHOLD:
+            rospy.logwarn('Localization error too big')
+            return True
+        else:
+            return False
 
     def cancel_plan(self):
         _cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)

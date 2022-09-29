@@ -8,4 +8,4 @@ Initial heuristic = 1.000
 ; States evaluated: 2
 ; Cost: 60.000
 ; Time 0.00
-0.000: (move vehicle1 wp0 wp1)  [60.000]
+0.000: (move vehicle1 wp1 wp2)  [60.000]

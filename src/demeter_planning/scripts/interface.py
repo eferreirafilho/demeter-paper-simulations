@@ -3,7 +3,6 @@ from cmath import pi, sqrt
 from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float32
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist
 from tf.transformations import quaternion_from_euler, quaternion_multiply
 
@@ -36,7 +35,6 @@ class DemeterActionInterface(object):
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
         rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
-        rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publisher
         self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose/',PoseStamped, queue_size=10)
         self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
@@ -49,11 +47,6 @@ class DemeterActionInterface(object):
         
     def _pose_gt_cb(self, msg):
         self.odom_pose = msg
-    
-    def _localization_callback(self,msg):
-        self.localization_error=msg
-        print(self.localization_error)
-        print(type(self.localization_error))
 
     def load_wp_config_from_file(self):
         waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
