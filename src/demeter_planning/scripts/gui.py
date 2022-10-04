@@ -28,7 +28,8 @@ class MainWindow(QMainWindow):
         self.frame = QFrame()
         self.PUBLISH_N=1
         self.replanning_active = 0 # Default replanning: Not Active
-        self.allow_backwards_movement_toggle = 0 # Default replanning: Not Allow (DVL localization, only move forwards through WPs)
+        self.allow_backwards_movement_toggle = 0 # Default: Not Allow (DVL localization, only move forwards through WPs)
+        self.verify_localization_error = 0 # Default: Check localization errors
         self._cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)
 
         waypoints_position = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
@@ -82,6 +83,12 @@ class MainWindow(QMainWindow):
         self.widgets[8].setChecked(False)
         self.widgets[8].stateChanged.connect(self.localization_choice)
 
+        self.widgets.append(QCheckBox(self.frame)) # Check Box
+        layout.addWidget(self.widgets[9])
+        self.widgets[9].setText("Verify Localization Error")
+        self.widgets[9].setChecked(False)
+        self.widgets[9].stateChanged.connect(self.localization_error_choice)
+
         self.widgets.append(self.frame)
         self.text = QPlainTextEdit()
         self.frame.setLayout(layout)
@@ -96,7 +103,7 @@ class MainWindow(QMainWindow):
         rospy.init_node('planning_gui_publisher', anonymous=True)
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
-            gui_msg = (str(self.replanning_active)+str(self.allow_backwards_movement_toggle)+"Go To Waypoint "+ str(self.selected_dropdown_waypoint))
+            gui_msg = (str(self.replanning_active)+str(self.allow_backwards_movement_toggle)+str(self.verify_localization_error)+"Go To Waypoint "+ str(self.selected_dropdown_waypoint))
             pub.publish(gui_msg)
 
     def button2_action(self):
@@ -104,7 +111,7 @@ class MainWindow(QMainWindow):
         rospy.init_node('planning_gui_publisher', anonymous=True)
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
-            gui_msg = (str(self.replanning_active)+str(self.allow_backwards_movement_toggle)+"Get Data "+ str(self.selected_dropdown_waypoint))
+            gui_msg = (str(self.replanning_active)+str(self.allow_backwards_movement_toggle)+str(self.verify_localization_error)+"Get Data "+ str(self.selected_dropdown_waypoint))
             pub.publish(gui_msg)
 
     def button3_action(self):
@@ -147,7 +154,9 @@ class MainWindow(QMainWindow):
 
     def localization_choice(self,localization_slider):
         self.allow_backwards_movement_toggle=localization_slider
-        print(localization_slider)
+    
+    def localization_error_choice(self,localization_error_slider):
+        self.verify_localization_error=localization_error_slider
 
 if __name__ == '__main__':
 

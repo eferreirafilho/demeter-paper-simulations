@@ -5,7 +5,6 @@ from std_msgs.msg import Float32
 
 class MockLocalizationError(object):
     
-    
     def __init__(self):
         self.ERROR_GROW_FACTOR=0.001
         self.pub=rospy.Publisher('/planning/mock_localization_error/', Float32, queue_size=10)

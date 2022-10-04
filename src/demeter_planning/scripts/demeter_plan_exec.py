@@ -20,7 +20,7 @@ class DemeterExec(object):
         rospy.sleep(1) # Wait for planning
         self.goal_state = list()
         self.data_in_predicate = list()
-        self.demeter = DemeterInterface(demeter=DemeterActionInterface())
+        self.demeter_rosplan_interface = DemeterInterface(demeter=DemeterActionInterface())
         self.mission_success=False
         self.replanning=False
         self.allow_backwards_movement = False
@@ -109,7 +109,7 @@ class DemeterExec(object):
         ]
         for goal in self.goal_state:
             if not goal==[]:
-                self.demeter.update_predicates(goal[0], goal[1], update_types) # pred_names, params, update_type        
+                self.demeter_rosplan_interface.update_predicates(goal[0], goal[1], update_types) # pred_names, params, update_type        
         self.goal_state = []
         self.mission_success=False
         return True
@@ -123,7 +123,7 @@ class DemeterExec(object):
         update_types = [
             KnowledgeUpdateServiceRequest.ADD_GOAL,
         ]
-        succeed = self.demeter.update_predicates(pred_names,params,update_types)
+        succeed = self.demeter_rosplan_interface.update_predicates(pred_names,params,update_types)
         self._rate.sleep()
         return succeed
         
@@ -136,7 +136,7 @@ class DemeterExec(object):
             KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE,
         ]
         self.data_in_predicate.append(list([pred_names,params]))
-        succeed = self.demeter.update_predicates(pred_names,params,update_types)
+        succeed = self.demeter_rosplan_interface.update_predicates(pred_names,params,update_types)
         self._rate.sleep()
         return succeed
 
@@ -146,7 +146,7 @@ class DemeterExec(object):
         ]
         for data in self.data_in_predicate:
             if not data==[]:
-                self.demeter.update_predicates(data[0], data[1], update_types) # pred_names, params, update_type        
+                self.demeter_rosplan_interface.update_predicates(data[0], data[1], update_types) # pred_names, params, update_type        
         self.data_in_predicate = []
         self._rate.sleep()
         return True
@@ -161,18 +161,18 @@ class DemeterExec(object):
         update_types = [
             KnowledgeUpdateServiceRequest.ADD_GOAL,
         ]
-        succeed = self.demeter.update_predicates(pred_names,params,update_types)
+        succeed = self.demeter_rosplan_interface.update_predicates(pred_names,params,update_types)
         self._rate.sleep()
         return succeed
  
     def vehicle_surface(self):
-        self.demeter.surface()
+        self.demeter_rosplan_interface.surface()
     
     def vehicle_localize_rotate(self):
-        self.demeter.localize_rotate()
+        self.demeter_rosplan_interface.localize_rotate()
 
     def halt_vehicle(self):
-        self.demeter.interface_halt()
+        self.demeter_rosplan_interface.interface_halt()
 
     def cancel_mission(self):
         self._cancel_plan_proxy()
@@ -180,11 +180,11 @@ class DemeterExec(object):
         rospy.loginfo('Cancel Mission!')    
 
     def clear_mission(self):
-        self.demeter.clear_data_sent_fact()
+        self.demeter_rosplan_interface.clear_data_sent_fact()
         demeter.clear_goals()
         demeter.clear_data_is_in_fact()
-        self.demeter.clear_carry_vehicle_fact()
-        self.demeter.clear_data_sent_fact()
+        self.demeter_rosplan_interface.clear_carry_vehicle_fact()
+        self.demeter_rosplan_interface.clear_data_sent_fact()
         self.cancel_mission()
 
     def allow_backwards_movement_problem_file_correction(self):
@@ -202,9 +202,15 @@ class DemeterExec(object):
         elif data.data[1]==str(2): # Allow backwards moviment
             self.allow_backwards_movement=True
             self.allow_backwards_movement_problem_file_correction()
+        if data.data[2]==str(0): # Don't check Localization errors
+            self.verify_localization_errors=False
+            self.demeter_rosplan_interface.verify_localization_errors_off()
+        elif data.data[2]==str(2): # Check Localization errors
+            self.verify_localization_errors=True
+            self.demeter_rosplan_interface.verify_localization_errors_on()
 
-        if data.data[2:16]=="Go To Waypoint":
-            wp = data.data[17:]
+        if data.data[3:17]=="Go To Waypoint":
+            wp = data.data[18:]
             if self.replanning==False:
                 demeter.go_to_wp_mission('wp'+str(wp))
             elif self.replanning==True:
@@ -212,10 +218,9 @@ class DemeterExec(object):
                     rospy.logwarn('Mission Succeded! Clear Mission to continue')
                 while demeter.mission_success == False:
                     demeter.go_to_wp_mission('wp'+str(wp))
-                    # raw_input("Press Enter to continue...")
         
-        if data.data[2:10]=="Get Data":
-            wp = data.data[11:]
+        if data.data[3:11]=="Get Data":
+            wp = data.data[12:]
             if self.replanning==False:
                 demeter.clear_data_is_in_fact()
                 demeter.add_data_is_in_fact('wp'+str(wp))
@@ -227,14 +232,13 @@ class DemeterExec(object):
                     demeter.clear_data_is_in_fact()
                     demeter.add_data_is_in_fact('wp'+str(wp))
                     demeter.get_data_mission()
-                    # raw_input("Press Enter to continue...")
 
         if data.data=="Clear Mission":
-            self.demeter.clear_data_sent_fact()
+            self.demeter_rosplan_interface.clear_data_sent_fact()
             demeter.clear_goals()
-            self.demeter.clear_data_sent_fact()
+            self.demeter_rosplan_interface.clear_data_sent_fact()
             demeter.clear_data_is_in_fact()
-            self.demeter.clear_carry_vehicle_fact()
+            self.demeter_rosplan_interface.clear_carry_vehicle_fact()
             self.clear_mission()
 
         if data.data=="Surface":

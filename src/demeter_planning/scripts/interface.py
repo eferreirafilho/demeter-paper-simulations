@@ -4,6 +4,7 @@ from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist
+from std_msgs.msg import Float32
 from tf.transformations import quaternion_from_euler, quaternion_multiply
 
 class DemeterActionInterface(object):
@@ -30,11 +31,17 @@ class DemeterActionInterface(object):
         self._current_wp = -1
         self.target_wp = -1
         self.odom_pose = Odometry()
+        self.localization_error_log=[]
+        self.FILTER_FACTOR = 50 # Filter takes the mean of last FILTER_FACTOR element
+        self.LOCALIZATION_THREDSHOLD = 5 # Localization error is too big
+        self.verify_localization_errors = []
+        self.localized = []
         self._rate = rospy.Rate(update_frequency)
 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
         rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
+        rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publisher
         self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose/',PoseStamped, queue_size=10)
         self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
@@ -47,6 +54,35 @@ class DemeterActionInterface(object):
         
     def _pose_gt_cb(self, msg):
         self.odom_pose = msg
+
+    def _localization_callback(self,msg):
+        self.localization_error_log.append(msg.data)
+
+    def filter_localization_error(self):
+        try:
+            if(len(self.localization_error_log))<self.FILTER_FACTOR:
+                return sum(self.localization_error_log) / len(self.localization_error_log)
+            else:
+                return sum(self.localization_error_log[-self.FILTER_FACTOR:]) / len(self.localization_error_log[-self.FILTER_FACTOR:])
+        except:
+            rospy.loginfo('Cannot get localization error')
+
+    def localization_error_too_big(self):
+        if(self.filter_localization_error())>self.LOCALIZATION_THREDSHOLD and self.verify_localization_errors:
+            rospy.logwarn('Localization error too big')
+            self.localized = False
+            return True
+        else:
+            self.localized = True
+            return False
+    
+    def interface_verify_localization_errors_on(self):
+        self.verify_localization_errors=True
+        print('do not check true')
+
+    def interface_verify_localization_errors_off(self):
+        self.verify_localization_errors=False
+        print('do not check false')
 
     def load_wp_config_from_file(self):
         waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
@@ -91,6 +127,8 @@ class DemeterActionInterface(object):
         response = int(waypoint == self.wp_reached)
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
+        elif self.localization_error_too_big():
+            response = self.ACTION_FAIL
         return response
     
     def do_get_data(self, duration=rospy.Duration()):
@@ -113,7 +151,6 @@ class DemeterActionInterface(object):
             self._rate.sleep()
             completion_percentage = 'Transmitting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
-            
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
         rospy.loginfo('Data transmitted!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
@@ -140,7 +177,7 @@ class DemeterActionInterface(object):
         if dist.real < self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        rospy.loginfo_throttle(2,'Distance to target WP: ' + str(dist.real))
+        rospy.loginfo_throttle(2,'Distance to target WP: ' + str(round(dist.real,3)))
         
     def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      

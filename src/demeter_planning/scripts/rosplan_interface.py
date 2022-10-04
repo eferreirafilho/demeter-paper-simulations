@@ -6,7 +6,6 @@ from threading import Lock
 # ROS Packages
 import rospy
 from diagnostic_msgs.msg import KeyValue
-from std_msgs.msg import Float32
 from std_srvs.srv import Empty
 from rosplan_dispatch_msgs.msg import ActionDispatch, ActionFeedback
 from rosplan_knowledge_msgs.msg import KnowledgeItem, diagnostic_msgs
@@ -32,10 +31,8 @@ class DemeterInterface(object):
         self.demeter_arrived = False
         self.demeter_wp = -1
         self.query = []
-        self.localization_error_log=[]
-        self.FILTER_FACTOR = 50 # Filter takes the mean of last FILTER_FACTOR element
-        self.LOCALIZATION_THREDSHOLD = 10 # Localization error is too big
-
+        self.verify_localization_errors = []
+        
         # Service proxies (KB: update, predicate and operator details)
         rospy.loginfo('Waiting for service /rosplan_knowledge_base/update ...')
         rospy.wait_for_service('/rosplan_knowledge_base/update')
@@ -47,7 +44,6 @@ class DemeterInterface(object):
         self._operator_proxy = rospy.ServiceProxy('/rosplan_knowledge_base/domain/operator_details', GetDomainOperatorDetailsService)
         # Subscribers
         rospy.Subscriber('/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self._dispatch_cb, queue_size=10)
-        rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publishers
         self._feedback_publisher = rospy.Publisher('/rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
         self._rate = rospy.Rate(update_frequency)
@@ -104,43 +100,17 @@ class DemeterInterface(object):
         self._rate.sleep()
         rospy.loginfo('Dispatching %s action at %s with duration %s ...' %(action_dispatch.name, str(start_time.secs), str(duration.to_sec())))   
         
-        if action_func(*action_params) == self.demeter.ACTION_SUCCESS and self.localization_error_too_big()==False:
+        if action_func(*action_params) == self.demeter.ACTION_SUCCESS:
             if self._apply_operator_effect(action_dispatch.name,action_dispatch.parameters):
                 self.publish_feedback(action_dispatch.action_id,ActionFeedback.ACTION_SUCCEEDED_TO_GOAL_STATE)
             else:
                 self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
                 rospy.logwarn('Action Failed')
                 self.cancel_plan()
-        # elif self.localization_error_too_big():
-        #     self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
-        #     rospy.logwarn('Action Failed - Localization error')
-        #     self.cancel_plan()
         else:
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
             rospy.logwarn('Action Failed - Timeout')
             self.cancel_plan()
-    
-    def _localization_callback(self,msg):
-        self.localization_error_log.append(msg.data)
-        if self.localization_error_too_big(): 
-            self.cancel_plan()
-            self.clear_localized_fact()
-
-    def filter_localization_error(self):
-        try:
-            if(len(self.localization_error_log))<self.FILTER_FACTOR:
-                return sum(self.localization_error_log) / len(self.localization_error_log)
-            else:
-                return sum(self.localization_error_log[-self.FILTER_FACTOR:]) / len(self.localization_error_log[-self.FILTER_FACTOR:])
-        except:
-            rospy.loginfo('Cannnot get localization error')
-
-    def localization_error_too_big(self):
-        if(self.filter_localization_error())>self.LOCALIZATION_THREDSHOLD:
-            rospy.logwarn('Localization error too big')
-            return True
-        else:
-            return False
 
     def cancel_plan(self):
         _cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)
@@ -177,21 +147,6 @@ class DemeterInterface(object):
             ]
             self.update_predicates(pred_names,params,update_types)
 
-    def clear_localized_fact(self):
-        # TODO: self.localized_kb_query()
-        # TODO: if self.localized_kb_query():
-
-        # self.data_sent_kb_query()
-        # if self.call_query_service():
-        pred_names = [
-        'localized'
-        ]
-        params = [[KeyValue('v', 'vehicle1')]]
-        update_types = [
-            KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
-        ]
-        self.update_predicates(pred_names,params,update_types)
-
     def clear_carry_vehicle_fact(self):
         if self.call_query_service():
             pred_names = [
@@ -214,27 +169,51 @@ class DemeterInterface(object):
         self.update_predicates(pred_names,params,update_types)
 
     def knowledge_update(self, event):
+        self.KB_update_waypoint()
+        self.KB_update_localization_error()
+        
+    def KB_update_waypoint(self):
         pred_names = list()
         params = list()
         update_types = list()
         wp_seq = self.demeter._current_wp  # demeter position in waypoint update
         
-        if wp_seq != -1 and self.demeter_wp != wp_seq: # only update when self.demeter_wp != wp_seq
-            # add current wp that demeter resides
+        if wp_seq != -1 and self.demeter_wp != wp_seq:  # add current wp that demeter resides
             pred_names.append('at')
             params.append(
-                [KeyValue('v'),
+                [KeyValue('v', 'vehicle'),
                  KeyValue('wp', 'wp%d' % wp_seq)])
             update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-            # Remove previous wp that demeter resided
-            if self.demeter_wp != -1:
+            if self.demeter_wp != -1:  # Remove previous wp that demeter resided
                 pred_names.append('at')
                 params.append([
-                    KeyValue('v'),
+                    KeyValue('v', 'vehicle1'),
                     KeyValue('wp', 'wp%d' % self.demeter_wp)
                 ])
                 update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
             self.demeter_wp = wp_seq
+
+    def KB_update_localization_error(self):
+        pred_names = list()
+        params = list()
+        update_types = list()
+        pred_names.append('localized')
+        params.append([KeyValue('v', 'vehicle1')])
+        if not self.verify_localization_errors:
+            update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        else:    
+            if self.demeter.localized:
+                update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+            else:
+                update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
+
+    def verify_localization_errors_on(self):
+        self.verify_localization_errors = True
+        self.demeter.interface_verify_localization_errors_on()
+
+    def verify_localization_errors_off(self):
+        self.verify_localization_errors = False
+        self.demeter.interface_verify_localization_errors_off()
 
     def update_instances(self, ins_types, ins_names, update_types):   
         success = True
