@@ -13,12 +13,14 @@
         (is-at-surface ?w - waypoint)
         (data-sent ?d - data)
         (empty ?v - vehicle)
+        (localized ?v - vehicle)
     )
     ; Action Move
     (:durative-action move
         :parameters (?v - vehicle ?y ?z - waypoint)
         :duration(= ?duration 60)
         :condition (and 
+            (over all (localized ?v))
             (over all (can-move ?y ?z)) 
             (at start (at ?v ?y))
         )

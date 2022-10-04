@@ -46,11 +46,9 @@ class InitProblem(object):
         self.add_fact('can-move','wp'+str(self.closer_wp),'wp'+str(self.n_waypoints)) # vehicle can move from initial waypoint to its closer waypoint
         self.add_fact('can-move','wp'+str(self.n_waypoints),'wp'+str(self.closer_wp)) # vehicle can move to its closer waypoint from initial waypoint 
         
-        # From which waypoints robots can localize themselves            
-        self.add_fact('can-find','wp0','wp1')
-        self.add_fact('can-find','wp2','wp3')
-        self.add_fact('can-find','wp5','wp6')
-        
+        # Localized
+        self.add_fact('localized','vehicle1')
+
         # self.add_fact('at','vehicle1','wp1') # Simulated fact!!!
         self.add_fact('at','vehicle1','wp'+str(self.n_waypoints)) # Real initial position
         

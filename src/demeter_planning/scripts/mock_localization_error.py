@@ -11,7 +11,7 @@ class MockLocalizationError(object):
         self.pub=rospy.Publisher('/planning/mock_localization_error/', Float32, queue_size=10)
         rospy.init_node('mock_localization_error',anonymous=True)
         rospy.loginfo('Creating mock localization error ...')
-        self.rate = rospy.Rate(10)
+        self.rate = rospy.Rate(5)
 
     def random_time(self):
         return self.ERROR_GROW_FACTOR*random.randint(1,100)

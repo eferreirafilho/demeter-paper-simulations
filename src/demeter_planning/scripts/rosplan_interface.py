@@ -111,10 +111,10 @@ class DemeterInterface(object):
                 self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
                 rospy.logwarn('Action Failed')
                 self.cancel_plan()
-        elif self.localization_error_too_big():
-            self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
-            rospy.logwarn('Action Failed - Localization error')
-            self.cancel_plan()
+        # elif self.localization_error_too_big():
+        #     self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
+        #     rospy.logwarn('Action Failed - Localization error')
+        #     self.cancel_plan()
         else:
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
             rospy.logwarn('Action Failed - Timeout')
@@ -122,18 +122,18 @@ class DemeterInterface(object):
     
     def _localization_callback(self,msg):
         self.localization_error_log.append(msg.data)
-
-        # if self.localization_error_too_big():
-        #     print(self.filter_localization_error())
-        #     self.publish_feedback(self.current_action_id, ActionFeedback.ACTION_FAILED)
-        #     rospy.logwarn('Action Failed - Localization error has grow too much')
-        #     self.cancel_plan()
+        if self.localization_error_too_big(): 
+            self.cancel_plan()
+            self.clear_localized_fact()
 
     def filter_localization_error(self):
-        if(len(self.localization_error_log))<self.FILTER_FACTOR:
-            return sum(self.localization_error_log) / len(self.localization_error_log)
-        else:
-            return sum(self.localization_error_log[-self.FILTER_FACTOR:]) / len(self.localization_error_log[-self.FILTER_FACTOR:])
+        try:
+            if(len(self.localization_error_log))<self.FILTER_FACTOR:
+                return sum(self.localization_error_log) / len(self.localization_error_log)
+            else:
+                return sum(self.localization_error_log[-self.FILTER_FACTOR:]) / len(self.localization_error_log[-self.FILTER_FACTOR:])
+        except:
+            rospy.loginfo('Cannnot get localization error')
 
     def localization_error_too_big(self):
         if(self.filter_localization_error())>self.LOCALIZATION_THREDSHOLD:
@@ -176,6 +176,21 @@ class DemeterInterface(object):
                 KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
             ]
             self.update_predicates(pred_names,params,update_types)
+
+    def clear_localized_fact(self):
+        # TODO: self.localized_kb_query()
+        # TODO: if self.localized_kb_query():
+
+        # self.data_sent_kb_query()
+        # if self.call_query_service():
+        pred_names = [
+        'localized'
+        ]
+        params = [[KeyValue('v', 'vehicle1')]]
+        update_types = [
+            KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
+        ]
+        self.update_predicates(pred_names,params,update_types)
 
     def clear_carry_vehicle_fact(self):
         if self.call_query_service():

@@ -94,10 +94,9 @@ class DemeterExec(object):
 
 
     def plan_approved(self):
-        rospy.logwarn("Accept plan? [y] or [n]")
         i = 0
         while i < 2:
-            answer = raw_input("Question? (yes or no)")
+            answer = raw_input("Accept plan? [y] or [n]")
             if any(answer.lower() == f for f in ["yes", 'y', '1', 'ye']):
                 print("Yes")
                 return True
@@ -190,7 +189,6 @@ class DemeterExec(object):
 
     def allow_backwards_movement_problem_file_correction(self):
         problem = InitProblem()
-        # problem.add_can_move_backwards()
         problem.allow_backwards_moviment()
 
     def gui_callback_listener(self, data):
