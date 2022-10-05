@@ -280,6 +280,10 @@ class DemeterInterface(object):
         self.demeter.goto_surface()
         return True
 
+    def send_to_origin(self):
+        self.demeter.goto_origin()
+        return True
+
     def localize_rotate(self):
         self.demeter.rotate_in_place()
         return True

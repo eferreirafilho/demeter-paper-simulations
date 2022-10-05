@@ -88,20 +88,24 @@ class DemeterActionInterface(object):
         waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
         return waypoints
 
+    def load_origin_from_file(self):
+        origin = [rospy.get_param("/rosplan_demeter_exec/origin_x"), rospy.get_param("/rosplan_demeter_exec/origin_y"),rospy.get_param("/rosplan_demeter_exec/origin_z")]
+        return origin
+
     def append_to_plan_wp(self,position):
         self.waypoints_position=self.load_wp_config_from_file()
-        self.waypoints_position[0].append(int(round(position.x)))
-        self.waypoints_position[1].append(int(round(position.y)))
-        self.waypoints_position[2].append(int(round(position.z)))
+        self.waypoints_position[0].append(float(round(position.x)))
+        self.waypoints_position[1].append(float(round(position.y)))
+        self.waypoints_position[2].append(float(round(position.z)))
         rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[0])
         rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[1])
         rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[2])
 
     def append_to_waypoint_position(self,position):
         self.waypoints_position=self.load_wp_config_from_file()
-        self.waypoints_position[0].append(int(round(position[0])))
-        self.waypoints_position[1].append(int(round(position[1])))
-        self.waypoints_position[2].append(int(round(position[2])))
+        self.waypoints_position[0].append(float(round(position[0])))
+        self.waypoints_position[1].append(float(round(position[1])))
+        self.waypoints_position[2].append(float(round(position[2])))
 
     def closer_wp(self,position):
         dist=[]
@@ -202,7 +206,6 @@ class DemeterActionInterface(object):
         self.cmd_pose_pub.publish(cmd_pose)
 
     def publish_cmd_pose(self,pos,ori):
-
         cmd_pose=PoseStamped()      
         cmd_pose.pose.position.x=pos.x
         cmd_pose.pose.position.y=pos.y
@@ -234,9 +237,16 @@ class DemeterActionInterface(object):
         position.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
         self.publish_position_fixed_orientation(position)
 
+    def goto_origin(self):
+        origin = self.load_origin_from_file()
+        position.x=float(origin[0])
+        position.y=float(origin[1])
+        position.z=float(origin[2])
+        self.publish_position_fixed_orientation(position)
+        return
+
     def rotate_yaw(self,degrees):
         # TODO while with: http://wiki.ros.org/tf2/Tutorials/Quaternions#Relative_rotations
-
             # self.publish_cmd_pose(position, orientation)
             orientation=self.get_orientation()
             self._rate.sleep()

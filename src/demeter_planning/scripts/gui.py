@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
         self.widgets.append(QPushButton(self.frame)) # Button 5
         layout.addWidget(self.widgets[5])
         self.widgets[5].clicked.connect(self.button5_action)
-        self.widgets[5].setText("External: Send Vehicle To Initial Position")
+        self.widgets[5].setText("External: Send Vehicle To Origin (from YAML file)")
 
         self.widgets.append(QPushButton(self.frame)) # Button 6
         layout.addWidget(self.widgets[6])
@@ -132,12 +132,12 @@ class MainWindow(QMainWindow):
             pub.publish(start_executive)
 
     def button5_action(self):
-        rospy.loginfo("Initial Position")
+        rospy.loginfo("Send to Origin")
         pub = rospy.Publisher('planning/gui', String, queue_size=10)
         rospy.init_node('planning_gui_publisher', anonymous=True)
         for i in range(self.PUBLISH_N):
             rate = rospy.Rate(10)
-            start_executive = "Initial Position"
+            start_executive = "Send to Origin"
             pub.publish(start_executive)
 
     def button6_action(self):

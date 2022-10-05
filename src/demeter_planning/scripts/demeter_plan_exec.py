@@ -92,7 +92,6 @@ class DemeterExec(object):
            self.mission_success=False
         return response.goal_achieved
 
-
     def plan_approved(self):
         i = 0
         while i < 2:
@@ -167,6 +166,9 @@ class DemeterExec(object):
  
     def vehicle_surface(self):
         self.demeter_rosplan_interface.surface()
+
+    def vehicle_send_to_origin(self):
+        self.demeter_rosplan_interface.send_to_origin()
     
     def vehicle_localize_rotate(self):
         self.demeter_rosplan_interface.localize_rotate()
@@ -244,6 +246,10 @@ class DemeterExec(object):
         if data.data=="Surface":
             self.vehicle_surface()
             rospy.logwarn('Vehicle sent to surface')
+
+        if data.data=="Send to Origin":
+            self.vehicle_send_to_origin()
+            rospy.logwarn('Vehicle sent to origin')
 
         if data.data=="Localize":
             self.vehicle_localize_rotate()
