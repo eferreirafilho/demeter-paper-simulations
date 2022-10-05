@@ -283,6 +283,9 @@ class DemeterInterface(object):
     def send_to_origin(self):
         self.demeter.goto_origin()
         return True
+    
+    def clear_interface_localization_error_log(self):
+        self.demeter.clear_localization_error_log()
 
     def localize_rotate(self):
         self.demeter.rotate_in_place()

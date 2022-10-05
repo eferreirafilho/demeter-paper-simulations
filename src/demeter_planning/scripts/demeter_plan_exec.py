@@ -187,6 +187,7 @@ class DemeterExec(object):
         demeter.clear_data_is_in_fact()
         self.demeter_rosplan_interface.clear_carry_vehicle_fact()
         self.demeter_rosplan_interface.clear_data_sent_fact()
+        self.demeter_rosplan_interface.clear_interface_localization_error_log()
         self.cancel_mission()
 
     def allow_backwards_movement_problem_file_correction(self):

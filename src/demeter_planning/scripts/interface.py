@@ -68,6 +68,8 @@ class DemeterActionInterface(object):
             rospy.loginfo('Cannot get localization error')
 
     def localization_error_too_big(self):
+        if self.filter_localization_error() is not None:
+            rospy.loginfo_throttle(5,'Localization error (filtered): ' + str(round(float(self.filter_localization_error()),3)))
         if(self.filter_localization_error())>self.LOCALIZATION_THREDSHOLD and self.verify_localization_errors:
             rospy.logwarn('Localization error too big')
             self.localized = False
@@ -78,11 +80,12 @@ class DemeterActionInterface(object):
     
     def interface_verify_localization_errors_on(self):
         self.verify_localization_errors=True
-        print('do not check true')
 
     def interface_verify_localization_errors_off(self):
         self.verify_localization_errors=False
-        print('do not check false')
+
+    def clear_localization_error_log(self):
+        self.localization_error_log = []
 
     def load_wp_config_from_file(self):
         waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]

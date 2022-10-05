@@ -15,8 +15,8 @@
     (can-move wp5 wp6)
     (can-move wp6 wp7)
     (can-move wp7 wp8)
-    (can-move wp0 wp9)
-    (can-move wp9 wp0)
+    (can-move wp2 wp9)
+    (can-move wp9 wp2)
     (can-move wp2 wp1)
     (can-move wp3 wp2)
     (can-move wp4 wp3)
@@ -25,22 +25,22 @@
     (can-move wp7 wp6)
     (can-move wp8 wp7)
 
-    (is-in data1 wp7)
 
-    (carry vehicle1 data1)
 
-    (at vehicle1 wp4)
+    (at vehicle1 wp3)
 
     (is-at-surface wp0)
 
+    (data-sent data1)
 
+    (empty vehicle1)
 
     (localized vehicle1)
 
 
 )
 (:goal (and
-    (data-sent data1)
+    (at vehicle1 wp6)
 ))
 (:metric minimize (total-time))
 )
