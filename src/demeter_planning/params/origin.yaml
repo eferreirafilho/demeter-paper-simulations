@@ -1,0 +1,4 @@
+# Set fixed origin position
+origin_x: 5
+origin_y: 0
+origin_z: -0.5

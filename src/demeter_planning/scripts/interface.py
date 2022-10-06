@@ -1,8 +1,12 @@
 #!/usr/bin/env python
-from cmath import sqrt
+from cmath import pi, sqrt
+from random import randint
+from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Quaternion, Twist
+from std_msgs.msg import Float32
+from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 
 class DemeterActionInterface(object):
 
@@ -13,6 +17,8 @@ class DemeterActionInterface(object):
     EPS_DISTANCE = 1e-01 # Distance we consider that vehicle is at a waypoint
     SUBMERGED_Z = -0.5 # Z Distance we consider that vehicle is on surface
     SUBMERGED_Z_CMD = -0.4 # Z Distance we send vehicle to surface
+    EPS_ANGLE = 1 # Distance (degrees) we consider that a desired angle is achieved
+
 
     def __init__(self, update_frequency=10.):
         """
@@ -28,13 +34,20 @@ class DemeterActionInterface(object):
         self._current_wp = -1
         self.target_wp = -1
         self.odom_pose = Odometry()
+        self.localization_error_log=[]
+        self.FILTER_FACTOR = 50 # Filter takes the mean of last FILTER_FACTOR element
+        self.LOCALIZATION_THREDSHOLD = 5 # Localization error is too big
+        self.verify_localization_errors = []
+        self.localized = []
         self._rate = rospy.Rate(update_frequency)
 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
         rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
+        rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publisher
         self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose/',PoseStamped, queue_size=10)
+        self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
 
         self._wait(2) 
             
@@ -44,25 +57,61 @@ class DemeterActionInterface(object):
         
     def _pose_gt_cb(self, msg):
         self.odom_pose = msg
+
+    def _localization_callback(self,msg):
+        self.localization_error_log.append(msg.data)
+
+    def filter_localization_error(self):
+        try:
+            if(len(self.localization_error_log))<self.FILTER_FACTOR:
+                return sum(self.localization_error_log) / len(self.localization_error_log)
+            else:
+                return sum(self.localization_error_log[-self.FILTER_FACTOR:]) / len(self.localization_error_log[-self.FILTER_FACTOR:])
+        except:
+            rospy.loginfo('Cannot get localization error')
+
+    def localization_error_too_big(self):
+        if self.filter_localization_error() is not None:
+            rospy.loginfo_throttle(5,'Localization error (filtered): ' + str(round(float(self.filter_localization_error()),3)))
+        if(self.filter_localization_error())>self.LOCALIZATION_THREDSHOLD and self.verify_localization_errors:
+            rospy.logwarn('Localization error too big')
+            self.localized = False
+            return True
+        else:
+            self.localized = True
+            return False
     
+    def interface_verify_localization_errors_on(self):
+        self.verify_localization_errors=True
+
+    def interface_verify_localization_errors_off(self):
+        self.verify_localization_errors=False
+
+    def clear_localization_error_log(self):
+        self.localization_error_log = []
+
     def load_wp_config_from_file(self):
         waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
         return waypoints
 
+    def load_origin_from_file(self):
+        origin = [rospy.get_param("/rosplan_demeter_exec/origin_x"), rospy.get_param("/rosplan_demeter_exec/origin_y"),rospy.get_param("/rosplan_demeter_exec/origin_z")]
+        return origin
+
     def append_to_plan_wp(self,position):
         self.waypoints_position=self.load_wp_config_from_file()
-        self.waypoints_position[0].append(int(round(position.x)))
-        self.waypoints_position[1].append(int(round(position.y)))
-        self.waypoints_position[2].append(int(round(position.z)))
+        self.waypoints_position[0].append(float(round(position.x)))
+        self.waypoints_position[1].append(float(round(position.y)))
+        self.waypoints_position[2].append(float(round(position.z)))
         rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[0])
         rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[1])
         rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[2])
 
     def append_to_waypoint_position(self,position):
         self.waypoints_position=self.load_wp_config_from_file()
-        self.waypoints_position[0].append(int(round(position[0])))
-        self.waypoints_position[1].append(int(round(position[1])))
-        self.waypoints_position[2].append(int(round(position[2])))
+        self.waypoints_position[0].append(float(round(position[0])))
+        self.waypoints_position[1].append(float(round(position[1])))
+        self.waypoints_position[2].append(float(round(position[2])))
 
     def closer_wp(self,position):
         dist=[]
@@ -72,14 +121,12 @@ class DemeterActionInterface(object):
             if dist_aux.real<dist:
                 dist=dist_aux.real
                 closer_wp=i
-
         return closer_wp
 
     def do_move(self, waypoint, duration=rospy.Duration()):
         self.wp_reached = -1
         start = rospy.Time.now()
         self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
-              
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
             self.publish_wp_cmd_pose_fixed_orientation(waypoint)
             self.update_wp_position(waypoint)
@@ -88,10 +135,10 @@ class DemeterActionInterface(object):
                 rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
             self._rate.sleep()
         response = int(waypoint == self.wp_reached)
-                
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
- 
+        elif self.localization_error_too_big():
+            response = self.ACTION_FAIL
         return response
     
     def do_get_data(self, duration=rospy.Duration()):
@@ -101,13 +148,10 @@ class DemeterActionInterface(object):
             self._rate.sleep()
             completion_percentage = 'Getting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
-            
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
         rospy.loginfo('Data acquired!')
-        
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
-        
         return response
     
     def do_transmit_data(self, duration=rospy.Duration()):
@@ -117,7 +161,6 @@ class DemeterActionInterface(object):
             self._rate.sleep()
             completion_percentage = 'Transmitting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
-            
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
         rospy.loginfo('Data transmitted!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
@@ -140,11 +183,11 @@ class DemeterActionInterface(object):
         wp = -1
         if not self.is_submerged():
             wp = 0 # Waypoint 0 is at the surface
-        dist=sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
+        dist = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
         if dist.real < self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        rospy.loginfo_throttle(2,'Distance to target WP: ' + str(dist.real))
+        rospy.loginfo_throttle(2,'Distance to target WP: ' + str(round(dist.real,3)))
         
     def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      
@@ -169,7 +212,6 @@ class DemeterActionInterface(object):
         self.cmd_pose_pub.publish(cmd_pose)
 
     def publish_cmd_pose(self,pos,ori):
-
         cmd_pose=PoseStamped()      
         cmd_pose.pose.position.x=pos.x
         cmd_pose.pose.position.y=pos.y
@@ -186,6 +228,9 @@ class DemeterActionInterface(object):
     def get_orientation(self):
         return self.odom_pose.pose.pose.orientation
     
+    def get_linear_velocity(self):
+        return self.odom_pose.pose.pose.position
+
     def is_submerged(self):
         position=self.get_position()
         if position.z<self.SUBMERGED_Z:
@@ -197,8 +242,69 @@ class DemeterActionInterface(object):
         position=self.get_position()
         position.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
         self.publish_position_fixed_orientation(position)
-        
-    
+
+    def goto_origin(self):
+        origin = self.load_origin_from_file()
+        position.x=float(origin[0])
+        position.y=float(origin[1])
+        position.z=float(origin[2])
+        self.publish_position_fixed_orientation(position)
+        return
+
+    def orientation_comparison(self,q1,q2):
+        q1_inv=q1
+        q1_inv.w=-q1_inv.w
+        print(q2)
+        print(q1_inv)
+        qr = quaternion_multiply([q2.x,q2.y,q2.z,q2.w],[q1_inv.x,q1_inv.y,q1_inv.z,q1_inv.w])
+        return qr
+
+    def rotate_vehicle(self, rotate_angle, rotate_axis):
+        orientation_q = self.get_orientation()
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
+        if rotate_axis == 'roll': desired_orientation_list = quaternion_from_euler(current_roll + rotate_angle, current_pitch, current_yaw)
+        if rotate_axis == 'pitch': desired_orientation_list = quaternion_from_euler(current_roll, current_pitch + rotate_angle, current_yaw)
+        if rotate_axis == 'yaw': desired_orientation_list = quaternion_from_euler(current_roll, current_pitch, current_yaw + rotate_angle)
+        (desired_roll, desired_pitch, desired_yaw) = euler_from_quaternion (desired_orientation_list)
+        desired_orientation_q = Quaternion()
+        desired_orientation_q.x, desired_orientation_q.y, desired_orientation_q.z, desired_orientation_q.w = desired_orientation_list[0], desired_orientation_list[1], desired_orientation_list[2], desired_orientation_list[3]  
+        position_q = self.get_position() 
+        self.publish_cmd_pose(position_q, desired_orientation_q)
+        if rotate_axis == 'roll': 
+            while abs(self.smallest_angular_distance(current_roll*(180/pi), desired_roll*(180/pi)))>self.EPS_ANGLE:
+                orientation_q = self.get_orientation()
+                orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+                (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
+            return True
+        elif rotate_axis == 'pitch': 
+            while abs(self.smallest_angular_distance(current_pitch*(180/pi), desired_pitch*(180/pi)))>self.EPS_ANGLE:
+                orientation_q = self.get_orientation()
+                orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+                (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
+            return True
+        elif rotate_axis == 'yaw': 
+            while abs(self.smallest_angular_distance(current_yaw*(180/pi), desired_yaw*(180/pi)))>self.EPS_ANGLE:
+                orientation_q = self.get_orientation()
+                orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+                (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
+            return True
+
+    def smallest_angular_distance(self, targetA, sourceA):
+        a = targetA - sourceA
+        a = (a + 180) % 360 - 180
+        return a
+
+    def rotate_in_place(self):
+        #30 degrees to each side
+        self.rotate_vehicle(pi/6,'yaw')
+        self.rotate_vehicle(-pi/6,'yaw')
+        self.rotate_vehicle(-pi/6,'yaw')
+        self.rotate_vehicle(pi/6,'yaw')
+        # 360 degrees rotation:
+        # for i in range(4):
+        #     self.rotate_vehicle(pi/2,'yaw')
+
     def command_halt_vehicle(self):
         position=self.get_position()
         orientation=self.get_orientation()

@@ -31,7 +31,8 @@ class DemeterInterface(object):
         self.demeter_arrived = False
         self.demeter_wp = -1
         self.query = []
-
+        self.verify_localization_errors = []
+        
         # Service proxies (KB: update, predicate and operator details)
         rospy.loginfo('Waiting for service /rosplan_knowledge_base/update ...')
         rospy.wait_for_service('/rosplan_knowledge_base/update')
@@ -91,6 +92,8 @@ class DemeterInterface(object):
             self._action(msg, self.transmit_data, [duration])
                 
     def _action(self, action_dispatch, action_func, action_params=list()):
+        self.current_action_id=action_dispatch.action_id
+        print(self.current_action_id)
         self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_ENABLED)
         start_time = rospy.Time(action_dispatch.dispatch_time)
         duration = rospy.Duration(action_dispatch.duration)
@@ -104,7 +107,6 @@ class DemeterInterface(object):
                 self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
                 rospy.logwarn('Action Failed')
                 self.cancel_plan()
-
         else:
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
             rospy.logwarn('Action Failed - Timeout')
@@ -167,27 +169,51 @@ class DemeterInterface(object):
         self.update_predicates(pred_names,params,update_types)
 
     def knowledge_update(self, event):
+        self.KB_update_waypoint()
+        self.KB_update_localization_error()
+        
+    def KB_update_waypoint(self):
         pred_names = list()
         params = list()
         update_types = list()
         wp_seq = self.demeter._current_wp  # demeter position in waypoint update
         
-        if wp_seq != -1 and self.demeter_wp != wp_seq: # only update when self.demeter_wp != wp_seq
-            # add current wp that demeter resides
+        if wp_seq != -1 and self.demeter_wp != wp_seq:  # add current wp that demeter resides
             pred_names.append('at')
             params.append(
-                [KeyValue('v'),
+                [KeyValue('v', 'vehicle'),
                  KeyValue('wp', 'wp%d' % wp_seq)])
             update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-            # Remove previous wp that demeter resided
-            if self.demeter_wp != -1:
+            if self.demeter_wp != -1:  # Remove previous wp that demeter resided
                 pred_names.append('at')
                 params.append([
-                    KeyValue('v'),
+                    KeyValue('v', 'vehicle1'),
                     KeyValue('wp', 'wp%d' % self.demeter_wp)
                 ])
                 update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
             self.demeter_wp = wp_seq
+
+    def KB_update_localization_error(self):
+        pred_names = list()
+        params = list()
+        update_types = list()
+        pred_names.append('localized')
+        params.append([KeyValue('v', 'vehicle1')])
+        if not self.verify_localization_errors:
+            update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        else:    
+            if self.demeter.localized:
+                update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+            else:
+                update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
+
+    def verify_localization_errors_on(self):
+        self.verify_localization_errors = True
+        self.demeter.interface_verify_localization_errors_on()
+
+    def verify_localization_errors_off(self):
+        self.verify_localization_errors = False
+        self.demeter.interface_verify_localization_errors_off()
 
     def update_instances(self, ins_types, ins_names, update_types):   
         success = True
@@ -252,6 +278,17 @@ class DemeterInterface(object):
         
     def surface(self):
         self.demeter.goto_surface()
+        return True
+
+    def send_to_origin(self):
+        self.demeter.goto_origin()
+        return True
+    
+    def clear_interface_localization_error_log(self):
+        self.demeter.clear_localization_error_log()
+
+    def localize_rotate(self):
+        self.demeter.rotate_in_place()
         return True
 
     def interface_halt(self):
