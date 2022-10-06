@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 from cmath import pi, sqrt
+from random import randint
 from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist
 from std_msgs.msg import Float32
-from tf.transformations import quaternion_from_euler, quaternion_multiply
+from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 
 class DemeterActionInterface(object):
 
@@ -248,16 +249,67 @@ class DemeterActionInterface(object):
         self.publish_position_fixed_orientation(position)
         return
 
-    def rotate_yaw(self,degrees):
-        # TODO while with: http://wiki.ros.org/tf2/Tutorials/Quaternions#Relative_rotations
-            # self.publish_cmd_pose(position, orientation)
-            orientation=self.get_orientation()
-            self._rate.sleep()
-            
+    def orientation_comparison(self,q1,q2):
+        q1_inv=q1
+        q1_inv.w=-q1_inv.w
+        print(q2)
+        print(q1_inv)
+        qr = quaternion_multiply([q2.x,q2.y,q2.z,q2.w],[q1_inv.x,q1_inv.y,q1_inv.z,q1_inv.w])
+        return qr
+
+    def rotate_vehicle(self, rotate_angle, rotate_axis):
+        EPS_ANGLE = 1
+        orientation_q = self.get_orientation()
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
+        if rotate_axis == 'roll': desired_orientation_list = quaternion_from_euler(current_roll + rotate_angle, current_pitch, current_yaw)
+        if rotate_axis == 'pitch': desired_orientation_list = quaternion_from_euler(current_roll, current_pitch + rotate_angle, current_yaw)
+        if rotate_axis == 'yaw': desired_orientation_list = quaternion_from_euler(current_roll, current_pitch, current_yaw + rotate_angle)
+        (desired_roll, desired_pitch, desired_yaw) = euler_from_quaternion (desired_orientation_list)
+        desired_orientation_q = Quaternion()
+        desired_orientation_q.x, desired_orientation_q.y, desired_orientation_q.z, desired_orientation_q.w = desired_orientation_list[0], desired_orientation_list[1], desired_orientation_list[2], desired_orientation_list[3]  
+        position_q = self.get_position() 
+        self.publish_cmd_pose(position_q, desired_orientation_q)
+        if rotate_axis == 'roll': 
+            while abs(self.smallest_angular_distance(current_roll*(180/pi), desired_roll*(180/pi)))>EPS_ANGLE:
+                orientation_q = self.get_orientation()
+                orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+                (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
+                if randint(0,2000)==45:
+                    print(self.smallest_angular_distance(current_roll*(180/pi), desired_roll*(180/pi)))
+            return True
+        elif rotate_axis == 'pitch': 
+            while abs(self.smallest_angular_distance(current_pitch*(180/pi), desired_pitch*(180/pi)))>EPS_ANGLE:
+                orientation_q = self.get_orientation()
+                orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+                (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
+                if randint(0,2000)==45:
+                    print(self.smallest_angular_distance(current_pitch*(180/pi), desired_pitch*(180/pi)))
+            return True
+        elif rotate_axis == 'yaw': 
+            while abs(self.smallest_angular_distance(current_yaw*(180/pi), desired_yaw*(180/pi)))>EPS_ANGLE:
+                orientation_q = self.get_orientation()
+                orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+                (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
+                if randint(0,2000)==45:
+                    print(self.smallest_angular_distance(current_yaw*(180/pi), desired_yaw*(180/pi)))
+            return True
+
+    def smallest_angular_distance(self, targetA, sourceA):
+        a = targetA - sourceA
+        a = (a + 180) % 360 - 180
+        return a
+
     def rotate_in_place(self):
-        # TODO  rotate 
-        print('30')
-        self.rotate_yaw(30)
+
+        self.rotate_vehicle(pi/6,'yaw')
+        self.rotate_vehicle(-pi/6,'yaw')
+        self.rotate_vehicle(-pi/6,'yaw')
+        self.rotate_vehicle(pi/6,'yaw')
+
+        # 360 degrees rotation:
+        # for i in range(4):
+        #     self.rotate_vehicle(pi/2,'yaw')
 
     def command_halt_vehicle(self):
         position=self.get_position()
