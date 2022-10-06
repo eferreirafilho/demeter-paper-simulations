@@ -17,6 +17,8 @@ class DemeterActionInterface(object):
     EPS_DISTANCE = 1e-01 # Distance we consider that vehicle is at a waypoint
     SUBMERGED_Z = -0.5 # Z Distance we consider that vehicle is on surface
     SUBMERGED_Z_CMD = -0.4 # Z Distance we send vehicle to surface
+    EPS_ANGLE = 1 # Distance (degrees) we consider that a desired angle is achieved
+
 
     def __init__(self, update_frequency=10.):
         """
@@ -181,7 +183,7 @@ class DemeterActionInterface(object):
         wp = -1
         if not self.is_submerged():
             wp = 0 # Waypoint 0 is at the surface
-        dist=sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
+        dist = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
         if dist.real < self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
@@ -258,7 +260,6 @@ class DemeterActionInterface(object):
         return qr
 
     def rotate_vehicle(self, rotate_angle, rotate_axis):
-        EPS_ANGLE = 1
         orientation_q = self.get_orientation()
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
         (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
@@ -271,28 +272,22 @@ class DemeterActionInterface(object):
         position_q = self.get_position() 
         self.publish_cmd_pose(position_q, desired_orientation_q)
         if rotate_axis == 'roll': 
-            while abs(self.smallest_angular_distance(current_roll*(180/pi), desired_roll*(180/pi)))>EPS_ANGLE:
+            while abs(self.smallest_angular_distance(current_roll*(180/pi), desired_roll*(180/pi)))>self.EPS_ANGLE:
                 orientation_q = self.get_orientation()
                 orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
                 (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
-                if randint(0,2000)==45:
-                    print(self.smallest_angular_distance(current_roll*(180/pi), desired_roll*(180/pi)))
             return True
         elif rotate_axis == 'pitch': 
-            while abs(self.smallest_angular_distance(current_pitch*(180/pi), desired_pitch*(180/pi)))>EPS_ANGLE:
+            while abs(self.smallest_angular_distance(current_pitch*(180/pi), desired_pitch*(180/pi)))>self.EPS_ANGLE:
                 orientation_q = self.get_orientation()
                 orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
                 (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
-                if randint(0,2000)==45:
-                    print(self.smallest_angular_distance(current_pitch*(180/pi), desired_pitch*(180/pi)))
             return True
         elif rotate_axis == 'yaw': 
-            while abs(self.smallest_angular_distance(current_yaw*(180/pi), desired_yaw*(180/pi)))>EPS_ANGLE:
+            while abs(self.smallest_angular_distance(current_yaw*(180/pi), desired_yaw*(180/pi)))>self.EPS_ANGLE:
                 orientation_q = self.get_orientation()
                 orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
                 (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
-                if randint(0,2000)==45:
-                    print(self.smallest_angular_distance(current_yaw*(180/pi), desired_yaw*(180/pi)))
             return True
 
     def smallest_angular_distance(self, targetA, sourceA):
@@ -301,12 +296,11 @@ class DemeterActionInterface(object):
         return a
 
     def rotate_in_place(self):
-
+        #30 degrees to each side
         self.rotate_vehicle(pi/6,'yaw')
         self.rotate_vehicle(-pi/6,'yaw')
         self.rotate_vehicle(-pi/6,'yaw')
         self.rotate_vehicle(pi/6,'yaw')
-
         # 360 degrees rotation:
         # for i in range(4):
         #     self.rotate_vehicle(pi/2,'yaw')
