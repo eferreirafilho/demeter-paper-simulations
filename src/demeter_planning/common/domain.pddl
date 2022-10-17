@@ -32,7 +32,7 @@
             )
     )
     
-    ; Get sensor data form underwater waypoint - Fixed time
+    ; Get sensor data from underwater waypoint - Fixed time
     (:durative-action get_data
         :parameters (?v - vehicle ?d - data ?w - waypoint)
         :duration(= ?duration 10)

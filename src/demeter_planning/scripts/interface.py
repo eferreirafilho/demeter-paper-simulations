@@ -47,7 +47,7 @@ class DemeterActionInterface(object):
         rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publisher
         self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose/',PoseStamped, queue_size=10)
-        self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
+        # self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
 
         self._wait(2) 
             
