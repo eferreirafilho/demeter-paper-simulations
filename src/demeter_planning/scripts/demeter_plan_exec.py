@@ -42,7 +42,7 @@ class DemeterExec(object):
                 
     def check_action_feedback(self,msg):
         if msg.status == ActionFeedback.ACTION_FAILED:
-            self.halt_vehicle()
+            # self.halt_vehicle()
             self._rate.sleep()
             self.mission_success=False
 
@@ -262,7 +262,7 @@ class DemeterExec(object):
         rospy.spin()
 
 if __name__ == '__main__':
-    
+    print('demeter_plan_exec')
     demeter = DemeterExec()
     demeter.gui_listener()
     rospy.spin()

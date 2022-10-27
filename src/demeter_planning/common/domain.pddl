@@ -53,7 +53,7 @@
         :parameters (?v - vehicle ?d - data ?w - waypoint)
         :duration (= ?duration 10)
         :condition (and 
-            (at start (is-at-surface ?w))
+            ; (at start (is-at-surface ?w))
             (over all (at ?v ?w))
             (at start (carry ?v ?d))
             (over all (localized ?v))

@@ -13,6 +13,7 @@ from interface import DemeterActionInterface
 class InitProblem(object):
 
     def __init__(self):
+        rospy.logdebug('py.init')
         # Write init position to param
         init_position = DemeterActionInterface()
         position = init_position.get_position()
@@ -151,6 +152,7 @@ class InitProblem(object):
     
 
 if __name__ == '__main__':
+    rospy.logdebug('py.init')
     rospy.init_node('init_position', anonymous=True)
     problem = InitProblem()
     problem.create_default_problem()

@@ -14,9 +14,9 @@ class DemeterActionInterface(object):
     OUT_OF_DURATION_FACTOR = 1.2
     ACTION_SUCCESS = 1
     ACTION_FAIL = 0
-    EPS_DISTANCE = 1e-01 # Distance we consider that vehicle is at a waypoint
-    SUBMERGED_Z = -0.5 # Z Distance we consider that vehicle is on surface
-    SUBMERGED_Z_CMD = -0.4 # Z Distance we send vehicle to surface
+    EPS_DISTANCE = 0.2 # Distance we consider that vehicle is at a waypoint
+    SUBMERGED_Z = 0.4 # Z Distance we consider that vehicle is on surface
+    SUBMERGED_Z_CMD = 0.2 # Z Distance we send vehicle to surface
     EPS_ANGLE = 1 # Distance (degrees) we consider that a desired angle is achieved
 
 
@@ -43,10 +43,12 @@ class DemeterActionInterface(object):
 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
-        rospy.Subscriber('/auv/pose_gt/', Odometry, self._pose_gt_cb, queue_size=10)
+        rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10)#REAL ROBOT
+        rospy.Subscriber('/auv/pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
         rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publisher
-        self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose/',PoseStamped, queue_size=10)
+        self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) #REAL ROBOT
+        # self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose',PoseStamped, queue_size=10)
         # self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
 
         self._wait(2) 
@@ -57,6 +59,18 @@ class DemeterActionInterface(object):
         
     def _pose_gt_cb(self, msg):
         self.odom_pose = msg
+        # aux_odom = Odometry()
+        # aux_odom = msg
+        #Change x and y:
+
+        # rospy.loginfo('Pose CB')
+
+        # aux_odom.pose.pose.position.y=self.odom_pose.pose.pose.position.x
+        # aux_odom.pose.pose.position.x=self.odom_pose.pose.pose.position.y
+        # aux_odom.pose.pose.position.z=-self.odom_pose.pose.pose.position.z
+        # self.odom_pose = aux_odom
+        # rospy.logwarn('aux_odom')
+        # print(self.odom_pose.pose.pose.position.x)
 
     def _localization_callback(self,msg):
         self.localization_error_log.append(msg.data)
@@ -181,13 +195,27 @@ class DemeterActionInterface(object):
 
     def update_wp_position(self,waypoint):
         wp = -1
-        if not self.is_submerged():
-            wp = 0 # Waypoint 0 is at the surface
-        dist = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
-        if dist.real < self.EPS_DISTANCE:
+        # if not self.is_submerged():
+            # wp = 0 # Waypoint 0 is at the surface
+        # dist = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
+        # print(self.odom_pose.pose.pose.position.x)
+        # print(self.target_wp[0])
+        # print('dist:')
+        # print(dist_x)
+        # if dist.real < self.EPS_DISTANCE:
+
+        dist_x = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2)
+        dist_y = sqrt((self.odom_pose.pose.pose.position.y - self.target_wp[1])**2)
+        dist_z = sqrt((self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
+        if dist_x.real<self.EPS_DISTANCE and dist_y.real<self.EPS_DISTANCE and dist_z.real<self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        rospy.loginfo_throttle(2,'Distance to target WP: ' + str(round(dist.real,3)))
+        rospy.loginfo_throttle(2,'Distance to target X: ' + str((dist_x.real,5)))
+        rospy.loginfo_throttle(2,'Distance to target Y: ' + str((dist_y.real,5)))
+        rospy.loginfo_throttle(2,'Distance to target Z: ' + str((dist_z.real,5)))
+        rospy.loginfo_throttle(2,'self.target[0]: ' + str(self.target_wp[0]))
+        rospy.loginfo_throttle(2,'self.target[1]: ' + str(self.target_wp[1]))
+        rospy.loginfo_throttle(2,'self.target[2]: ' + str(self.target_wp[2]))
         
     def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      
