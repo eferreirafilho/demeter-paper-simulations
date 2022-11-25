@@ -43,12 +43,12 @@ class DemeterActionInterface(object):
 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
-        rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10)#REAL ROBOT
+        # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10)#REAL ROBOT
         rospy.Subscriber('/auv/pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
         rospy.Subscriber('/planning/mock_localization_error/', Float32, self._localization_callback, queue_size=10)
         # Publisher
-        self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) #REAL ROBOT
-        # self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose',PoseStamped, queue_size=10)
+        # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) #REAL ROBOT
+        self.cmd_pose_pub=rospy.Publisher('/auv/cmd_pose',PoseStamped, queue_size=10)
         # self.cmd_vel_pub=rospy.Publisher('/auv/cmd_vel/',Twist, queue_size=10)
 
         self._wait(2) 
