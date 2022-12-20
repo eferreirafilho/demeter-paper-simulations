@@ -21,26 +21,32 @@
 
     <!-- Turbine -->
     <include>
+      <name>turbine1</name>
       <uri>model://turbine_rotor</uri>
       <pose>0 0 0 0 0 0</pose>
     </include>
     <include>
+      <name>turbine2</name>
       <uri>model://turbine_rotor</uri>
       <pose>-500 0 0 0 0 0</pose>
     </include>
     <include>
+      <name>turbine3</name>
       <uri>model://turbine_rotor</uri>
       <pose>500 0 0 0 0 0</pose>
     </include>
     <include>
+      <name>turbine4</name>
       <uri>model://turbine_rotor</uri>
       <pose>0 500 0 0 0 0</pose>
     </include>
     <include>
+      <name>turbine5</name>
       <uri>model://turbine_rotor</uri>
       <pose>0 -500 0 0 0 0</pose>
     </include>
     <include>
+      <name>turbine6</name>
       <uri>model://turbine_rotor</uri>
       <pose>500 -500 0 0 0 0</pose>
     </include>
