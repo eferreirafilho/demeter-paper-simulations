@@ -1,0 +1,35 @@
+<launch>
+ 
+  <!-- Launch one upload_auv for each robot -->
+  <!-- Namespace and initial positions must be diferent -->
+
+ 	<include file="$(find auv_descriptions)/launch/upload_auv.launch">
+		<arg name="namespace" value="auv0"/>
+    <arg name="x" value="10"/>
+    <arg name="y" value="8"/>
+    <arg name="z" value="-1"/>
+	</include>
+
+  <include file="$(find auv_descriptions)/launch/upload_auv.launch">
+		<arg name="namespace" value="auv1"/>
+    <arg name="x" value="25"/>
+    <arg name="y" value="6"/>
+    <arg name="z" value="-10"/>
+	</include>
+
+  <!-- <include file="$(find auv_descriptions)/launch/upload_auv.launch">
+		<arg name="namespace" value="auv2"/>
+    <arg name="x" value="145"/>
+    <arg name="y" value="5"/>
+    <arg name="z" value="-1"/>
+	</include>
+
+  <include file="$(find auv_descriptions)/launch/upload_auv.launch">
+		<arg name="namespace" value="auv3"/>
+    <arg name="x" value="7"/>
+    <arg name="y" value="12"/>
+    <arg name="z" value="-1"/>
+	</include> -->
+
+
+</launch>
