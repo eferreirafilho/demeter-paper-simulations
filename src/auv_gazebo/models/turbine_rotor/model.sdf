@@ -19,7 +19,7 @@
         </inertia>
      </inertial>
 
-     <collision name="collision">
+     <!-- <collision name="collision">
         <pose>-4.5 0 0 0 1.5707 0</pose>
         <geometry>
           <cylinder>
@@ -27,7 +27,7 @@
             <length>3</length>
           </cylinder>
         </geometry>
-      </collision>
+      </collision> -->
 
       <visual name="visual">
           <geometry>
@@ -89,9 +89,7 @@
       </axis>
     </joint>
 
-    <plugin name="turbine_control" filename="libturbine_plugin.so">
-      <velocity>1</velocity>
-    </plugin>
+  -->
 
   </model>
 </sdf>
