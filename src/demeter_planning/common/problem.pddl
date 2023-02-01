@@ -25,10 +25,10 @@
     (can-move wp2 wp9)
     (can-move wp9 wp2)
 
-    (is-in data1 wp7)
+    (is-in data1 wp8)
 
 
-    (at vehicle1 wp0)
+    (at vehicle1 wp9)
 
     (is-at-surface wp0)
 
