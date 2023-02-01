@@ -2,8 +2,7 @@
     (:requirements :typing :fluents :durative-actions :duration-inequalities :negative-preconditions)
 
     (:types
-        vehicle0 vehicle1 - vehicle
-        waypoint data - object   
+        vehicle waypoint data   
     )
 
     (:predicates

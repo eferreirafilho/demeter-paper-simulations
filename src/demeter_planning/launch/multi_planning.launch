@@ -3,12 +3,7 @@
 
 	<!-- arguments -->
 	<arg name="domain_path"	default="$(find demeter_planning)/common/domain.pddl" />
-
-	<!-- populated problem (fixed predicates) -->
-	<node pkg="demeter_planning" type="p_init.py" name="init_populate_KB" output="screen"> 
-		<rosparam file="$(find demeter_planning)/params/turbines_coordinates.yaml" command="load"/>
-		<rosparam file="$(find demeter_planning)/params/get_data_allocation.yaml" command="load"/>
-	</node>
+	<arg name="current_auv_name"/>
 
 	<!-- knowledge base -->
 	<node name="rosplan_knowledge_base" pkg="rosplan_knowledge_base" type="knowledgeBase" respawn="false" output="screen">
@@ -17,6 +12,13 @@
 		<!-- conditional planning flags -->
 		<param name="use_unknowns" value="false" />
 	</node>
+
+	<!-- populated problem (fixed predicates) -->
+	<node pkg="demeter_planning" type="p_init.py" name="init_populate_problem_file" output="screen"> </node>
+
+	<!-- Add fact using vehicle initial position 
+	<node pkg="demeter_planning" type="p_init_pos.py" name="init_position_problem_file" output="screen"> </node>
+	-->
 
 	<!-- problem generation -->
 	<include file="$(find rosplan_planning_system)/launch/includes/problem_interface.launch">
@@ -57,7 +59,7 @@
 	<!-- call planning server--> 
 	<node pkg="demeter_planning" type="get_data_mission_exec.py" name="rosplan_demeter_exec" output="screen">
 		<rosparam file="$(find demeter_planning)/params/plan_wp.yaml" command="load"/>
-		<rosparam file="$(find demeter_planning)/params/origin.yaml" command="load"/>
+		<param name="current_auv_name" value="$(arg current_auv_name)"/>
 	</node>
 	
 

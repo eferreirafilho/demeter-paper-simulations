@@ -8,63 +8,75 @@ from rosplan_knowledge_msgs.srv import *
 from rosplan_knowledge_msgs.msg import KnowledgeItem
 from diagnostic_msgs.msg import KeyValue
 from geometry_msgs.msg import Pose
-from interface import DemeterActionInterface
+from action_interface import DemeterActionInterface
 
 class InitProblem(object):
 
     def __init__(self):
         rospy.logdebug('py.init')
         # Write init position to param
-        init_position = DemeterActionInterface()
-        position = init_position.get_position()
-        init_position.set_init_position_param(position)  
-        init_position.append_to_plan_wp(position)
-        self.closer_wp=init_position.closer_wp(position)
-        self.waypoints_position=init_position.load_wp_config_from_file() # To get number of waypoints in yaml file
-        self.n_waypoints=len(self.waypoints_position[0])
-        self.n_canmove=self.n_waypoints-1
+        self.auv_name='auv'
+        self.number_of_auvs = len(rospy.get_param('/init_populate_KB/vehicle_idx'))
+        self.number_of_data_sensors = len(rospy.get_param('/init_populate_KB/data_idx'))
+        self.turbines_xy = [rospy.get_param('/init_populate_KB/turbines_x'), rospy.get_param('/init_populate_KB/turbines_y')] # Turbines position
+        self.num_turbines = len(self.turbines_xy[0])
+        
+        action_interface_object = DemeterActionInterface(self.auv_name)
+        self.position = list()
+        self.closer_wp = list()
+        for vehicle in range(self.number_of_auvs):
+            self.position.append(action_interface_object.get_position(vehicle))
+            action_interface_object.set_init_position_param(self.position[vehicle], vehicle_index=vehicle)  
+            rospy.set_param('/init_populate_KB/vehicle_initial_position/auv'+str(vehicle), [self.position[vehicle].x, self.position[vehicle].y, self.position[vehicle].z])
+            self.closer_wp.append(action_interface_object.closer_wp([self.position[vehicle].x, self.position[vehicle].y, self.position[vehicle].z]))
+        
+        self.submerge_base_waypoints=action_interface_object.load_wp_config_from_file() # To get number of waypoints in yaml file
+        self.number_of_base_waypoints = len(self.submerge_base_waypoints[0])
 
     def create_default_problem(self):
-         # Update Knowledge Base
-        self.add_object('data1','data')
-        self.add_object('vehicle1','vehicle')
-
-        # Add waypoints objects
-        for i in range(self.n_waypoints+1): # Last waypoint is the initial position
-            self.add_object('wp'+str(i),'waypoint')
+        # Update Knowledge Base
+        for vehicle in range(self.number_of_auvs):
+            self.add_object(self.auv_name+str(vehicle),'vehicle'+str(vehicle))
+            self.add_fact('empty',self.auv_name+str(vehicle))
+            self.add_fact('localized',self.auv_name+str(vehicle))
+            self.add_fact('at',self.auv_name+str(vehicle),'wp_init_auv'+str(vehicle)) # Real initial position
+            self.add_object('wp_init_auv'+str(vehicle),'waypoint') # Define waypoint object for initial position
             
-        #Add facts
-        self.add_fact('empty','vehicle1')
-        # self.add_fact('is-in','data1','wp'+str(n_waypoints-1)) # Define position of sensor (in last Waypoint)
-        self.add_fact('is-at-surface','wp0')        
-        # self.add_fact('is-at-surface','wp1') 
+        for data_sensor in range(self.number_of_data_sensors):
+            # Define position of sensors            
+            self.add_object('data'+str(data_sensor),'data')
+            # First point is in the surface
+            self.add_fact('is-at-surface','wp_turbine'+str(data_sensor)+'_point0')
+                 
+        for turbine in range(self.num_turbines):
+            # Define several waypoints for each turbine
+            for point in range(self.number_of_base_waypoints):
+                self.add_object('wp_turbine'+str(turbine)+'_point'+str(point),'waypoint')
+                # Allowed moviments            
+                # vehicle can move to surface from any waypoint
+                if point != 0:
+                    self.add_fact('can-move','wp_turbine'+str(turbine)+'_point'+str(point),'wp_turbine'+str(turbine)+'_point0')
+                if point != self.number_of_base_waypoints-1:
+                    # vehicle can move to next waypoint but can not move back
+                    self.add_fact('can-move','wp_turbine'+str(turbine)+'_point'+str(point),'wp_turbine'+str(turbine)+'_point'+str(point+1))
+                    
+        # # Define all turbines surface points
+        # for i in range(self.num_turbines):
+        #     self.add_object('wp_turbine'+str(i)+'_point0','waypoint')
 
-        # Allowed moviments            
-        for i in range(self.n_canmove):
-            self.add_fact('can-move','wp'+str(i),'wp'+str(i+1)) # vehicle can move to next waypoint but can not move back
-            self.add_fact('can-move','wp'+str(i+1),'wp0') # vehicle can move to surface from any waypoint
-                
-        self.add_fact('can-move','wp'+str(self.closer_wp),'wp'+str(self.n_waypoints)) # vehicle can move from initial waypoint to its closer waypoint
-        self.add_fact('can-move','wp'+str(self.n_waypoints),'wp'+str(self.closer_wp)) # vehicle can move to its closer waypoint from initial waypoint 
-        
-        # Localized
-        self.add_fact('localized','vehicle1')
-
-        # self.add_fact('at','vehicle1','wp1') # Simulated fact!!!
-        self.add_fact('at','vehicle1','wp'+str(self.n_waypoints)) # Real initial position
-        
-        rospy.loginfo('Problem file created')
-        
+        # Vehicle can move between initial position and closest waypoint
+        for idx, fact in enumerate(self.closer_wp):
+            self.add_fact('can-move', 'wp_init_auv'+str(idx), str(fact)) # vehicle can move to its closer waypoint from initial waypoint
+            
+        # All turbines are connected to the surface
+        for i in range(self.num_turbines):
+            for j in range(self.num_turbines):
+                if i != j:
+                    self.add_fact('can-move', 'wp_turbine'+str(i)+'_point0', 'wp_turbine'+str(j)+'_point0')
+            
+        rospy.loginfo('Problem file populated')
         # Add minimize total time to problem file
         self.add_metric_min_total_time()
-
-    def add_can_move_backwards(self):
-        for i in range(self.n_canmove):
-            self.add_fact('can-move','wp'+str(i+1),'wp'+str(i)) # vehicle can move to next waypoint but can not move back
-
-    def remove_can_move_surface(self):
-        for i in range(self.n_canmove-1):
-            self.remove_fact('can-move','wp'+str(i+2),'wp'+str(0))
 
     def add_goal(self,goal_fact, goal_obj):   
         rospy.wait_for_service('rosplan_knowledge_base/update')
