@@ -2,7 +2,7 @@
 <launch>
   <group ns="auv">
     <node pkg="uuv_teleop" type="vehicle_keyboard_teleop.py" name="keyboard_uuv_velocity_teleop" 	output="screen">
-      <remap from="output" to="/auv/cmd_vel"/>
+      <remap from="output" to="/auv1/cmd_vel"/>
       <rosparam subst_value="true">
         type: twist
       </rosparam>
