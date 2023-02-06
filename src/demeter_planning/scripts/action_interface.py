@@ -24,7 +24,7 @@ class DemeterActionInterface(object):
         """
         A Class that interfaces ROSPlan and Demeter Vehicle for executing actions
         """
-        print(namespace)
+        rospy.logwarn(namespace)
         self.namespace=namespace
         self.wp_reached = -1
         self.init_position = []
@@ -36,11 +36,6 @@ class DemeterActionInterface(object):
         self._current_wp = -1
         self.target_wp = -1
         self.odom_pose = Odometry()
-        self.localization_error_log=[]
-        self.FILTER_FACTOR = 50 # Filter takes the mean of last FILTER_FACTOR element
-        self.LOCALIZATION_THREDSHOLD = 5 # Localization error is too big
-        self.verify_localization_errors = []
-        self.localized = []
         self._rate = rospy.Rate(update_frequency)
 
         # Subscribers
@@ -50,6 +45,9 @@ class DemeterActionInterface(object):
         # Publisher
         # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) #REAL ROBOT
         self.cmd_pose_pub=rospy.Publisher(str(self.namespace)+'cmd_pose',PoseStamped, queue_size=10)
+        
+        init_position = self.get_position()
+        self.set_init_position_param(init_position)
 
         self._wait(2) 
             
@@ -59,70 +57,32 @@ class DemeterActionInterface(object):
         
     def _pose_gt_cb(self, msg):
         self.odom_pose = msg
-        # aux_odom = Odometry()
-        # aux_odom = msg
-        #Change x and y:
-
-        # rospy.loginfo('Pose CB')
-
-        # aux_odom.pose.pose.position.y=self.odom_pose.pose.pose.position.x
-        # aux_odom.pose.pose.position.x=self.odom_pose.pose.pose.position.y
-        # aux_odom.pose.pose.position.z=-self.odom_pose.pose.pose.position.z
-        # self.odom_pose = aux_odom
-        # rospy.logwarn('aux_odom')
-        # print(self.odom_pose.pose.pose.position.x)
-
-    def _localization_callback(self,msg):
-        self.localization_error_log.append(msg.data)
-
-    def filter_localization_error(self):
-        try:
-            if(len(self.localization_error_log))<self.FILTER_FACTOR:
-                return sum(self.localization_error_log) / len(self.localization_error_log)
-            else:
-                return sum(self.localization_error_log[-self.FILTER_FACTOR:]) / len(self.localization_error_log[-self.FILTER_FACTOR:])
-        except:
-            rospy.loginfo('Cannot get localization error')
-
-    def localization_error_too_big(self):
-        if self.filter_localization_error() is not None:
-            rospy.loginfo_throttle(5,'Localization error (filtered): ' + str(round(float(self.filter_localization_error()),3)))
-        if(self.filter_localization_error())>self.LOCALIZATION_THREDSHOLD and self.verify_localization_errors:
-            rospy.logwarn('Localization error too big')
-            self.localized = False
-            return True
-        else:
-            self.localized = True
-            return False
-    
-    def interface_verify_localization_errors_on(self):
-        self.verify_localization_errors=True
-
-    def interface_verify_localization_errors_off(self):
-        self.verify_localization_errors=False
-
-    def clear_localization_error_log(self):
-        self.localization_error_log = []
 
     def load_wp_config_from_file(self):
-        waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
+        waypoints = [rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/plan_wp_x"), rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/plan_wp_y"),rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/plan_wp_z")]
         return waypoints
 
     def load_origin_from_file(self):
-        origin = [rospy.get_param("/rosplan_demeter_exec/origin_x"), rospy.get_param("/rosplan_demeter_exec/origin_y"),rospy.get_param("/rosplan_demeter_exec/origin_z")]
+        origin = [rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/origin_x"), rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/origin_y"),rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/origin_z")]
         return origin
+    
+    def load_turbines_coordinates(self):
+        turbines_coordinates = [rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/turbines_x"), rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/turbines_y")]
+        rospy.logwarn(turbines_coordinates)
+        return turbines_coordinates
 
     def append_to_plan_wp(self,position):
         self.waypoints_position=self.load_wp_config_from_file()
         self.waypoints_position[0].append(float(round(position.x)))
         self.waypoints_position[1].append(float(round(position.y)))
         self.waypoints_position[2].append(float(round(position.z)))
-        rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[0])
-        rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[1])
-        rospy.set_param('/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[2])
+        rospy.set_param(str(self.namespace)+'/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[0])
+        rospy.set_param(str(self.namespace)+'/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[1])
+        rospy.set_param(str(self.namespace)+'/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[2])
 
     def append_to_waypoint_position(self,position):
         self.waypoints_position=self.load_wp_config_from_file()
+        rospy.logwarn(self.waypoints_position)
         self.waypoints_position[0].append(float(round(position[0])))
         self.waypoints_position[1].append(float(round(position[1])))
         self.waypoints_position[2].append(float(round(position[2])))
@@ -151,12 +111,10 @@ class DemeterActionInterface(object):
         response = int(waypoint == self.wp_reached)
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
-        elif self.localization_error_too_big():
-            response = self.ACTION_FAIL
         return response
     
-    def do_get_data(self, duration=rospy.Duration()):
-        rospy.logdebug('Interface: Mock \'Get Data\' Action')
+    def do_get_data(self, data_location, duration=rospy.Duration()):
+        rospy.logdebug('Interface: \'Get Data\' Action')
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             self._rate.sleep()
@@ -188,10 +146,10 @@ class DemeterActionInterface(object):
         self.target_wp=wp_set
 
     def set_init_position_param(self, position):
-        rospy.set_param('/planning/initial_position', [position.x, position.y, position.z])       
+        rospy.set_param(str(self.namespace)+'planning/initial_position', [position.x, position.y, position.z])       
 
     def get_init_position_param(self):
-        self.init_position = rospy.get_param('/planning/initial_position')       
+        self.init_position = rospy.get_param(str(self.namespace)+'planning/initial_position')       
 
     def update_wp_position(self,waypoint):
         wp = -1

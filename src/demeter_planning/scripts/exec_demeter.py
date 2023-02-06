@@ -51,20 +51,6 @@ class ExecDemeter(object):
             
     def resume_plan(self):
         rospy.Timer(self._rate.sleep_dur, self.execute_plan, oneshot=True)
-    
-    def get_data_mission(self):
-        self._cancel_plan_proxy()
-        demeter.clear_goals()
-        demeter.get_data_set_goal()
-        self._rate.sleep()
-        demeter.execute_plan()
-
-    def go_to_wp_mission(self,wp):
-        self._cancel_plan_proxy()
-        demeter.clear_goals() 
-        demeter.goto_wp_set_goal(wp) 
-        self._rate.sleep()
-        demeter.execute_plan()
 
     def execute_plan(self, event=True):
         rospy.loginfo('Generating mission plan ...')

@@ -1,9 +1,9 @@
 (define (problem task)
 (:domain d_tank)
 (:objects
-    vehicle0 - vehicle
     wp0 wp1 wp2 wp3 wp4 wp5 wp6 wp7 wp8 wp9 - waypoint
-    data0 - data
+    data1 - data
+    vehicle1 - vehicle
 )
 (:init
     (can-move wp0 wp1)
@@ -25,19 +25,19 @@
     (can-move wp2 wp9)
     (can-move wp9 wp2)
 
-    (is-in data0 wp2)
+    (is-in data1 wp6)
 
 
-    (at vehicle0 wp9)
+    (at vehicle1 wp9)
 
     (is-at-surface wp0)
 
 
-    (empty vehicle0)
+    (empty vehicle1)
 
 )
 (:goal (and
-    (data-sent data0)
+    (data-sent data1)
 ))
 (:metric minimize (total-time))
 )

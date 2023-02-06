@@ -34,18 +34,18 @@ class DemeterInterface(object):
         self.verify_localization_errors = []
         
         # Service proxies (KB: update, predicate and operator details)
-        rospy.loginfo('Waiting for service'+ self.namespace +'rosplan_knowledge_base/update ...')
-        rospy.wait_for_service(self.namespace +'rosplan_knowledge_base/update')
+        rospy.loginfo('Waiting for service'+ str(self.namespace) +'rosplan_knowledge_base/update ...')
+        rospy.wait_for_service(str(self.namespace) +'rosplan_knowledge_base/update')
         self._knowledge_update_proxy = rospy.ServiceProxy(self.namespace +'rosplan_knowledge_base/update', KnowledgeUpdateService)
-        rospy.loginfo('Waiting for '+self.namespace +'rosplan_knowledge_base/domain/predicate_details ...')
-        rospy.wait_for_service(self.namespace +'rosplan_knowledge_base/domain/predicate_details')
-        self._predicate_proxy = rospy.ServiceProxy(self.namespace +'rosplan_knowledge_base/domain/predicate_details', GetDomainPredicateDetailsService)
-        rospy.wait_for_service(self.namespace +'rosplan_knowledge_base/domain/operator_details')
-        self._operator_proxy = rospy.ServiceProxy(self.namespace +'rosplan_knowledge_base/domain/operator_details', GetDomainOperatorDetailsService)
+        rospy.loginfo('Waiting for '+ str(self.namespace) +'rosplan_knowledge_base/domain/predicate_details ...')
+        rospy.wait_for_service(str(self.namespace) +'rosplan_knowledge_base/domain/predicate_details')
+        self._predicate_proxy = rospy.ServiceProxy(str(self.namespace) +'rosplan_knowledge_base/domain/predicate_details', GetDomainPredicateDetailsService)
+        rospy.wait_for_service(str(self.namespace) +'rosplan_knowledge_base/domain/operator_details')
+        self._operator_proxy = rospy.ServiceProxy(str(self.namespace) +'rosplan_knowledge_base/domain/operator_details', GetDomainOperatorDetailsService)
         # Subscribers
-        rospy.Subscriber(self.namespace +'rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self._dispatch_cb, queue_size=10)
+        rospy.Subscriber(str(self.namespace) +'rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self._dispatch_cb, queue_size=10)
         # Publishers
-        self._feedback_publisher = rospy.Publisher(self.namespace +'rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
+        self._feedback_publisher = rospy.Publisher(str(self.namespace) +'rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
         self._rate = rospy.Rate(update_frequency)
 
         # Auto call functions
@@ -87,7 +87,7 @@ class DemeterInterface(object):
         if msg.name == 'move':
             self._action(msg, self.move, [msg.parameters, duration])
         if msg.name == 'get_data':
-            self._action(msg, self.get_data, [duration])
+            self._action(msg, self.get_data, [msg.parameters, duration])
         if msg.name == 'transmit_data':
             self._action(msg, self.transmit_data, [duration])
                 
@@ -113,13 +113,13 @@ class DemeterInterface(object):
             self.cancel_plan()
 
     def cancel_plan(self):
-        _cancel_plan_proxy = rospy.ServiceProxy('/rosplan_plan_dispatcher/cancel_dispatch', Empty)
+        _cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'/rosplan_plan_dispatcher/cancel_dispatch', Empty)
         _cancel_plan_proxy()
 
     def call_query_service(self):
-        rospy.wait_for_service('/rosplan_knowledge_base/query_state')
+        rospy.wait_for_service(str(self.namespace)+'/rosplan_knowledge_base/query_state')
         try:
-            query_proxy = rospy.ServiceProxy('rosplan_knowledge_base/query_state', KnowledgeQueryService)
+            query_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/query_state', KnowledgeQueryService)
             resp1 = query_proxy(self.query)
             return resp1.results
         except rospy.ServiceException:
@@ -268,29 +268,16 @@ class DemeterInterface(object):
         response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
 
-    def get_data(self, duration=rospy.Duration(60, 0)):
-        response = self.demeter.do_get_data(duration)
+    def get_data(self, dispatch_params, duration=rospy.Duration(60, 0)):
+        data_location = -1
+        for param in dispatch_params:
+            if param.key == 'd': # from Data d
+                data_location = int(param.value[4:])
+                break
+            rospy.logwarn(param)
+        response = self.demeter.do_get_data(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
         return response
     
     def transmit_data(self, duration=rospy.Duration(60, 0)):
         response = self.demeter.do_transmit_data(duration)
         return response
-        
-    def surface(self):
-        self.demeter.goto_surface()
-        return True
-
-    def send_to_origin(self):
-        self.demeter.goto_origin()
-        return True
-    
-    def clear_interface_localization_error_log(self):
-        self.demeter.clear_localization_error_log()
-
-    def localize_rotate(self):
-        self.demeter.rotate_in_place()
-        return True
-
-    def interface_halt(self):
-        self.demeter.command_halt_vehicle()
-        return True
