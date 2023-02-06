@@ -14,9 +14,7 @@ from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
                                         KnowledgeUpdateService,
                                         KnowledgeUpdateServiceRequest,
                                         KnowledgeQueryService)
-from action_interface import DemeterActionInterface
-from threading import Thread
-
+from interface import DemeterActionInterface
 
 class DemeterInterface(object):
 
@@ -29,28 +27,25 @@ class DemeterInterface(object):
         if demeter is None:
             self.demeter = DemeterActionInterface()
         self.demeter = demeter
+        self.namespace = self.demeter.namespace
         self.demeter_arrived = False
+        self.demeter_wp = -1
         self.query = []
-        self.threads = []
-        
-        self.number_of_vehicles = len(rospy.get_param('/init_populate_KB/vehicle_idx')) # Number of vehicles
-        self.demeter_wp = list()
-        for i in range(self.number_of_vehicles):
-            self.demeter_wp.append(-1)
+        self.verify_localization_errors = []
         
         # Service proxies (KB: update, predicate and operator details)
-        rospy.loginfo('Waiting for service /rosplan_knowledge_base/update ...')
-        rospy.wait_for_service('/rosplan_knowledge_base/update')
-        self._knowledge_update_proxy = rospy.ServiceProxy('/rosplan_knowledge_base/update', KnowledgeUpdateService)
-        rospy.loginfo('Waiting for /rosplan_knowledge_base/domain/predicate_details ...')
-        rospy.wait_for_service('/rosplan_knowledge_base/domain/predicate_details')
-        self._predicate_proxy = rospy.ServiceProxy('/rosplan_knowledge_base/domain/predicate_details', GetDomainPredicateDetailsService)
-        rospy.wait_for_service('/rosplan_knowledge_base/domain/operator_details')
-        self._operator_proxy = rospy.ServiceProxy('/rosplan_knowledge_base/domain/operator_details', GetDomainOperatorDetailsService)
+        rospy.loginfo('Waiting for service'+ self.namespace +'rosplan_knowledge_base/update ...')
+        rospy.wait_for_service(self.namespace +'rosplan_knowledge_base/update')
+        self._knowledge_update_proxy = rospy.ServiceProxy(self.namespace +'rosplan_knowledge_base/update', KnowledgeUpdateService)
+        rospy.loginfo('Waiting for '+self.namespace +'rosplan_knowledge_base/domain/predicate_details ...')
+        rospy.wait_for_service(self.namespace +'rosplan_knowledge_base/domain/predicate_details')
+        self._predicate_proxy = rospy.ServiceProxy(self.namespace +'rosplan_knowledge_base/domain/predicate_details', GetDomainPredicateDetailsService)
+        rospy.wait_for_service(self.namespace +'rosplan_knowledge_base/domain/operator_details')
+        self._operator_proxy = rospy.ServiceProxy(self.namespace +'rosplan_knowledge_base/domain/operator_details', GetDomainOperatorDetailsService)
         # Subscribers
-        rospy.Subscriber('/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self._dispatch_cb, queue_size=10)
+        rospy.Subscriber(self.namespace +'rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self._dispatch_cb, queue_size=10)
         # Publishers
-        self._feedback_publisher = rospy.Publisher('/rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
+        self._feedback_publisher = rospy.Publisher(self.namespace +'rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
         self._rate = rospy.Rate(update_frequency)
 
         # Auto call functions
@@ -88,7 +83,6 @@ class DemeterInterface(object):
 
     def _dispatch_cb(self, msg):
         duration = rospy.Duration(msg.duration)
-        rospy.logwarn('Received action dispatch: %s' % msg.name)
         # Parse action message
         if msg.name == 'move':
             self._action(msg, self.move, [msg.parameters, duration])
@@ -99,7 +93,7 @@ class DemeterInterface(object):
                 
     def _action(self, action_dispatch, action_func, action_params=list()):
         self.current_action_id=action_dispatch.action_id
-        print('rosplan interface: _action', str(self.current_action_id))
+        print(self.current_action_id)
         self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_ENABLED)
         start_time = rospy.Time(action_dispatch.dispatch_time)
         duration = rospy.Duration(action_dispatch.duration)
@@ -135,7 +129,7 @@ class DemeterInterface(object):
         query1 = KnowledgeItem()
         query1.knowledge_type = KnowledgeItem.FACT
         query1.attribute_name = "data-sent"
-        query1.values.append(diagnostic_msgs.msg.KeyValue("d","data1"))#TODO: Refactor this to accept multiple data
+        query1.values.append(diagnostic_msgs.msg.KeyValue("d","data1"))
         self.query.append(query1)
         self._rate.sleep()
         result = self.call_query_service()
@@ -147,7 +141,7 @@ class DemeterInterface(object):
             pred_names = [
             'data-sent'
             ]
-            params = [[KeyValue('d', 'data1')]]#TODO: Refactor this to accept multiple data
+            params = [[KeyValue('d', 'data1')]]
             update_types = [
                 KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
             ]
@@ -158,7 +152,7 @@ class DemeterInterface(object):
             pred_names = [
             'carry'
             ]
-            params = [[KeyValue('v', 'vehicle1'), KeyValue('d', 'data1')]]#TODO: Refactor this to accept multiple vehicles
+            params = [[KeyValue('v', 'vehicle1'), KeyValue('d', 'data1')]]
             update_types = [
                 KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
             ]
@@ -176,34 +170,51 @@ class DemeterInterface(object):
 
     def knowledge_update(self, event):
         self.KB_update_waypoint()
+        self.KB_update_localization_error()
         
     def KB_update_waypoint(self):
-        # TODO: Check this function
         pred_names = list()
         params = list()
         update_types = list()
-        wp_arrived = list()
-        for i in range(self.number_of_vehicles):
-            wp_arrived.append(-1)     
+        wp_seq = self.demeter._current_wp  # demeter position in waypoint update
         
-        for vehicle_idx in range(self.number_of_vehicles):
-            wp_arrived[vehicle_idx] = self.demeter._current_wp[vehicle_idx]  # demeter position in waypoint update
-            if wp_arrived[vehicle_idx] != -1 and self.demeter_wp[vehicle_idx] != wp_arrived[vehicle_idx]:  # add current wp that demeter resides
+        if wp_seq != -1 and self.demeter_wp != wp_seq:  # add current wp that demeter resides
+            pred_names.append('at')
+            params.append(
+                [KeyValue('v', 'vehicle'),
+                 KeyValue('wp', 'wp%d' % wp_seq)])
+            update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+            if self.demeter_wp != -1:  # Remove previous wp that demeter resided
                 pred_names.append('at')
-                params.append(
-                    [KeyValue('v', 'vehicle'+str(vehicle_idx)),
-                    KeyValue('w', wp_arrived[vehicle_idx])])
+                params.append([
+                    KeyValue('v', 'vehicle1'),
+                    KeyValue('wp', 'wp%d' % self.demeter_wp)
+                ])
+                update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
+            self.demeter_wp = wp_seq
+
+    def KB_update_localization_error(self):
+        pred_names = list()
+        params = list()
+        update_types = list()
+        pred_names.append('localized')
+        params.append([KeyValue('v', 'vehicle1')])
+        if not self.verify_localization_errors:
+            update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        else:    
+            if self.demeter.localized:
                 update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-                if self.demeter_wp[vehicle_idx] != -1:  # Remove previous wp that demeter resided
-                    pred_names.append('at')
-                    params.append([
-                        KeyValue('v', 'vehicle1'),
-                        KeyValue('w', self.demeter_wp[vehicle_idx])
-                        ])
-                    update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
-                self.demeter_wp[vehicle_idx] = wp_arrived[vehicle_idx]
-        
-        
+            else:
+                update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
+
+    def verify_localization_errors_on(self):
+        self.verify_localization_errors = True
+        self.demeter.interface_verify_localization_errors_on()
+
+    def verify_localization_errors_off(self):
+        self.verify_localization_errors = False
+        self.demeter.interface_verify_localization_errors_off()
+
     def update_instances(self, ins_types, ins_names, update_types):   
         success = True
         for idx, ins_type in enumerate(ins_types):
@@ -249,18 +260,12 @@ class DemeterInterface(object):
         self._feedback_publisher.publish(feedback)         
 
     def move(self, dispatch_params, duration=rospy.Duration(60, 0)):
-        rospy.logwarn('Inside move function (rosplan_interface)')
         waypoint = -1
-        print('dispatch_params: ',str(dispatch_params))
         for param in dispatch_params:
-            if param.key == 'v':
-                vehicle_id=param.value
-                rospy.logwarn('vehicle_id: %s' % vehicle_id)
             if param.key == 'z': # to Waypoint z
-                waypoint = param.value
-                rospy.logwarn('param.value: %s' % param.value)
+                waypoint = int(param.value[2:])
                 break
-        response = self.demeter.do_move(vehicle_id, waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
+        response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
 
     def get_data(self, duration=rospy.Duration(60, 0)):

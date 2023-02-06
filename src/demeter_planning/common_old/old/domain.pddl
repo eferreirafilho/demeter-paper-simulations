@@ -2,7 +2,8 @@
     (:requirements :typing :fluents :durative-actions :duration-inequalities :negative-preconditions)
 
     (:types
-        vehicle waypoint data   
+        vehicle0 vehicle1 - vehicle
+        waypoint data - object   
     )
 
     (:predicates
@@ -13,6 +14,8 @@
         (is-at-surface ?w - waypoint)
         (data-sent ?d - data)
         (empty ?v - vehicle)
+        (localized ?v - vehicle)
+        (not-localized ?v - vehicle)
     )
     ; Action Move
     (:durative-action move
@@ -21,6 +24,8 @@
         :condition (and 
             (over all (can-move ?y ?z)) 
             (at start (at ?v ?y))
+            (at start (localized ?v))
+            (over all (localized ?v))
         )
         :effect (and 
             (at end (at ?v ?z))
@@ -36,6 +41,7 @@
             (at start (is-in ?d ?w))
             (over all (at ?v ?w))
             (at start (empty ?v))
+            (over all (localized ?v))
         )
         :effect (and 
             (at end (not (is-in ?d ?w)))
@@ -51,6 +57,7 @@
             (at start (is-at-surface ?w))
             (over all (at ?v ?w))
             (at start (carry ?v ?d))
+            (over all (localized ?v))
             )
         :effect (and 
             (at end (not (carry ?v ?d)))

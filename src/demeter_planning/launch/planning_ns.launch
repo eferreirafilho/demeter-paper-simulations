@@ -1,63 +1,71 @@
 <?xml version="1.0"?>
 <launch>
+<group ns="$(arg namespace)">
 
 	<!-- arguments -->
 	<arg name="domain_path"	default="$(find demeter_planning)/common/domain.pddl" />
+	<arg name="problem_path" default="$(find demeter_planning)/common/$(arg namespace)/problem_init.pddl" />
+	<!-- <arg name="problem_path" default="$(find demeter_planning)/common/problem.pddl" /> -->
 
 	<!-- populated problem (fixed predicates) -->
-	<node pkg="demeter_planning" type="init_populate_KB.py" name="init_populate_KB" output="screen"> 
+	<!-- <node pkg="demeter_planning" type="p_init.py" name="init_populate_KB" output="screen"> 
 		<rosparam file="$(find demeter_planning)/params/turbines_coordinates.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/get_data_allocation.yaml" command="load"/>
-	</node>
+	</node> -->
 
 	<!-- knowledge base -->
 	<node name="rosplan_knowledge_base" pkg="rosplan_knowledge_base" type="knowledgeBase" respawn="false" output="screen">
 		<param name="domain_path" value="$(arg domain_path)" />
-		<!-- <param name="problem_path" value="$(arg problem_path)" /> -->
+		<param name="problem_path" value="$(arg problem_path)" />
 		<!-- conditional planning flags -->
 		<param name="use_unknowns" value="false" />
 	</node>
 
+
 	<!-- problem generation -->
 	<include file="$(find rosplan_planning_system)/launch/includes/problem_interface.launch">
-		<arg name="knowledge_base"   value="rosplan_knowledge_base" />
+		<arg name="knowledge_base"   value="$(arg namespace)/rosplan_knowledge_base" />
 		<arg name="domain_path"      value="$(arg domain_path)" />
-		<arg name="problem_path"     value="$(find demeter_planning)/common/problem.pddl" />
+		<arg name="problem_path"     value="$(find demeter_planning)/common/$(arg namespace)/problem.pddl" />
 		<arg name="problem_topic"    value="problem_instance" />
 	</include>
  	
+	<!-- <remap from="/different_topic" to="/needed_topic"/> -->
+
 	<!-- planner interface -->
 	<include file="$(find rosplan_planning_system)/launch/includes/planner_interface.launch">
 		<arg name="use_problem_topic"    value="true" />
-		<arg name="problem_topic"        value="/rosplan_problem_interface/problem_instance" />
+		<arg name="problem_topic"        value="/$(arg namespace)/rosplan_problem_interface/problem_instance" />
 		<arg name="planner_topic"        value="planner_output" />
 		<arg name="domain_path"          value="$(arg domain_path)" />
-		<arg name="problem_path"         value="$(find demeter_planning)/common/problem.pddl" />
+		<arg name="problem_path"         value="$(find demeter_planning)/common/$(arg namespace)/problem.pddl" />
 		<arg name="data_path"            value="$(find demeter_planning)/common/" />
 		<!-- <arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/optic-cplex DOMAIN PROBLEM" /> -->
-		<arg name="planner_command"      value="timeout 5 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM" />
+		<arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM" />
 	</include> 
 
 	<!-- plan parsing -->
 	<include file="$(find rosplan_planning_system)/launch/includes/parsing_interface.launch">
 		<arg name="knowledge_base"   value="rosplan_knowledge_base" />
-		<arg name="planner_topic"    value="/rosplan_planner_interface/planner_output" />
+		<arg name="planner_topic"    value="rosplan_planner_interface/planner_output" />
 		<arg name="plan_topic"       value="complete_plan" />
 	</include>
 
 	<!-- plan dispatch -->
 	<include file="$(find rosplan_planning_system)/launch/includes/dispatch_interface.launch">
 		<arg name="knowledge_base"           value="rosplan_knowledge_base" />
-		<arg name="plan_topic"               value="/rosplan_parsing_interface/complete_plan" />
+		<arg name="plan_topic"               value="rosplan_parsing_interface/complete_plan" />
 		<arg name="action_dispatch_topic"    value="action_dispatch" />
 		<arg name="action_feedback_topic"    value="action_feedback" />
 	</include>
 
-	<!-- call planning server--> 
-	<node pkg="demeter_planning" type="get_data_mission_exec.py" name="rosplan_demeter_exec" output="screen">
+	<!-- call planning server -->
+	<!-- <node pkg="demeter_planning" type="get_data_mission_exec.py" name="rosplan_demeter_exec" output="screen"> -->
+	<node pkg="demeter_planning" type="exec_demeter.py" name="rosplan_demeter_exec" output="screen">
 		<rosparam file="$(find demeter_planning)/params/plan_wp.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/origin.yaml" command="load"/>
+		<param name="namespace" value="$(arg namespace)" />
 	</node>
 	
-
+</group>
 </launch>
