@@ -19,9 +19,13 @@ class ExecDemeter(object):
         rospy.loginfo('Executive started')
         rospy.sleep(2) # Wait for planning
         self.namespace = self.get_namespace()
-        # print(self.namespace)  
         self.demeter_rosplan_interface = DemeterInterface(demeter=DemeterActionInterface(namespace=self.namespace))
         self.mission_success = False
+        
+        rospy.sleep(2) # Wait for planning
+        
+        
+        # Plan
         self.rosplan_services()
         self._rate = rospy.Rate(update_frequency)
                

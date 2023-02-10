@@ -37,6 +37,7 @@ class DemeterActionInterface(object):
         self.target_wp = -1
         self.odom_pose = Odometry()
         self._rate = rospy.Rate(update_frequency)
+        self.waypoints_position = self.load_poi()
 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
@@ -59,30 +60,19 @@ class DemeterActionInterface(object):
         self.odom_pose = msg
 
     def load_wp_config_from_file(self):
-        waypoints = [rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/plan_wp_x"), rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/plan_wp_y"),rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/plan_wp_z")]
+        waypoints = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_z")]
         return waypoints
 
     def load_origin_from_file(self):
-        origin = [rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/origin_x"), rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/origin_y"),rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/origin_z")]
+        origin = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_z")]
         return origin
     
-    def load_turbines_coordinates(self):
-        turbines_coordinates = [rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/turbines_x"), rospy.get_param(str(self.namespace)+"/rosplan_demeter_exec/turbines_y")]
-        rospy.logwarn(turbines_coordinates)
-        return turbines_coordinates
-
-    def append_to_plan_wp(self,position):
-        self.waypoints_position=self.load_wp_config_from_file()
-        self.waypoints_position[0].append(float(round(position.x)))
-        self.waypoints_position[1].append(float(round(position.y)))
-        self.waypoints_position[2].append(float(round(position.z)))
-        rospy.set_param(str(self.namespace)+'/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[0])
-        rospy.set_param(str(self.namespace)+'/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[1])
-        rospy.set_param(str(self.namespace)+'/rosplan_demeter_exec/extended_plan_wp_x', self.waypoints_position[2])
-
+    def load_poi(self):
+        poi_coordinates = [rospy.get_param(str(self.namespace)+"init_populate_KB/poi_x"), rospy.get_param(str(self.namespace)+"init_populate_KB/poi_y"), rospy.get_param(str(self.namespace)+"init_populate_KB/poi_z")]
+        return poi_coordinates
+    
     def append_to_waypoint_position(self,position):
-        self.waypoints_position=self.load_wp_config_from_file()
-        rospy.logwarn(self.waypoints_position)
+        # self.waypoints_position=self.load_wp_config_from_file()
         self.waypoints_position[0].append(float(round(position[0])))
         self.waypoints_position[1].append(float(round(position[1])))
         self.waypoints_position[2].append(float(round(position[2])))
@@ -90,8 +80,8 @@ class DemeterActionInterface(object):
     def closer_wp(self,position):
         dist=[]
         closer_wp=[]
-        for i in range(len(self.waypoints_position[0])-1): # Don't compare with itself
-            dist_aux=sqrt((position.x - self.waypoints_position[0][i])**2+(position.y - self.waypoints_position[1][i])**2+(position.z - self.waypoints_position[2][i])**2)
+        for i in range(len(self.waypoints_position[0])): # Don't compare with itself
+            dist_aux=sqrt((position[0] - self.waypoints_position[0][i])**2+(position[1] - self.waypoints_position[1][i])**2+(position[2] - self.waypoints_position[2][i])**2)
             if dist_aux.real<dist:
                 dist=dist_aux.real
                 closer_wp=i
@@ -100,6 +90,8 @@ class DemeterActionInterface(object):
     def do_move(self, waypoint, duration=rospy.Duration()):
         self.wp_reached = -1
         start = rospy.Time.now()
+        rospy.logwarn('Moving to waypoint ' + str(waypoint))
+        
         self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
             self.publish_wp_cmd_pose_fixed_orientation(waypoint)
@@ -143,6 +135,7 @@ class DemeterActionInterface(object):
         self.get_init_position_param()
         self.append_to_waypoint_position(self.init_position)
         wp_set=[item[wp_index] for item in self.waypoints_position] # Get specified waypoint
+        rospy.logwarn('Setting target waypoint to: ' + str(wp_set))
         self.target_wp=wp_set
 
     def set_init_position_param(self, position):
@@ -153,15 +146,6 @@ class DemeterActionInterface(object):
 
     def update_wp_position(self,waypoint):
         wp = -1
-        # if not self.is_submerged():
-            # wp = 0 # Waypoint 0 is at the surface
-        # dist = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2+(self.odom_pose.pose.pose.position.y - self.target_wp[1])**2+(self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
-        # print(self.odom_pose.pose.pose.position.x)
-        # print(self.target_wp[0])
-        # print('dist:')
-        # print(dist_x)
-        # if dist.real < self.EPS_DISTANCE:
-
         dist_x = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2)
         dist_y = sqrt((self.odom_pose.pose.pose.position.y - self.target_wp[1])**2)
         dist_z = sqrt((self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
@@ -240,8 +224,6 @@ class DemeterActionInterface(object):
     def orientation_comparison(self,q1,q2):
         q1_inv=q1
         q1_inv.w=-q1_inv.w
-        print(q2)
-        print(q1_inv)
         qr = quaternion_multiply([q2.x,q2.y,q2.z,q2.w],[q1_inv.x,q1_inv.y,q1_inv.z,q1_inv.w])
         return qr
 

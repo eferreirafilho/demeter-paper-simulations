@@ -1,0 +1,87 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+
+  <world name="turbine_world">
+
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <!-- Bounding box with sea surface -->
+    <include>
+      <uri>model://ocean_auv</uri>
+      <pose>0 0 -0.95 0 0 0</pose>
+    </include>
+
+    <!-- Heightmap -->
+    <!-- <include>
+      <uri>model://sand_heightmap</uri>
+      <pose>0 0 -34 0 0 0</pose>
+    </include> -->
+
+    <!-- Turbine -->
+    <include>
+      <name>turbine1</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine2</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>0 50 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine3</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>50 0 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine4</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>0 -50 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine5</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>-50 0 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine6</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>-50 -50 0 0 0 0</pose>
+    </include>
+
+    <plugin name="underwater_current_plugin" filename="libuuv_underwater_current_ros_plugin.so">
+      <namespace>hydrodynamics</namespace>
+      <constant_current>
+        <topic>current_velocity</topic>
+        <velocity>
+          <mean>0</mean>
+          <min>0</min>
+          <max>0</max>
+          <mu>0.0</mu>
+          <noiseAmp>0.0</noiseAmp>
+        </velocity>
+
+        <horizontal_angle>
+          <mean>0</mean>
+          <min>-3.141592653589793238</min>
+          <max>3.141592653589793238</max>
+          <mu>0.0</mu>
+          <noiseAmp>0.0</noiseAmp>
+        </horizontal_angle>
+
+        <vertical_angle>
+          <mean>0</mean>
+          <min>-3.141592653589793238</min>
+          <max>3.141592653589793238</max>
+          <mu>0.0</mu>
+          <noiseAmp>0.0</noiseAmp>
+        </vertical_angle>
+      </constant_current>
+    </plugin>
+
+    <plugin name="sc_interface" filename="libuuv_sc_ros_interface_plugin.so"/>
+
+  </world>
+</sdf>

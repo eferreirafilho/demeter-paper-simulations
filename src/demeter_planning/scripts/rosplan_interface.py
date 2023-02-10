@@ -14,7 +14,7 @@ from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
                                         KnowledgeUpdateService,
                                         KnowledgeUpdateServiceRequest,
                                         KnowledgeQueryService)
-from interface import DemeterActionInterface
+from action_interface import DemeterActionInterface
 
 class DemeterInterface(object):
 
@@ -170,7 +170,6 @@ class DemeterInterface(object):
 
     def knowledge_update(self, event):
         self.KB_update_waypoint()
-        self.KB_update_localization_error()
         
     def KB_update_waypoint(self):
         pred_names = list()
@@ -192,28 +191,6 @@ class DemeterInterface(object):
                 ])
                 update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
             self.demeter_wp = wp_seq
-
-    def KB_update_localization_error(self):
-        pred_names = list()
-        params = list()
-        update_types = list()
-        pred_names.append('localized')
-        params.append([KeyValue('v', 'vehicle1')])
-        if not self.verify_localization_errors:
-            update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-        else:    
-            if self.demeter.localized:
-                update_types.append(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-            else:
-                update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
-
-    def verify_localization_errors_on(self):
-        self.verify_localization_errors = True
-        self.demeter.interface_verify_localization_errors_on()
-
-    def verify_localization_errors_off(self):
-        self.verify_localization_errors = False
-        self.demeter.interface_verify_localization_errors_off()
 
     def update_instances(self, ins_types, ins_names, update_types):   
         success = True
@@ -257,13 +234,19 @@ class DemeterInterface(object):
         feedback = ActionFeedback()
         feedback.action_id = action_id
         feedback.status = fbstatus
-        self._feedback_publisher.publish(feedback)         
+        self._feedback_publisher.publish(feedback)     
+        
+    def get_robot_position(self):
+        return self.demeter.get_position()
+    
+    def get_closer_waypoint(self):
+        return self.demeter.closer_wp(self.demeter.get_position())
 
     def move(self, dispatch_params, duration=rospy.Duration(60, 0)):
         waypoint = -1
         for param in dispatch_params:
             if param.key == 'z': # to Waypoint z
-                waypoint = int(param.value[2:])
+                waypoint = int(param.value[8:])
                 break
         response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
@@ -281,3 +264,5 @@ class DemeterInterface(object):
     def transmit_data(self, duration=rospy.Duration(60, 0)):
         response = self.demeter.do_transmit_data(duration)
         return response
+    
+    

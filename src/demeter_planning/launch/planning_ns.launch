@@ -6,7 +6,7 @@
 	<arg name="domain_path"	default="$(find demeter_planning)/common/domain.pddl" />
 	<arg name="problem_path" default="$(find demeter_planning)/common/$(arg namespace)/problem_init.pddl" />
 	<!-- <arg name="problem_path" default="$(find demeter_planning)/common/problem.pddl" /> -->
-
+	
 	
 	<!-- knowledge base -->
 	<node name="rosplan_knowledge_base" pkg="rosplan_knowledge_base" type="knowledgeBase" respawn="false" output="screen">
@@ -16,7 +16,6 @@
 		<param name="use_unknowns" value="false" />
 	</node>
 
-
 	<!-- problem generation -->
 	<include file="$(find rosplan_planning_system)/launch/includes/problem_interface.launch">
 		<arg name="knowledge_base"   value="$(arg namespace)/rosplan_knowledge_base" />
@@ -25,7 +24,11 @@
 		<arg name="problem_topic"    value="problem_instance" />
 	</include>
  	
-	<!-- <remap from="/different_topic" to="/needed_topic"/> -->
+	<!-- Set Initial Robot Position to Knowledge Base -->
+	<node pkg="demeter_planning" type="initial_waypoint.py" name="init_populate_KB" output="screen"> 
+		<rosparam file="$(find demeter_planning)/params/poi_coordinates.yaml" command="load"/>
+		<param name="namespace" value="$(arg namespace)" />
+	</node>
 
 	<!-- planner interface -->
 	<include file="$(find rosplan_planning_system)/launch/includes/planner_interface.launch">
@@ -59,7 +62,6 @@
 	<node pkg="demeter_planning" type="exec_demeter.py" name="rosplan_demeter_exec" output="screen">
 		<rosparam file="$(find demeter_planning)/params/plan_wp.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/origin.yaml" command="load"/>
-		<rosparam file="$(find demeter_planning)/params/turbines_coordinates.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/get_data_allocation.yaml" command="load"/>
 		<param name="namespace" value="$(arg namespace)" />
 	</node>

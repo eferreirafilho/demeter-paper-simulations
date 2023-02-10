@@ -1,9 +1,9 @@
 (define (problem task)
 (:domain d_tank)
 (:objects
-    vehicle0 - vehicle
     wp0 wp1 wp2 wp3 wp4 wp5 wp6 wp7 wp8 wp9 - waypoint
     data0 - data
+    vehicle0 - vehicle
 )
 (:init
     (can-move wp0 wp1)

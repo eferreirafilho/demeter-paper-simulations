@@ -1,0 +1,3 @@
+# The position of the turbines 
+turbines_x: [0, 0, 50, 0, -50, -50]
+turbines_y: [0, 50, 0, -50, 0, -50]
