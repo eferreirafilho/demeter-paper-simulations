@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-	<include file="$(find demeter_planning)/launch/planning0.launch"/>
-	<arg name="namespace" value="auv0"/>
-
-	<include file="$(find demeter_planning)/launch/planning1.launch"/>
-</launch>

@@ -23,7 +23,6 @@
         (been-at ?v - vehicle ?w - waypoint)
         (carry ?v - vehicle ?d - data)
         (at ?v - vehicle ?w - waypoint)
-        (is-submerging-point ?w - waypoint)
         (is-surfaced ?v - vehicle)
         (data-sent ?d - data)
         (empty ?v - vehicle)

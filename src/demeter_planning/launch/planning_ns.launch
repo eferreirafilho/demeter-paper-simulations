@@ -7,6 +7,12 @@
 	<arg name="problem_path" default="$(find demeter_planning)/common/$(arg namespace)/problem_init.pddl" />
 	<!-- <arg name="problem_path" default="$(find demeter_planning)/common/problem.pddl" /> -->
 	
+	<!-- Goal Allocation -->
+	<!-- <node pkg="demeter_planning" type="goal_allocation.py" name="goal_allocation" output="screen"> 
+		<rosparam file="$(find demeter_planning)/params/poi_coordinates.yaml" command="load"/>
+		<param name="namespace" value="$(arg namespace)" />
+	</node> -->
+
 	
 	<!-- knowledge base -->
 	<node name="rosplan_knowledge_base" pkg="rosplan_knowledge_base" type="knowledgeBase" respawn="false" output="screen">
@@ -27,6 +33,7 @@
 	<!-- Set Initial Robot Position to Knowledge Base -->
 	<node pkg="demeter_planning" type="initial_waypoint.py" name="init_populate_KB" output="screen"> 
 		<rosparam file="$(find demeter_planning)/params/poi_coordinates.yaml" command="load"/>
+		<rosparam file="$(find demeter_planning)/params/poi_connections.yaml" command="load"/>
 		<param name="namespace" value="$(arg namespace)" />
 	</node>
 

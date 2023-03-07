@@ -24,7 +24,6 @@ class ExecDemeter(object):
         
         rospy.sleep(2) # Wait for planning
         
-        
         # Plan
         self.rosplan_services()
         self._rate = rospy.Rate(update_frequency)

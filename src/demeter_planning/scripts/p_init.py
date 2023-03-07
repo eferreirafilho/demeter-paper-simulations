@@ -157,10 +157,6 @@ class InitProblem(object):
             
         except rospy.rospy.ServiceException:
             rospy.loginfo("Service problem generation call failed")
-
-    def allow_backwards_moviment(self):
-        self.add_can_move_backwards()
-        self.remove_can_move_surface()
     
 
 if __name__ == '__main__':
