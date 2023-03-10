@@ -68,7 +68,7 @@ class DemeterActionInterface(object):
         return origin
     
     def load_poi(self):
-        poi_coordinates = [rospy.get_param(str(self.namespace)+"init_populate_KB/poi_x"), rospy.get_param(str(self.namespace)+"init_populate_KB/poi_y"), rospy.get_param(str(self.namespace)+"init_populate_KB/poi_z")]
+        poi_coordinates = [rospy.get_param(str(self.namespace)+"populate_KB/poi_x"), rospy.get_param(str(self.namespace)+"populate_KB/poi_y"), rospy.get_param(str(self.namespace)+"populate_KB/poi_z")]
         return poi_coordinates
     
     def append_to_waypoint_position(self,position):
@@ -149,6 +149,7 @@ class DemeterActionInterface(object):
         dist_x = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2)
         dist_y = sqrt((self.odom_pose.pose.pose.position.y - self.target_wp[1])**2)
         dist_z = sqrt((self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
+        dist = (dist_x.real + dist_y.real + dist_z.real)
         if dist_x.real<self.EPS_DISTANCE and dist_y.real<self.EPS_DISTANCE and dist_z.real<self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
@@ -158,6 +159,7 @@ class DemeterActionInterface(object):
         rospy.loginfo_throttle(2,'self.target[0]: ' + str(self.target_wp[0]))
         rospy.loginfo_throttle(2,'self.target[1]: ' + str(self.target_wp[1]))
         rospy.loginfo_throttle(2,'self.target[2]: ' + str(self.target_wp[2]))
+        rospy.loginfo_throttle(2,'Distance to target: ' + str((dist.real,5)))
         
     def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      

@@ -13,6 +13,7 @@ from geometry_msgs.msg import Pose
 from action_interface import DemeterActionInterface
 import re
 import networkx as nx
+import matplotlib.pyplot as plt
 
 class InitWaypoint(object):
 
@@ -35,16 +36,57 @@ class InitWaypoint(object):
         self.build_reduced_graph()
         self.add_reduced_can_move()
         
+        self.draw_roadmap()
+        self.draw_weights()
+        self.draw_vehicle()
+        # self.draw_turbines_labels()
+        plt.show()
+        
+        # Mission test
+        self.add_goal_mission(self.allocated_goals[0])
+        
+    def draw_roadmap(self):
+        pos_dict = nx.get_node_attributes(self.G,'pos')
+        self.xy_pos = []
+        for key in pos_dict:
+            val = pos_dict[key][:2]
+            self.xy_pos.append(val)
+        nx.draw(self.G,pos=self.xy_pos,node_size=10,with_labels=True)
+        
+    def draw_weights(self):
+        labels=nx.get_edge_attributes(self.G,'weight')
+        rospy.logwarn(labels)
+        nx.draw_networkx_edge_labels(self.G,self.xy_pos,edge_labels=labels,font_size=5)
+        
+    def draw_vehicle(self):
+        pos = [self.position.x, self.position.y]
+        plt.plot(pos[0], pos[1], 'rs', markersize=10)
+
+    def add_goal_mission(self, goal):   
+        self.add_object('data'+str(goal),'data')
+        self.add_fact('is-in','data'+str(goal),'waypoint'+str(goal))
+        self.add_goal('data-sent', 'data'+str(goal))
+        
+    def print_turbine_dist_to_zero(self):
+        NUMBER_OF_TURBINES=60
+        for i in range(len(self.poi_position[0])):
+            if i<NUMBER_OF_TURBINES:
+                rospy.logwarn(i)
+                dist_to_zero = sqrt(self.poi_position[0][i]**2 + self.poi_position[1][i]**2)
+                rospy.logwarn(dist_to_zero)
+        
     def init_position_to_KB(self):
             self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
             self.add_fact('at','vehicle'+str(self.vehicle_id),'wp_init_auv'+str(self.vehicle_id)) # Real initial position
+            
+            # InitProblem.add_fact(self, 'at','vehicle'+str(self.vehicle_id),'wp_init_auv'+str(self.vehicle_id)) # Real initial position
             # Vehicle can move between initial position and closest waypoint
             self.add_fact('can-move', 'wp_init_auv'+str(self.vehicle_id), 'waypoint'+str(self.closer_wp)) # vehicle can move to its closer waypoint from initial waypoint
             dist=float(self.distance_to_closer_wp.real)
             self.update_functions('traverse-cost', [KeyValue('w', 'wp_init_auv'+str(self.vehicle_id)), KeyValue('w', 'waypoint'+str(self.closer_wp))], dist, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
 
     def poi_connections(self):
-        edges = [rospy.get_param(str(self.namespace)+"init_populate_KB/edges_i"), rospy.get_param(str(self.namespace)+"init_populate_KB/edges_j")]
+        edges = [rospy.get_param(str(self.namespace)+"populate_KB/edges_i"), rospy.get_param(str(self.namespace)+"populate_KB/edges_j")]
         return edges
     
     def build_graph(self):
@@ -55,7 +97,13 @@ class InitWaypoint(object):
         # Add edges from poi_connections param
         for i in range(len(self.roadmap_edges[0])):
             self.G.add_edge(self.roadmap_edges[0][i],self.roadmap_edges[1][i])
-        
+        # Add distances as weights
+        for u, v in self.G.edges():
+            x1, y1, z1 = self.G.node[u]['pos']
+            x2, y2, z2 = self.G.node[v]['pos']
+            dist = ((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) ** 0.5  # Euclidean distance formula for 3D space
+            self.G.edges[u, v]['weight'] = dist
+
     def get_shortest_path_subgraph(self, source, target):
         # Build a new graph using only the relevant POIs
         shortest_path = nx.shortest_path(self.G, source=source, target=target, weight='weight')
@@ -89,17 +137,21 @@ class InitWaypoint(object):
         for u, v in self.reduced_G.edges():
             self.add_fact('can-move', 'waypoint'+str(u), 'waypoint'+str(v))
             self.add_fact('can-move', 'waypoint'+str(v), 'waypoint'+str(u))
-            p1 = self.G.nodes[u]['pos']
-            p2 = self.G.nodes[v]['pos']
-            dist = sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+            dist = self.G.edges[u, v]['weight']
             self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(u)), KeyValue('w', 'waypoint'+str(v))], dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
             # Euclidean distance is the same. Will change when using directed weighted graphs
-            dist = sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+            dist = self.G.edges[u, v]['weight']
             self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(v)), KeyValue('w', 'waypoint'+str(u))], dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-            
     
     def load_allocation(self):
-        self.allocated_goals = rospy.get_param(self.namespace + 'goals_allocated')
+        # Load allocation of vehicles to goals from a goal allocation algorithm
+        try:
+            self.allocated_goals = rospy.get_param(self.namespace + 'goals_allocated')
+        except rospy.ROSException as e:
+            # Handle the exception
+            print("Error, goals not allocated: ", str(e))
+
+        
         rospy.logwarn(self.allocated_goals)
 
     def update_functions(self, func_name, params, func_values, update_type):
@@ -147,6 +199,19 @@ class InitWaypoint(object):
             resp = update_client(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed") 
+            
+    def add_goal(self,goal_fact, goal_obj):   
+        rospy.wait_for_service('rosplan_knowledge_base/update')
+        try:  
+            rospy.loginfo('Add Goal ' + goal_fact + ' ' + goal_obj)
+            update_client = rospy.ServiceProxy('rosplan_knowledge_base/update', KnowledgeUpdateService)
+            knowledge = KnowledgeItem()
+            knowledge.knowledge_type=KnowledgeItem.FACT
+            knowledge.attribute_name=goal_fact
+            knowledge.values.append(diagnostic_msgs.msg.KeyValue("d", goal_obj))     
+            resp = update_client(KnowledgeUpdateServiceRequest.ADD_GOAL, knowledge)
+        except rospy.ServiceException:
+            rospy.loginfo("Service call failed")  
 
     def remove_fact(self,*fact):
         rospy.wait_for_service('rosplan_knowledge_base/update')
@@ -162,6 +227,13 @@ class InitWaypoint(object):
             resp = update_client(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed") 
+            
+    def extract_number_from_string(self, string):
+        match = re.search(r'\d+', string)
+        if match:
+            return int(match.group())
+        else:
+            return None
 
     def problem_generation(self):
         rospy.loginfo("Waiting for problem generation service")
@@ -173,15 +245,8 @@ class InitWaypoint(object):
             
         except rospy.rospy.ServiceException:
             rospy.loginfo("Service problem generation call failed")
-            
-    def extract_number_from_string(self, string):
-        match = re.search(r'\d+', string)
-        if match:
-            return int(match.group())
-        else:
-            return None
 
 if __name__ == '__main__':
-    rospy.logwarn('Include Close Waypoint in KB')
-    rospy.init_node('init_position', anonymous=True)
+    rospy.logwarn('Populate KB for one vehicle, using its position')
+    rospy.init_node('populate_KB', anonymous=True)
     problem = InitWaypoint()
