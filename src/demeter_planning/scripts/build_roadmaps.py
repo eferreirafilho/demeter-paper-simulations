@@ -140,6 +140,7 @@ class BuildRoadmaps(object):
         scaled_voronoi_vertice_y = []
         scaled_countor_point_x = []
         scaled_countor_point_y = []
+        scaled_countor_point_related_to = []
         scaled_turbine_x = []
         scaled_turbine_y = []
         for i in range(len(self.G_with_turbines.nodes())):
@@ -150,16 +151,17 @@ class BuildRoadmaps(object):
             if node['description'] == 'countor_point':
                 scaled_countor_point_x.append(float(node['pos'][0]))
                 scaled_countor_point_y.append(float(node['pos'][1]))
+                # print(int(node['related_to']))
+                scaled_countor_point_related_to.append(int(node['related_to']))
             if node['description'] == 'turbine':
                 scaled_turbine_x.append(float(node['pos'][0]))
                 scaled_turbine_y.append(float(node['pos'][1]))
-        print(scaled_countor_point_x)
-        print(type(scaled_countor_point_x[0]))
         
         rospy.set_param('/build_roadmaps/scaled_voronoi_vertice_x', scaled_voronoi_vertice_x)
         rospy.set_param('/build_roadmaps/scaled_voronoi_vertice_y', scaled_voronoi_vertice_y)
         rospy.set_param('/build_roadmaps/scaled_countor_point_x', scaled_countor_point_x)
         rospy.set_param('/build_roadmaps/scaled_countor_point_y', scaled_countor_point_y)
+        rospy.set_param('/build_roadmaps/scaled_countor_point_related_to', scaled_countor_point_related_to)
         rospy.set_param('/build_roadmaps/scaled_turbine_x', scaled_turbine_x)
         rospy.set_param('/build_roadmaps/scaled_turbine_y', scaled_turbine_y)
                         

@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <launch>
 
-
 	<!-- Build Roadmap -->
 	<node pkg="demeter_planning" type="build_roadmaps.py" name="build_roadmaps" output="screen"> 
 		<rosparam file="$(find demeter_planning)/params/poi_coordinates.yaml" command="load"/>
@@ -13,7 +12,6 @@
 		<rosparam file="$(find demeter_planning)/params/poi_coordinates.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/get_data_allocation.yaml" command="load"/>
 	</node>
-
 
 
 </launch>
