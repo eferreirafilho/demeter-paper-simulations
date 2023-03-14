@@ -1,0 +1,300 @@
+  <include>
+    <name>turbine0</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>91.72767814388286 -177.42169065400694 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine1</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>80.86954778333231 -267.64028737247276 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine2</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>75.72622287570249 -64.86122446516687 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine3</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>64.98238862420979 -144.01527630306498 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine4</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>53.43848160930871 -231.68051651062942 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine5</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>43.38042401216653 -312.9623654409462 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine6</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>29.436298707037736 -390.62695931415226 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine7</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>62.582170333982944 55.78487067485676 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine8</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>51.266855537198424 -32.0931492419515 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine9</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>40.294429067590045 -111.67276049833237 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine10</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>28.064745398336697 -199.33800070589845 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine11</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>17.663799474020124 -278.06649312531385 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine12</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>5.662708022884203 -360.41224060183663 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine13</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>48.40945281073762 177.70764407033025 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine14</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>36.865545795836546 91.95742124593897 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine15</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>24.52156601752536 1.1004853997482413 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine16</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>13.663435656974812 -78.47912585663263 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine17</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>2.348120860190292 -164.22934868102226 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine18</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-8.281417282243709 -243.38340051892368 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine19</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-19.825324297145656 -329.13362334331333 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine20</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>30.922148124798383 285.5869566558519 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine21</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>20.97838663671402 212.3907366767204 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine22</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>9.548775730870801 124.29993705067159 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine23</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-2.1094273930881116 37.48581568007264 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine24</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-12.853261644580826 -43.79603325024247 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine25</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-23.825688114190072 -129.5462560746321 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine26</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-36.2839640015591 -211.67922384191434 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine27</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-47.142094362109646 -294.2377510276793 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine28</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>5.319819695708929 328.7812376319101 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine29</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-2.5666118293220848 240.47765829661904 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine30</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-16.739329352567424 154.94021518147161 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine31</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-27.826051931235384 70.89223003101458 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine32</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-38.56988618272811 -10.389618899300539 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine33</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-50.22808930668788 -97.84207939762442 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine34</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-61.771996321588944 -178.69836890945678 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine35</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-72.7444227911991 -262.3207946414311 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine36</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-20.625397060554022 366.86880558616707 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine37</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-32.28360018451468 281.1185827617774 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine38</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-43.25602665412393 188.3466295324119 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine39</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-53.542676469382656 104.08586467271431 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine40</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-64.4008068299332 23.655134579364688 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine41</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-75.25893719048463 -62.94620708199207 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine42</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-86.2313636600939 -145.29195455851485 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine43</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-97.08949402064533 -231.46773680138887 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine44</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-57.65733639548668 312.39720002030236 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine45</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-70.22990839191354 223.02972213880207 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine46</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-80.17366987999702 140.68397466228092 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine47</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-90.11743136808047 56.42320980258169 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine48</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-100.97556172863105 -28.05033476635972 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine49</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-111.83369208918245 -114.01333729999155 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine50</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-121.54886135914938 -199.97633983362337 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine51</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-99.14682398369689 259.6278321283703 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine52</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-109.43347379895474 175.15428755943051 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine53</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-118.80575474174643 90.89352269973129 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine54</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-128.63522012077118 6.632757840032077 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine55</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-138.9218699360308 -77.62800701966714 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine56</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-147.8369664425876 -156.78205885756526 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine57</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-135.72157888239474 210.05015987506124 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine58</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-146.00822869765346 124.0871573414294 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine59</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-156.2948785129122 41.52863015566443 0 0 0 0</pose>
+  </include>

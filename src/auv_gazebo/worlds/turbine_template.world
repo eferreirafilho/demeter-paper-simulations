@@ -12,31 +12,15 @@
       <uri>model://ocean_auv</uri>
       <pose>0 0 -0.95 0 0 0</pose>
     </include>
-  <include>
-    <name>turbine0</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-130.78876437757614 -128.6096239375312 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine1</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-149.74755033117503 -264.77661767928646 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine2</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-158.72802788814397 41.27796966951646 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine3</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-177.48724767381128 -78.18929842466338 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine4</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-197.6434306350058 -210.50250932466878 0 0 0 0</pose>
-  </include>
+
+    <!-- Heightmap -->
+    <!-- <include>
+      <uri>model://sand_heightmap</uri>
+      <pose>0 0 -34 0 0 0</pose>
+    </include> -->
+
+    <!-- Turbines -->
+  
     <plugin name="underwater_current_plugin" filename="libuuv_underwater_current_ros_plugin.so">
       <namespace>hydrodynamics</namespace>
       <constant_current>
@@ -68,4 +52,6 @@
     </plugin>
 
     <plugin name="sc_interface" filename="libuuv_sc_ros_interface_plugin.so"/>
-</world></sdf>
+
+  </world>
+</sdf>
