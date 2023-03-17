@@ -14,6 +14,7 @@ from action_interface import DemeterActionInterface
 import re
 import networkx as nx
 import matplotlib.pyplot as plt
+from build_roadmaps import BuildRoadmaps
 
 class InitWaypoint(object):
 
@@ -26,19 +27,17 @@ class InitWaypoint(object):
         self.position = action_interface_object.get_position()
         action_interface_object.set_init_position_param(self.position)  
         self.closer_wp = action_interface_object.closer_wp([self.position.x, self.position.y, self.position.z])
-        self.poi_position = action_interface_object.load_poi()
+        self.build_graph()
         closer_wp_position = [self.poi_position[0][self.closer_wp],  self.poi_position[1][self.closer_wp], self.poi_position[2][self.closer_wp]]
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
         self.init_position_to_KB()
-        self.roadmap_edges = self.poi_connections()
-        self.build_graph()
         self.load_allocation()
         self.build_reduced_graph()
         self.add_reduced_can_move()
         
-        self.draw_roadmap()
-        self.draw_weights()
-        self.draw_vehicle()
+        # self.draw_roadmap()
+        # self.draw_weights()
+        # self.draw_vehicle()
         # self.draw_turbines_labels()
         plt.show()
         
@@ -55,7 +54,6 @@ class InitWaypoint(object):
         
     def draw_weights(self):
         labels=nx.get_edge_attributes(self.G,'weight')
-        rospy.logwarn(labels)
         nx.draw_networkx_edge_labels(self.G,self.xy_pos,edge_labels=labels,font_size=5)
         
     def draw_vehicle(self):
@@ -70,10 +68,8 @@ class InitWaypoint(object):
     def print_turbine_dist_to_zero(self):
         NUMBER_OF_TURBINES=60
         for i in range(len(self.poi_position[0])):
-            if i<NUMBER_OF_TURBINES:
-                rospy.logwarn(i)
+            if i < NUMBER_OF_TURBINES:
                 dist_to_zero = sqrt(self.poi_position[0][i]**2 + self.poi_position[1][i]**2)
-                rospy.logwarn(dist_to_zero)
         
     def init_position_to_KB(self):
             self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
@@ -85,62 +81,86 @@ class InitWaypoint(object):
             dist=float(self.distance_to_closer_wp.real)
             self.update_functions('traverse-cost', [KeyValue('w', 'wp_init_auv'+str(self.vehicle_id)), KeyValue('w', 'waypoint'+str(self.closer_wp))], dist, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
 
-    def poi_connections(self):
-        edges = [rospy.get_param(str(self.namespace)+"populate_KB/edges_i"), rospy.get_param(str(self.namespace)+"populate_KB/edges_j")]
-        return edges
-    
     def build_graph(self):
-        self.G = nx.Graph()
-        # Add nodes from poi_coordinates param
-        for i in range(len(self.poi_position[0])):
-            self.G.add_node(i, pos = (self.poi_position[0][i], self.poi_position[1][i], self.poi_position[2][i]))
-        # Add edges from poi_connections param
-        for i in range(len(self.roadmap_edges[0])):
-            self.G.add_edge(self.roadmap_edges[0][i],self.roadmap_edges[1][i])
+        Roadmap = BuildRoadmaps()
+        self.scaled_G = Roadmap.build_and_scale_roadmap()
+        # Remove all turbine nodes
+        turbine_nodes = [n for n, attrs in self.scaled_G.nodes(data=True) if attrs['description'] == 'turbine']
+        self.scaled_G.remove_nodes_from(turbine_nodes)
+        self.poi_position = Roadmap.get_poi_from_graph()
+
+        if nx.is_connected(self.scaled_G):
+            rospy.logwarn('Graph is connected, ok!')
+        else:
+            rospy.logwarn('Graph is not connected, create another roadmap!')
+
+        node_pos=nx.get_node_attributes(self.scaled_G,'pos') 
         # Add distances as weights
-        for u, v in self.G.edges():
-            x1, y1, z1 = self.G.node[u]['pos']
-            x2, y2, z2 = self.G.node[v]['pos']
-            dist = ((x2 - x1) ** 2 + (y2 - y1) ** 2 + (z2 - z1) ** 2) ** 0.5  # Euclidean distance formula for 3D space
-            self.G.edges[u, v]['weight'] = dist
-
-    def get_shortest_path_subgraph(self, source, target):
+        for u, v in self.scaled_G.edges():
+            x1, y1 = node_pos[int(u)]
+            x2, y2 = node_pos[int(v)]
+            dist = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
+            self.scaled_G.edges[u, v]['weight'] = dist
+            self.scaled_G.edges[v, u]['weight'] = dist
+            
+    def get_shortest_path_subgraph(self, source, target_turbine):
         # Build a new graph using only the relevant POIs
-        shortest_path = nx.shortest_path(self.G, source=source, target=target, weight='weight')
+        countor_points = []
+        # find all nodes with description 'countor_point'
+        for node, data in self.scaled_G.nodes(data=True):
+            if data['description'] == 'countor_point':
+                countor_points.append(node)
+        
+        # find the shortest path from node 'source' to the closest countor point of target turbine
+        shortest_path = None
+        min_distance = float('inf')
 
+        for countor_point in countor_points:
+            # check if the countor point is related to the target turbine
+            if self.scaled_G.nodes[countor_point]['related_to'] == target_turbine:
+                # compute the shortest path from node 'source' to this countor point
+                path = nx.dijkstra_path(self.scaled_G, source, countor_point, weight='weight')
+                distance = nx.dijkstra_path_length(self.scaled_G, source, countor_point, weight='weight')
+                # update the shortest path if this path is shorter
+                if distance < min_distance:
+                    shortest_path = path
+                    min_distance = distance
+        
         # Extract the subgraph consisting of nodes in the shortest path
         subgraph_nodes = set(shortest_path)
         subgraph_edges = [(shortest_path[i], shortest_path[i+1]) for i in range(len(shortest_path)-1)]
-        shortest_path_subgraph = self.G.subgraph(subgraph_nodes).edge_subgraph(subgraph_edges)
+        shortest_path_subgraph = self.scaled_G.subgraph(subgraph_nodes).edge_subgraph(subgraph_edges)
         return shortest_path_subgraph
     
     def build_reduced_graph(self):
         combined_pois = []
         combined_pois.extend(self.allocated_goals)
-        combined_pois.append(self.closer_wp)
-        rospy.logwarn('combined_pois')   
-        rospy.logwarn(combined_pois)   
+        # combined_pois.append(self.closer_wp)
         self.reduced_G = nx.Graph()
         
-        # Create subgraphs for every pair of POI
+        # Create subgraphs for every pair of turbine in the allocated goals
         for poi_i in combined_pois:
             for poi_j in combined_pois:
                 if poi_i != poi_j:
                     partial_subgraph = self.get_shortest_path_subgraph(int(poi_i), int(poi_j))
                     self.reduced_G.add_nodes_from(partial_subgraph.nodes())
                     self.reduced_G.add_edges_from(partial_subgraph.edges())
-        rospy.logwarn(self.reduced_G.nodes())
-        rospy.logwarn(self.reduced_G.edges())
+                    
+        # Create subgraphs from vehicle's closer waypoint to every turbine in the allocated goals
+        for poi_i in combined_pois:
+                    partial_subgraph = self.get_shortest_path_subgraph(int(self.closer_wp), int(poi_i))
+                    self.reduced_G.add_nodes_from(partial_subgraph.nodes())
+                    self.reduced_G.add_edges_from(partial_subgraph.edges())
     
     def add_reduced_can_move(self):
         # Add can-move and traverse-cost only of relevant POI
         for u, v in self.reduced_G.edges():
             self.add_fact('can-move', 'waypoint'+str(u), 'waypoint'+str(v))
             self.add_fact('can-move', 'waypoint'+str(v), 'waypoint'+str(u))
-            dist = self.G.edges[u, v]['weight']
+            dist = self.scaled_G.edges[u, v]['weight']
             self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(u)), KeyValue('w', 'waypoint'+str(v))], dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
             # Euclidean distance is the same. Will change when using directed weighted graphs
-            dist = self.G.edges[u, v]['weight']
+            dist = self.scaled_G.edges[v, u]['weight']
             self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(v)), KeyValue('w', 'waypoint'+str(u))], dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
     
     def load_allocation(self):
@@ -150,9 +170,6 @@ class InitWaypoint(object):
         except rospy.ROSException as e:
             # Handle the exception
             print("Error, goals not allocated: ", str(e))
-
-        
-        rospy.logwarn(self.allocated_goals)
 
     def update_functions(self, func_name, params, func_values, update_type):
         self.mutex.acquire()

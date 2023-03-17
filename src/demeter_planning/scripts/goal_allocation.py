@@ -4,15 +4,17 @@ import math
 import rospy
 from action_interface import DemeterActionInterface
 from nav_msgs.msg import Odometry
-
+from build_roadmaps import BuildRoadmaps
+import networkx as nx
 
 class Allocation(object):
   def __init__(self):
     NUMBER_OF_TURBINES = 60
     self.load_get_data_allocation_parameters()
+    self.build_graph()
     self.goals = []
     for sensor in self.data_idx:
-      self.goals.append([self.poi_coordinates[0][sensor], self.poi_coordinates[1][sensor]])
+      self.goals.append([self.turbines_coordinates[0][sensor], self.turbines_coordinates[1][sensor]])
       if sensor >= NUMBER_OF_TURBINES:
         rospy.logwarn('Position of sensor out of turbine farm range!')
         
@@ -38,7 +40,22 @@ class Allocation(object):
   def load_get_data_allocation_parameters(self):
     self.vehicle_idx = rospy.get_param("/goal_allocation/vehicle_idx")
     self.data_idx = rospy.get_param("/goal_allocation/data_idx")
-    self.poi_coordinates = rospy.get_param("/goal_allocation/poi_x"), rospy.get_param("/goal_allocation/poi_y") 
+    # self.poi_coordinates = rospy.get_param("/goal_allocation/poi_x"), rospy.get_param("/goal_allocation/poi_y") 
+    
+  def build_graph(self):
+    Roadmap = BuildRoadmaps()
+    G = Roadmap.build_and_scale_roadmap()
+    # Remove all nodes that aren't turbines
+    not_turbine_nodes = [n for n, attrs in G.nodes(data=True) if attrs['description'] != 'turbine']
+    G.remove_nodes_from(not_turbine_nodes)
+    rospy.logwarn(not_turbine_nodes)
+    #  extract the 'pos' attribute values for all nodes
+    pos_dict = nx.get_node_attributes(G, 'pos')
+    # extract the X and Y coordinates separately into two lists
+    x_coords = [pos_dict[node][0] for node in G.nodes()]
+    y_coords = [pos_dict[node][1] for node in G.nodes()]
+    # combine the X and Y coordinate lists into a list of coordinate pairs
+    self.turbines_coordinates = [x_coords, y_coords]
             
   def euclidean_distance(self, point1, point2):
     """Returns the Euclidean distance between two points."""
@@ -101,13 +118,13 @@ class Allocation(object):
     return ranked_solution[0]
   
   def find_index(self, point):
-    x_index = self.poi_coordinates[0].index(point[0])
-    y_index = self.poi_coordinates[1].index(point[1])
+    x_index = self.turbines_coordinates[0].index(point[0])
+    y_index = self.turbines_coordinates[1].index(point[1])
 
     if x_index == y_index:
       point_index = x_index
     else:
-      print('point not in poi_coordinates')
+      print('point not in turbines_coordinates')
     return point_index
   
   def run_genetic_algorithm(self, POPULATION, MUTATION_RATE, N_GENERATIONS):
@@ -122,8 +139,8 @@ if __name__ == '__main__':
   rospy.spin
   
   POPULATION = 10000
-  MUTATION_RATE = 0.5
-  N_GENERATIONS = 500
+  MUTATION_RATE = 0.1
+  N_GENERATIONS = 700
   
   goal_allocation = Allocation()
   goal_allocation._wait(6)   

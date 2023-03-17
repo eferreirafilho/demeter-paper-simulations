@@ -25,8 +25,6 @@
  	
 	<!-- Set Initial Robot Position to Knowledge Base -->
 	<node pkg="demeter_planning" type="populate_KB.py" name="populate_KB" output="screen"> 
-		<rosparam file="$(find demeter_planning)/params/poi_coordinates.yaml" command="load"/>
-		<rosparam file="$(find demeter_planning)/params/poi_connections.yaml" command="load"/>
 		<param name="namespace" value="$(arg namespace)" />
 	</node>
 

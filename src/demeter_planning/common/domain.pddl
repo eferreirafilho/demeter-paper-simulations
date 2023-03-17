@@ -4,7 +4,7 @@
     (:requirements :typing :fluents :timed-initial-literals :equality :preferences :constraints :durative-actions :duration-inequalities)
 
     (:types
-        vehicle waypoint data vortex tide
+        vehicle waypoint data vortex tide turbine
     )
 
     (:functions
@@ -29,6 +29,9 @@
         (recharging ?v - vehicle)
         (vortex-data-measured ?vx - vortex)
         (tide-low ?td - tide)
+        (cable-localized ?tu - turbine)
+        (at-turbine ?v - vehicle ?tu - turbine)
+        (is-turbine-wp ?w - waypoint ?tu - turbine)
     )
     ;define actions here
     (:durative-action move
@@ -47,11 +50,29 @@
             (at start (decrease (battery-amount ?v) (traverse-cost ?y ?z)))
             )
     )
+
+    ;define actions here
+    (:durative-action localize-cable
+        :parameters (?v - vehicle ?w - waypoint ?tu - turbine)
+        :duration(= ?duration 5)
+        :condition (and 
+            (at start (at ?v ?w))
+            (over all (is-turbine-wp ?w ?tu))
+            (at start (>= (battery-amount ?v) 5))
+            (over all (is-surfaced ?v))
+        )
+        :effect (and 
+            (at end (cable-localized ?tu))
+            (at start (decrease (battery-amount ?v) 5))
+        )
+    )
     
     (:durative-action submerge-mission
-        :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide)
+        :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
         :duration(= ?duration 1)
         :condition (and 
+            (over all (cable-localized ?tu))
+            (over all (is-turbine-wp ?w ?tu))
             (over all (tide-low ?td))
             (over all (is-in ?d ?w))
             (over all (at ?v ?w))
@@ -65,7 +86,7 @@
             (at start (decrease (battery-amount ?v) 70))
             (at start (not (is-surfaced ?v)))
             (at end (is-surfaced ?v))
-    )
+        )
     )
     (:durative-action measure-vortex
         :parameters (?v - vehicle ?vx - vortex ?w - waypoint)

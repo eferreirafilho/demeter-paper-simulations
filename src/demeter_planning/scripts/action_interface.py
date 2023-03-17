@@ -7,6 +7,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist
 from std_msgs.msg import Float32
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
+from build_roadmaps import BuildRoadmaps
 
 class DemeterActionInterface(object):
 
@@ -18,7 +19,6 @@ class DemeterActionInterface(object):
     SUBMERGED_Z = 0.4 # Z Distance we consider that vehicle is on surface
     SUBMERGED_Z_CMD = 0.2 # Z Distance we send vehicle to surface
     EPS_ANGLE = 1 # Distance (degrees) we consider that a desired angle is achieved
-
 
     def __init__(self, namespace, update_frequency=10.):
         """
@@ -37,8 +37,8 @@ class DemeterActionInterface(object):
         self.target_wp = -1
         self.odom_pose = Odometry()
         self._rate = rospy.Rate(update_frequency)
-        self.waypoints_position = self.load_poi()
-
+        self.waypoints_position = self.build_graph_get_waypoints()
+        
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
         # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10)#REAL ROBOT
@@ -67,9 +67,20 @@ class DemeterActionInterface(object):
         origin = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_z")]
         return origin
     
-    def load_poi(self):
-        poi_coordinates = [rospy.get_param(str(self.namespace)+"populate_KB/poi_x"), rospy.get_param(str(self.namespace)+"populate_KB/poi_y"), rospy.get_param(str(self.namespace)+"populate_KB/poi_z")]
-        return poi_coordinates
+    # def load_poi(self):
+    #     scaled_poi_x = rospy.get_param("/build_roadmaps/scaled_poi_x")
+    #     scaled_poi_y = rospy.get_param("/build_roadmaps/scaled_poi_y")
+    #     self.Z_POI_DISTANCE = 0.5
+    #     poi_coordinates = [scaled_poi_x, scaled_poi_y, [self.Z_POI_DISTANCE]*len(scaled_poi_y)]
+    #     return poi_coordinates
+    
+    def build_graph_get_waypoints(self):
+        Roadmap = BuildRoadmaps()
+        Roadmap.build_and_scale_roadmap()
+        waypoints_aux = Roadmap.get_poi_from_graph()
+        # Z_POI_DISTANCE = -0.5
+        # waypoints_aux.append([Z_POI_DISTANCE]*len(waypoints_aux[0]))
+        return waypoints_aux
     
     def append_to_waypoint_position(self,position):
         # self.waypoints_position=self.load_wp_config_from_file()
@@ -77,9 +88,18 @@ class DemeterActionInterface(object):
         self.waypoints_position[1].append(float(round(position[1])))
         self.waypoints_position[2].append(float(round(position[2])))
 
-    def closer_wp(self,position):
-        dist=[]
-        closer_wp=[]
+    def closer_wp(self, position):
+        dist = float('inf')
+        closer_wp = None
+        # rospy.logwarn('self.waypoints_positions')
+        # rospy.logwarn(len(self.waypoints_position))
+        # rospy.logwarn(type(self.waypoints_position))
+        # rospy.logwarn(self.waypoints_position)
+        
+        # rospy.logwarn('position')
+        # rospy.logwarn(position)
+        # rospy.logwarn(type(position))
+        
         for i in range(len(self.waypoints_position[0])): # Don't compare with itself
             dist_aux=sqrt((position[0] - self.waypoints_position[0][i])**2+(position[1] - self.waypoints_position[1][i])**2+(position[2] - self.waypoints_position[2][i])**2)
             if dist_aux.real<dist:

@@ -9,7 +9,7 @@ import numpy as np
 class BuildRoadmaps(object):
 
     def __init__(self):
-        rospy.logdebug('Build Roadmaps')
+        rospy.logwarn('Build Roadmaps')
             
     def load_turbines_xy(self):
         self.NUMBER_OF_TURBINES_CONSIDERED=5
@@ -58,7 +58,10 @@ class BuildRoadmaps(object):
         # Add edges to the graph, corresponding to the Voronoi ridges
         for ridge in self.voronoi_construction.ridge_vertices:
             if all(index >= 0 for index in ridge):
-                self.G.add_edge(*ridge)
+                u, v = ridge
+                self.G.add_edge(u, v)
+                self.G.add_edge(v, u)
+                # self.G.add_edge(*ridge)
         
     def add_contour_points_to_graph(self):
         for turbine in range(len(self.turbines_xy[0])):
@@ -72,6 +75,7 @@ class BuildRoadmaps(object):
             # Add edges between countour points
             for i in range(len(countor_point_node_index)):
                 self.G.add_edge(countor_point_node_index[i], countor_point_node_index[(i+1)%len(countor_point_node_index)])
+                self.G.add_edge(countor_point_node_index[(i+1)%len(countor_point_node_index)],countor_point_node_index[i])
             # Add edges from each Voronoi vertice to the closer countor point            
             for v in voronoi_region:
                 dist = float('inf')
@@ -83,6 +87,7 @@ class BuildRoadmaps(object):
                         closer_countor = p_idx
                 if closer_countor is not None:  # check for closer_countor being None
                     self.G.add_edge(v, countor_point_node_index[closer_countor])
+                    self.G.add_edge(countor_point_node_index[closer_countor], v)
                     
     def scale_graph(self):
         self.G_with_turbines = self.G.copy()
@@ -91,6 +96,11 @@ class BuildRoadmaps(object):
         self.normalized_poi = self.normalize_around_zero(nx.get_node_attributes(self.G_with_turbines, 'pos'))
         nx.set_node_attributes(self.G_with_turbines, self.normalized_poi, 'pos')
         
+    def get_scaled_graph(self):
+        G = nx.Graph()
+        G = self.G_with_turbines.copy()
+        return G
+    
     def plot_scaled_points(self):
         fig, ax = plt.subplots()
         for i in range(len(self.G_with_turbines.nodes())):
@@ -101,7 +111,6 @@ class BuildRoadmaps(object):
                 ax.scatter(node['pos'][0], node['pos'][1], color='gray')
             if node['description'] == 'turbine':
                 ax.scatter(node['pos'][0], node['pos'][1], color='blue')
-
         ax.legend()
         plt.show()
             
@@ -135,36 +144,40 @@ class BuildRoadmaps(object):
             normalized_dict[i] = np.array([x, y])
         return normalized_dict
 
-    def set_normalized_poi_to_rosparam(self):
-        scaled_voronoi_vertice_x = []
-        scaled_voronoi_vertice_y = []
-        scaled_countor_point_x = []
-        scaled_countor_point_y = []
-        scaled_countor_point_related_to = []
-        scaled_turbine_x = []
-        scaled_turbine_y = []
-        for i in range(len(self.G_with_turbines.nodes())):
-            node = self.G_with_turbines.nodes[i] 
-            if node['description'] == 'voronoi_vertice':
-                scaled_voronoi_vertice_x.append(float(node['pos'][0]))
-                scaled_voronoi_vertice_y.append(float(node['pos'][1]))
-            if node['description'] == 'countor_point':
-                scaled_countor_point_x.append(float(node['pos'][0]))
-                scaled_countor_point_y.append(float(node['pos'][1]))
-                # print(int(node['related_to']))
-                scaled_countor_point_related_to.append(int(node['related_to']))
-            if node['description'] == 'turbine':
-                scaled_turbine_x.append(float(node['pos'][0]))
-                scaled_turbine_y.append(float(node['pos'][1]))
-        
-        rospy.set_param('/build_roadmaps/scaled_voronoi_vertice_x', scaled_voronoi_vertice_x)
-        rospy.set_param('/build_roadmaps/scaled_voronoi_vertice_y', scaled_voronoi_vertice_y)
-        rospy.set_param('/build_roadmaps/scaled_countor_point_x', scaled_countor_point_x)
-        rospy.set_param('/build_roadmaps/scaled_countor_point_y', scaled_countor_point_y)
-        rospy.set_param('/build_roadmaps/scaled_countor_point_related_to', scaled_countor_point_related_to)
-        rospy.set_param('/build_roadmaps/scaled_turbine_x', scaled_turbine_x)
-        rospy.set_param('/build_roadmaps/scaled_turbine_y', scaled_turbine_y)
-                        
+    def build_and_scale_roadmap(self):
+        print('Build and Scale Roadmap')
+        self.load_turbines_xy()
+        self.load_corners_xy()
+        self.build_voronoi()
+        self.build_graph_from_voronoi()
+        self.add_contour_points_to_graph()
+        self.scale_graph()    
+        scaled_G_with_turbines = nx.Graph()
+        scaled_G_with_turbines = self.get_scaled_graph()
+        self.scaled_G = nx.Graph()
+        self.scaled_G = scaled_G_with_turbines.copy()
+        print('self.scaled_G nodes')
+        print(self.scaled_G.nodes())
+        return self.scaled_G
+    
+    def get_poi_from_graph(self):
+        G = nx.Graph()
+        G = self.scaled_G.copy()
+        # Remove turbine nodes
+        turbine_nodes = [n for n, attrs in G.nodes(data=True) if attrs['description'] == 'turbine']
+        G.remove_nodes_from(turbine_nodes)
+        # extract the 'pos' attribute values for all nodes
+        pos_dict = nx.get_node_attributes(G, 'pos')
+        # extract the X and Y coordinates separately into two lists
+        x_coords = [pos_dict[node][0] for node in G.nodes()]
+        y_coords = [pos_dict[node][1] for node in G.nodes()]
+        # combine the X and Y coordinate lists into a list of coordinate pairs
+        poi_coordinates = [x_coords, y_coords]
+        # Add distance to surface
+        Z_POI_DISTANCE = -0.5
+        poi_coordinates.append([Z_POI_DISTANCE]*len(poi_coordinates[0]))
+        return poi_coordinates
+
     def create_turbines_world(self):
         turbines_x = []
         turbines_y = []
@@ -248,14 +261,15 @@ if __name__ == '__main__':
     Roadmap.build_voronoi()
     Roadmap.build_graph_from_voronoi()
     Roadmap.add_contour_points_to_graph()
-    # Roadmap.draw_graph()
+    
+    Roadmap.draw_graph()
+    
     if nx.is_connected(Roadmap.G):
-        rospy.logwarn('Graph is connected, ok!')  # True
+        rospy.logwarn('Graph is connected, ok!')
     else:
-        rospy.logwarn('Graph is not connected, create another roadmap!')  # True
+        rospy.logwarn('Graph is not connected, create another roadmap!')
     
     Roadmap.scale_graph()    
-    # Roadmap.plot_scaled_points()
+    Roadmap.plot_scaled_points()
 
     Roadmap.create_turbines_world()
-    Roadmap.set_normalized_poi_to_rosparam()
