@@ -36,16 +36,24 @@
 		<arg name="domain_path"          value="$(arg domain_path)" />
 		<arg name="problem_path"         value="$(find demeter_planning)/common/$(arg namespace)/problem.pddl" />
 		<arg name="data_path"            value="$(find demeter_planning)/common/$(arg namespace)" />
-		<!-- <arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/optic-cplex DOMAIN PROBLEM" /> -->
-		<arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM" />
+		<!-- <arg name="planner_command"      value="timeout 30 $(find rosplan_planning_system)/common/bin/optic-cplex DOMAIN PROBLEM" /> -->
+		<arg name="planner_command"      value="timeout 60 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM" />
 	</include> 
 
 	<!-- plan parsing -->
-	<include file="$(find rosplan_planning_system)/launch/includes/parsing_interface.launch">
-		<arg name="knowledge_base"   value="$(arg namespace)/rosplan_knowledge_base" />
-		<arg name="planner_topic"    value="/$(arg namespace)/rosplan_planner_interface/planner_output" />
-		<arg name="plan_topic"       value="complete_plan" />
-	</include>
+	<!-- <include file="$(find rosplan_planning_system)/launch/includes/parsing_interface.launch"> -->
+		<!-- <arg name="knowledge_base"   value="$(arg namespace)/rosplan_knowledge_base" /> -->
+		<!-- <arg name="planner_topic"    value="/$(arg namespace)/rosplan_planner_interface/planner_output" /> -->
+		<!-- <arg name="plan_topic"       value="complete_plan" /> -->
+	<!-- </include> -->
+
+	<!-- plan parsing (esterel) -->
+	<node name="rosplan_parsing_interface" pkg="rosplan_planning_system" type="pddl_esterel_plan_parser" respawn="false" output="screen">
+		<param name="knowledge_base" value="$(arg namespace)/rosplan_knowledge_base" />
+    	<!-- <param name="epsilon_time"   value="$(arg epsilon_time)" /> -->
+		<param name="planner_topic"  value="/$(arg namespace)/rosplan_planner_interface/planner_output"/>
+		<param name="plan_topic"     value="complete_plan" />
+	</node>
 
 	<!-- plan dispatch -->
 	<include file="$(find rosplan_planning_system)/launch/includes/dispatch_interface.launch">

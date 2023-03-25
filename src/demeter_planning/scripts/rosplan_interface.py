@@ -85,12 +85,21 @@ class DemeterInterface(object):
         duration = rospy.Duration(msg.duration)
         # Parse action message
         if msg.name == 'move':
+            rospy.logwarn('msg.name = move')
             self._action(msg, self.move, [msg.parameters, duration])
-        if msg.name == 'get_data':
-            self._action(msg, self.get_data, [msg.parameters, duration])
-        if msg.name == 'transmit_data':
+        if msg.name == 'submerge-mission':
+            rospy.logwarn('msg.name = submerge-mission')
+            self._action(msg, self.submerge_mission, [msg.parameters, duration])
+        if msg.name == 'transmit-data':
+            rospy.logwarn('msg.name = transmit-data')
             self._action(msg, self.transmit_data, [duration])
-                
+        if msg.name == 'recharge':
+            rospy.logwarn('msg.name = recharge')
+            self._action(msg, self.recharge, [duration])
+        if msg.name == 'localize-cable':
+            rospy.logwarn('msg.name = localize-cable')
+            self._action(msg, self.localize_cable, [duration])
+            
     def _action(self, action_dispatch, action_func, action_params=list()):
         self.current_action_id=action_dispatch.action_id
         print(self.current_action_id)
@@ -251,18 +260,27 @@ class DemeterInterface(object):
         response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
 
-    def get_data(self, dispatch_params, duration=rospy.Duration(60, 0)):
+    def submerge_mission(self, dispatch_params, duration=rospy.Duration(60, 0)):
         data_location = -1
         for param in dispatch_params:
             if param.key == 'd': # from Data d
                 data_location = int(param.value[4:])
                 break
             rospy.logwarn(param)
-        response = self.demeter.do_get_data(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
+        response = self.demeter.do_submerge_mission(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
         return response
     
     def transmit_data(self, duration=rospy.Duration(60, 0)):
         response = self.demeter.do_transmit_data(duration)
         return response
+    
+    def recharge(self, duration=rospy.Duration(60, 0)):
+        response = self.demeter.do_recharge(duration)
+        return response
+    
+    def localize_cable(self, duration=rospy.Duration(60, 0)):
+        response = self.demeter.do_localize_cable(duration)
+        return response
+    
     
     

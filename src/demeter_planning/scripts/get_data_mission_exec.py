@@ -82,10 +82,10 @@ class DemeterExec(object):
         rospy.logwarn(response)
             
         if response.goal_achieved:
-           rospy.loginfo('Mission Succeed')
+           rospy.loginfo('Executive Mission Succeed')
            self.mission_success=True
         else:
-           rospy.logwarn('Mission Failed')
+           rospy.logwarn('Executive Mission Failed')
            self.mission_success=False
         return response.goal_achieved
 

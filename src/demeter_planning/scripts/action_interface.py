@@ -67,13 +67,6 @@ class DemeterActionInterface(object):
         origin = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_z")]
         return origin
     
-    # def load_poi(self):
-    #     scaled_poi_x = rospy.get_param("/build_roadmaps/scaled_poi_x")
-    #     scaled_poi_y = rospy.get_param("/build_roadmaps/scaled_poi_y")
-    #     self.Z_POI_DISTANCE = 0.5
-    #     poi_coordinates = [scaled_poi_x, scaled_poi_y, [self.Z_POI_DISTANCE]*len(scaled_poi_y)]
-    #     return poi_coordinates
-    
     def build_graph_get_waypoints(self):
         Roadmap = BuildRoadmaps()
         Roadmap.build_and_scale_roadmap()
@@ -125,12 +118,12 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION
         return response
     
-    def do_get_data(self, data_location, duration=rospy.Duration()):
-        rospy.logdebug('Interface: \'Get Data\' Action')
+    def do_submerge_mission(self, data_location, duration=rospy.Duration()):
+        rospy.logdebug('Interface: \'Submerge Mission\' Action')
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             self._rate.sleep()
-            completion_percentage = 'Getting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            completion_percentage = 'Submerge mission: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
         rospy.loginfo('Data acquired!')
@@ -147,6 +140,32 @@ class DemeterActionInterface(object):
             rospy.loginfo_throttle(1,completion_percentage)
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
         rospy.loginfo('Data transmitted!')
+        if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
+            response = self.OUT_OF_DURATION        
+        return response
+    
+    def do_recharge(self, duration=rospy.Duration()):
+        rospy.logdebug('Interface: Mock \'Recharge\' Action')
+        start = rospy.Time.now()
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+            self._rate.sleep()
+            completion_percentage = 'Recharging ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            rospy.loginfo_throttle(1,completion_percentage)
+        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+        rospy.loginfo('Recharged!')
+        if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
+            response = self.OUT_OF_DURATION        
+        return response
+    
+    def do_localize_cable(self, duration=rospy.Duration()):
+        rospy.logdebug('Interface: Mock \'Localize\' Action')
+        start = rospy.Time.now()
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+            self._rate.sleep()
+            completion_percentage = 'Localizing ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            rospy.loginfo_throttle(1,completion_percentage)
+        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+        rospy.loginfo('Localizing!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
@@ -173,13 +192,13 @@ class DemeterActionInterface(object):
         if dist_x.real<self.EPS_DISTANCE and dist_y.real<self.EPS_DISTANCE and dist_z.real<self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        rospy.loginfo_throttle(2,'Distance to target X: ' + str((dist_x.real,5)))
-        rospy.loginfo_throttle(2,'Distance to target Y: ' + str((dist_y.real,5)))
-        rospy.loginfo_throttle(2,'Distance to target Z: ' + str((dist_z.real,5)))
-        rospy.loginfo_throttle(2,'self.target[0]: ' + str(self.target_wp[0]))
-        rospy.loginfo_throttle(2,'self.target[1]: ' + str(self.target_wp[1]))
-        rospy.loginfo_throttle(2,'self.target[2]: ' + str(self.target_wp[2]))
-        rospy.loginfo_throttle(2,'Distance to target: ' + str((dist.real,5)))
+        # rospy.loginfo_throttle(2,'Distance to target X: ' + str((dist_x.real,5)))
+        # rospy.loginfo_throttle(2,'Distance to target Y: ' + str((dist_y.real,5)))
+        # rospy.loginfo_throttle(2,'Distance to target Z: ' + str((dist_z.real,5)))
+        # rospy.loginfo_throttle(2,'self.target[0]: ' + str(self.target_wp[0]))
+        # rospy.loginfo_throttle(2,'self.target[1]: ' + str(self.target_wp[1]))
+        # rospy.loginfo_throttle(2,'self.target[2]: ' + str(self.target_wp[2]))
+        rospy.loginfo_throttle(5,'Distance to target: ' + str((dist.real,5)))
         
     def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      
