@@ -112,15 +112,15 @@
     )
 
     (:durative-action transmit-data
-        :parameters (?v - vehicle ?d - data ?w - waypoint ?tu - turbine)
-        :duration (= ?duration 0.1)
+        :parameters (?v - vehicle ?d - data ?w - waypoint)
+        :duration (= ?duration 20)
         :condition (and 
             (at start (carry ?v ?d))
             (at start (> (battery-amount ?v) 10))
             (over all (is-surfaced ?v)))
         
         :effect (and 
-            (at end (is-in ?d ?tu))
+            ; (at end (is-in ?d ?tu))
             (at end (not (carry ?v ?d)))
             (at end (data-sent ?d))
             (at end (empty ?v))     

@@ -15,6 +15,7 @@ from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
                                         KnowledgeUpdateServiceRequest,
                                         KnowledgeQueryService)
 from action_interface import DemeterActionInterface
+import threading
 
 class DemeterInterface(object):
 
@@ -80,26 +81,32 @@ class DemeterInterface(object):
             update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
         succeed = self.update_predicates(predicate_names, parameters, update_types)
         return succeed
+    import threading
 
     def _dispatch_cb(self, msg):
         duration = rospy.Duration(msg.duration)
         # Parse action message
         if msg.name == 'move':
             rospy.logwarn('msg.name = move')
-            self._action(msg, self.move, [msg.parameters, duration])
+            self._action_threaded(msg, self.move, [msg.parameters, duration])
         if msg.name == 'submerge-mission':
             rospy.logwarn('msg.name = submerge-mission')
-            self._action(msg, self.submerge_mission, [msg.parameters, duration])
+            self._action_threaded(msg, self.submerge_mission, [msg.parameters, duration])
         if msg.name == 'transmit-data':
             rospy.logwarn('msg.name = transmit-data')
-            self._action(msg, self.transmit_data, [duration])
+            self._action_threaded(msg, self.transmit_data, [duration])
         if msg.name == 'recharge':
             rospy.logwarn('msg.name = recharge')
-            self._action(msg, self.recharge, [duration])
+            self._action_threaded(msg, self.recharge, [duration])
         if msg.name == 'localize-cable':
             rospy.logwarn('msg.name = localize-cable')
-            self._action(msg, self.localize_cable, [duration])
-            
+            self._action_threaded(msg, self.localize_cable, [duration])
+
+    def _action_threaded(self, action_dispatch, action_func, action_params=list()):
+        # Create a new thread for the action function
+        action_thread = threading.Thread(target=self._action, args=[action_dispatch, action_func, action_params])
+        action_thread.start()
+
     def _action(self, action_dispatch, action_func, action_params=list()):
         self.current_action_id=action_dispatch.action_id
         print(self.current_action_id)
@@ -108,18 +115,19 @@ class DemeterInterface(object):
         duration = rospy.Duration(action_dispatch.duration)
         self._rate.sleep()
         rospy.loginfo('Dispatching %s action at %s with duration %s ...' %(action_dispatch.name, str(start_time.secs), str(duration.to_sec())))   
-        
+            
         if action_func(*action_params) == self.demeter.ACTION_SUCCESS:
             if self._apply_operator_effect(action_dispatch.name,action_dispatch.parameters):
                 self.publish_feedback(action_dispatch.action_id,ActionFeedback.ACTION_SUCCEEDED_TO_GOAL_STATE)
             else:
                 self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
-                rospy.logwarn('Action Failed')
+                rospy.logwarn('Action Failed, action_id: ' + str(action_dispatch.action_id) + ' action_name: ' + str(action_dispatch.name) + ' action_dispatch.parameters: ' + str(action_dispatch.parameters))
                 self.cancel_plan()
         else:
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
-            rospy.logwarn('Action Failed - Timeout')
+            rospy.logwarn('Action Failed - Timeout, action_id: ' + str(action_dispatch.action_id) + ' action_name: ' + str(action_dispatch.name) + ' action_dispatch.parameters: ' + str(action_dispatch.parameters))
             self.cancel_plan()
+
 
     def cancel_plan(self):
         _cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'/rosplan_plan_dispatcher/cancel_dispatch', Empty)

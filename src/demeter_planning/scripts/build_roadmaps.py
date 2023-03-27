@@ -12,7 +12,7 @@ class BuildRoadmaps(object):
         rospy.logwarn('Build Roadmaps')
             
     def load_turbines_xy(self):
-        self.NUMBER_OF_TURBINES_CONSIDERED=5
+        self.NUMBER_OF_TURBINES_CONSIDERED=10
         turbines_xy = rospy.get_param("/build_roadmaps/turbines_x"), rospy.get_param("/build_roadmaps/turbines_y")
         first_n_turbines = (turbines_xy[0][:self.NUMBER_OF_TURBINES_CONSIDERED], turbines_xy[1][:self.NUMBER_OF_TURBINES_CONSIDERED]) # To reduce number of turbines in gazebo
         self.turbines_xy = self.convert_minutes_to_km(first_n_turbines)
@@ -123,7 +123,7 @@ class BuildRoadmaps(object):
             points[i] = [x, y]
         return points
     
-    def normalize_around_zero(self, vector_nodes, lower_bound=-250, upper_bound=250):
+    def normalize_around_zero(self, vector_nodes, lower_bound=-125, upper_bound=125):
         vector_nodes = np.array(list(vector_nodes.values()))
         x_vals = [x for x, y in vector_nodes]
         y_vals = [y for x, y in vector_nodes]
@@ -134,9 +134,10 @@ class BuildRoadmaps(object):
         x_centroid = (x_min + x_max) / 2
         y_centroid = (y_min + y_max) / 2
 
-        SHIFT_TO_THE_RIGHT = 100
+        SHIFT_TO_THE_RIGHT = 120
+        SHIFT_UP = 20
         normalized_x = [(x - x_centroid) / (x_range / 2) * (upper_bound - lower_bound) + (upper_bound + lower_bound) / 2 + SHIFT_TO_THE_RIGHT for x in x_vals]
-        normalized_y = [(y - y_centroid) / (y_range / 2) * (upper_bound - lower_bound) + (upper_bound + lower_bound) / 2 for y in y_vals]
+        normalized_y = [(y - y_centroid) / (y_range / 2) * (upper_bound - lower_bound) + (upper_bound + lower_bound) / 2 + SHIFT_UP for y in y_vals]
 
         # create a new dictionary with the same keys as the input and the normalized values
         normalized_dict = {}
