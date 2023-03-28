@@ -31,6 +31,7 @@
         (cable-localized ?tu - turbine)
         (is-turbine-wp ?w - waypoint ?tu - turbine)
         (not-recharging ?v - vehicle)
+        (idle ?v - vehicle)
 )
     ;define actions here
     (:durative-action move
@@ -48,27 +49,27 @@
             (at start (not (at ?v ?y)))
             (at start (decrease (battery-amount ?v) (traverse-cost ?y ?z)))
             (at end (increase (battery-amount ?v) (* ?duration (recharge-rate ?v))))
-            ; (at start (not-recharging ?v))
-            ; (at end (not (not-recharging ?v)))
+            (at start (not (idle ?v)))
+            (at end (idle ?v))
             )
     )
 
     ;define actions here
     (:durative-action localize-cable
         :parameters (?v - vehicle ?w - waypoint ?tu - turbine)
-        :duration(= ?duration 5)
+        :duration(= ?duration 15)
         :condition (and 
             (at start (at ?v ?w))
             (over all (is-turbine-wp ?w ?tu))
-            (at start (>= (battery-amount ?v) 5))
+            (at start (>= (battery-amount ?v) 15))
             (over all (is-surfaced ?v))
         )
         :effect (and 
             (at end (cable-localized ?tu))
-            (at start (decrease (battery-amount ?v) 5))
+            (at start (decrease (battery-amount ?v) 15))
             (at end (increase (battery-amount ?v) (* ?duration (recharge-rate ?v))))
-            ; (at start (not-recharging ?v))
-            ; (at end (not (not-recharging ?v)))
+            (at start (not (idle ?v)))
+            (at end (idle ?v))
         )
     )
     
@@ -82,20 +83,22 @@
             (over all (is-in ?d ?tu))
             (over all (at ?v ?w))
             (at start (empty ?v))
-            (at start (>= (battery-amount ?v) 70))
+            (at start (>= (battery-amount ?v) 80))
         )
         :effect (and 
             (at end (not (is-in ?d ?tu)))
             (at end (carry ?v ?d))
             (at end (not (empty ?v)))
-            (at start (decrease (battery-amount ?v) 70))
+            (at start (decrease (battery-amount ?v) 80))
             (at start (not (is-surfaced ?v)))
             (at end (is-surfaced ?v))
+            (at start (not (idle ?v)))
+            (at end (idle ?v))
         )
     )
     (:durative-action measure-vortex
         :parameters (?v - vehicle ?vx - vortex ?w - waypoint)
-        :duration(= ?duration 0.5)
+        :duration(= ?duration 1)
         :condition (and
             (at start (is-in-vortex ?vx ?w))
             (over all (at ?v ?w))
@@ -108,6 +111,8 @@
             (at end (is-surfaced ?v))
             (at end (vortex-data-measured ?vx))
             (at end (increase (total-missions-completed) 1))
+            (at start (not (idle ?v)))
+            (at end (idle ?v))
     )
     )
 
@@ -116,7 +121,7 @@
         :duration (= ?duration 20)
         :condition (and 
             (at start (carry ?v ?d))
-            (at start (> (battery-amount ?v) 10))
+            (at start (> (battery-amount ?v) 50))
             (over all (is-surfaced ?v)))
         
         :effect (and 
@@ -124,24 +129,27 @@
             (at end (not (carry ?v ?d)))
             (at end (data-sent ?d))
             (at end (empty ?v))     
-            (at start (decrease (battery-amount ?v) 10))
+            (at start (decrease (battery-amount ?v) 50))
             (at end (increase (battery-amount ?v) (* ?duration (recharge-rate ?v))))
             ; (at start (not-recharging ?v))
             ; (at end (not (not-recharging ?v)))
             (at end (increase (total-missions-completed) 100))
+            (at start (not (idle ?v)))
+            (at end (idle ?v))
             )
     )
-    (:durative-action recharge
-        :parameters (?v - vehicle ?w - waypoint)
+    (:durative-action wait-to-recharge
+        :parameters (?v - vehicle)
         :duration 
             (= ?duration
-                (/ (- 100 (battery-amount ?v)) (recharge-rate ?v))
+                (/ (- 100 (battery-amount ?v)) (recharge-rate-dedicated ?v))
                 )
         :condition (and 
             (over all (is-surfaced ?v))
-            (over all (at ?v ?w))
+            ; (over all (at ?v ?w))
             (at start (< (battery-amount ?v) 100))
             ; (over all (not-recharging ?v))
+            (over all (idle ?v))
         )
         :effect (and
             (at end (increase (battery-amount ?v) (* ?duration (recharge-rate-dedicated ?v))))

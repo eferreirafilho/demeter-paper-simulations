@@ -95,9 +95,9 @@ class DemeterInterface(object):
         if msg.name == 'transmit-data':
             rospy.logwarn('msg.name = transmit-data')
             self._action_threaded(msg, self.transmit_data, [duration])
-        if msg.name == 'recharge':
-            rospy.logwarn('msg.name = recharge')
-            self._action_threaded(msg, self.recharge, [duration])
+        if msg.name == 'wait-to-recharge':
+            rospy.logwarn('msg.name = wait-to-recharge')
+            self._action_threaded(msg, self.wait_to_recharge, [duration])
         if msg.name == 'localize-cable':
             rospy.logwarn('msg.name = localize-cable')
             self._action_threaded(msg, self.localize_cable, [duration])
@@ -282,8 +282,8 @@ class DemeterInterface(object):
         response = self.demeter.do_transmit_data(duration)
         return response
     
-    def recharge(self, duration=rospy.Duration(60, 0)):
-        response = self.demeter.do_recharge(duration)
+    def wait_to_recharge(self, duration=rospy.Duration(60, 0)):
+        response = self.demeter.do_wait_to_recharge(duration)
         return response
     
     def localize_cable(self, duration=rospy.Duration(60, 0)):

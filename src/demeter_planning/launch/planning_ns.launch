@@ -24,7 +24,7 @@
 	</include>
  	
 	<!-- Set Initial Robot Position to Knowledge Base -->
-	<node pkg="demeter_planning" type="populate_KB.py" name="populate_KB" output="screen"> 
+	<node pkg="demeter_planning" type="create_problem_instance.py" name="create_problem_instance" output="screen"> 
 		<param name="namespace" value="$(arg namespace)" />
 	</node>
 
@@ -64,7 +64,6 @@
 	</include>
 
 	<!-- call planning server -->
-	<!-- <node pkg="demeter_planning" type="get_data_mission_exec.py" name="rosplan_demeter_exec" output="screen"> -->
 	<node pkg="demeter_planning" type="exec_demeter.py" name="rosplan_demeter_exec" output="screen">
 		<rosparam file="$(find demeter_planning)/params/plan_wp.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/origin.yaml" command="load"/>

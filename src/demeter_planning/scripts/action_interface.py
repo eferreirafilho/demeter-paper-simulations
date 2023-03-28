@@ -71,8 +71,6 @@ class DemeterActionInterface(object):
         Roadmap = BuildRoadmaps()
         Roadmap.build_and_scale_roadmap()
         waypoints_aux = Roadmap.get_poi_from_graph()
-        # Z_POI_DISTANCE = -0.5
-        # waypoints_aux.append([Z_POI_DISTANCE]*len(waypoints_aux[0]))
         return waypoints_aux
     
     def append_to_waypoint_position(self,position):
@@ -144,12 +142,12 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
-    def do_recharge(self, duration=rospy.Duration()):
-        rospy.logdebug('Interface: Mock \'Recharge\' Action')
+    def do_wait_to_recharge(self, duration=rospy.Duration()):
+        rospy.logdebug('Interface: Mock \'wait-to-recharge \' Action')
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             self._rate.sleep()
-            completion_percentage = 'Recharging ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            completion_percentage = 'Waiting to Recharge ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
         rospy.loginfo('Recharged!')

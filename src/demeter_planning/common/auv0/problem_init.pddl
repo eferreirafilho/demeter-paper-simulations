@@ -29,12 +29,12 @@
 
     (tide-low currenttide)
 
-    (= (battery-amount vehicle0) 100)
+    (= (battery-amount vehicle0) 10)
     
-    (= (speed vehicle0) 1000)
+    (= (speed vehicle0) 100)
 
-    (= (recharge-rate vehicle0) 10)
-    (= (recharge-rate-dedicated vehicle0) 20)
+    (= (recharge-rate vehicle0) 0.1)
+    (= (recharge-rate-dedicated vehicle0) 10)
 
    
 

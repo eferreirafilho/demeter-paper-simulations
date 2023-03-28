@@ -31,10 +31,10 @@
 
     (= (battery-amount vehicle1) 100)
     
-    (= (speed vehicle1) 1000)
+    (= (speed vehicle1) 100)
 
-    (= (recharge-rate vehicle1) 10)
-    (= (recharge-rate-dedicated vehicle1) 20)
+    (= (recharge-rate vehicle1) 0.01)
+    (= (recharge-rate-dedicated vehicle1) 10)
 
    
 

@@ -20,7 +20,7 @@ class InitWaypoint(object):
 
     mutex = Lock()
     def __init__(self):
-        rospy.logwarn('Populating KB with robots initial position')
+        rospy.logwarn('Create Problem - Populating KB with robots initial position and goals')
         self.namespace = rospy.get_namespace()
         self.vehicle_id = self.extract_number_from_string(self.namespace)
         action_interface_object = DemeterActionInterface(self.namespace)
@@ -45,11 +45,10 @@ class InitWaypoint(object):
         plt.show()
         
         # Get all allocated goals
-        for goal in self.allocated_goals:
-            self.add_goal_mission(goal)
-            
+        # for goal in self.allocated_goals:
+            # self.add_goal_mission(goal)
         
-        # self.add_goal_mission(self.allocated_goals[0])
+        self.add_goal_mission(self.allocated_goals[0])
         
         
         

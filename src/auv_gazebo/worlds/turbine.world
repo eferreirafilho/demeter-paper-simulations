@@ -15,52 +15,27 @@
   <include>
     <name>turbine0</name>
     <uri> model://turbine_rotor</uri>
-    <pose>-3.0079132031473677 -31.374913897243985 0 0 0 0</pose>
+    <pose>4.605617811211928 -44.304811968765605 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine1</name>
     <uri> model://turbine_rotor</uri>
-    <pose>-10.976414285965006 -93.17847090965692 0 0 0 0</pose>
+    <pose>-4.873775165587517 -112.38830883964323 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine2</name>
     <uri> model://turbine_rotor</uri>
-    <pose>-14.75096743045799 45.73376926211047 0 0 0 0</pose>
+    <pose>-9.364013944071985 40.63898483475823 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine3</name>
     <uri> model://turbine_rotor</uri>
-    <pose>-22.63558955450955 -8.49010622991144 0 0 0 0</pose>
+    <pose>-18.74362383690564 -19.09464921233169 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine4</name>
     <uri> model://turbine_rotor</uri>
-    <pose>-31.107364389926175 -68.54450596838721 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine5</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-38.488712761378736 -124.226012522024 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine6</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-48.7219457308924 -177.42954627091615 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine7</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-24.397047688605994 128.3814504555965 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine8</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-32.70106460648984 68.1812876109579 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine9</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-40.7534446480735 13.665885906613678 0 0 0 0</pose>
+    <pose>-28.821715317502907 -85.25125466233439 0 0 0 0</pose>
   </include>
     <plugin name="underwater_current_plugin" filename="libuuv_underwater_current_ros_plugin.so">
       <namespace>hydrodynamics</namespace>

@@ -12,7 +12,7 @@ class BuildRoadmaps(object):
         rospy.logwarn('Build Roadmaps')
             
     def load_turbines_xy(self):
-        self.NUMBER_OF_TURBINES_CONSIDERED=10
+        self.NUMBER_OF_TURBINES_CONSIDERED=5
         turbines_xy = rospy.get_param("/build_roadmaps/turbines_x"), rospy.get_param("/build_roadmaps/turbines_y")
         first_n_turbines = (turbines_xy[0][:self.NUMBER_OF_TURBINES_CONSIDERED], turbines_xy[1][:self.NUMBER_OF_TURBINES_CONSIDERED]) # To reduce number of turbines in gazebo
         self.turbines_xy = self.convert_minutes_to_km(first_n_turbines)
