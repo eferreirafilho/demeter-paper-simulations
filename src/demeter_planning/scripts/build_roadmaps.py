@@ -190,8 +190,11 @@ class BuildRoadmaps(object):
                 turbines_y.append(node['pos'][1])
         
         # Combine the X and Y coordinates into pairs
-        coordinates = list(zip(turbines_x, turbines_y))
-        # Open the output file for writing
+        self.coordinates = list(zip(turbines_x, turbines_y))
+        self.define_turbines_in_world_launch()
+        self.set_scaled_turbines_as_ros_parameters()
+        
+    def define_turbines_in_world_launch(self):
         with open("/home/edson/ws_demeter_rosplan/src/auv_gazebo/worlds/turbine.world", "w") as file:
             # Write header
             file.write('<?xml version="1.0" ?>\n')
@@ -209,7 +212,7 @@ class BuildRoadmaps(object):
             file.write('      <pose>0 0 -0.95 0 0 0</pose>\n')
             file.write('    </include>\n')
             # Write turbines
-            for i, (x, y) in enumerate(coordinates):
+            for i, (x, y) in enumerate(self.coordinates):
                 if i<self.NUMBER_OF_TURBINES_CONSIDERED:
                     file.write("  <include>\n")
                     file.write("    <name>turbine" + str(i) + "</name>\n")
@@ -247,6 +250,11 @@ class BuildRoadmaps(object):
             file.write('    <plugin name="sc_interface" filename="libuuv_sc_ros_interface_plugin.so"/>\n')
             file.write('</world>')
             file.write('</sdf>')
+            
+    def set_scaled_turbines_as_ros_parameters(self):
+        coordinates_float = [(float(x), float(y)) for x, y in self.coordinates]
+        rospy.set_param('/build_roadmaps/scaled_turbine_coordinates', coordinates_float)
+    
 
     def draw_graph(self):
         nx.draw(self.G, nx.get_node_attributes(self.G, 'pos'), node_size=10,with_labels=True)
@@ -263,7 +271,7 @@ if __name__ == '__main__':
     Roadmap.build_graph_from_voronoi()
     Roadmap.add_contour_points_to_graph()
     
-    Roadmap.draw_graph()
+    # Roadmap.draw_graph()
     
     if nx.is_connected(Roadmap.G):
         rospy.logwarn('Graph is connected, ok!')
@@ -271,6 +279,6 @@ if __name__ == '__main__':
         rospy.logwarn('Graph is not connected, create another roadmap!')
     
     Roadmap.scale_graph()    
-    Roadmap.plot_scaled_points()
+    # Roadmap.plot_scaled_points()
 
     Roadmap.create_turbines_world()

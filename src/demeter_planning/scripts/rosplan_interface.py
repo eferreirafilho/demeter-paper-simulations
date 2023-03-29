@@ -100,7 +100,7 @@ class DemeterInterface(object):
             self._action_threaded(msg, self.wait_to_recharge, [duration])
         if msg.name == 'localize-cable':
             rospy.logwarn('msg.name = localize-cable')
-            self._action_threaded(msg, self.localize_cable, [duration])
+            self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
 
     def _action_threaded(self, action_dispatch, action_func, action_params=list()):
         # Create a new thread for the action function
@@ -286,8 +286,13 @@ class DemeterInterface(object):
         response = self.demeter.do_wait_to_recharge(duration)
         return response
     
-    def localize_cable(self, duration=rospy.Duration(60, 0)):
-        response = self.demeter.do_localize_cable(duration)
+    def localize_cable(self, dispatch_params, duration=rospy.Duration(60, 0)):
+        for param in dispatch_params:
+            if param.key == 'tu': # to Waypoint z
+                rospy.logwarn(param.value)
+                turbine = param.value[7:]
+                break
+        response = self.demeter.do_localize_cable(turbine, duration)
         return response
     
     

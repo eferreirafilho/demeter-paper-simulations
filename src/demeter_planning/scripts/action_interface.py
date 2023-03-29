@@ -4,7 +4,7 @@ from random import randint
 from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped, Quaternion, Twist
+from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
 from std_msgs.msg import Float32
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 from build_roadmaps import BuildRoadmaps
@@ -16,8 +16,8 @@ class DemeterActionInterface(object):
     ACTION_SUCCESS = 1
     ACTION_FAIL = 0
     EPS_DISTANCE = 0.2 # Distance we consider that vehicle is at a waypoint
-    SUBMERGED_Z = 0.4 # Z Distance we consider that vehicle is on surface
-    SUBMERGED_Z_CMD = 0.2 # Z Distance we send vehicle to surface
+    SUBMERGED_Z = -1.5 # Z Distance we consider that vehicle is on surface
+    SUBMERGED_Z_CMD = -1 # Z Distance we send vehicle to surface
     EPS_ANGLE = 1 # Distance (degrees) we consider that a desired angle is achieved
 
     def __init__(self, namespace, update_frequency=10.):
@@ -59,7 +59,7 @@ class DemeterActionInterface(object):
     def _pose_gt_cb(self, msg):
         self.odom_pose = msg
 
-    def load_wp_config_from_file(self):
+    def load_submerge_wp_from_param(self):
         waypoints = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_z")]
         return waypoints
 
@@ -68,31 +68,22 @@ class DemeterActionInterface(object):
         return origin
     
     def build_graph_get_waypoints(self):
-        Roadmap = BuildRoadmaps()
-        Roadmap.build_and_scale_roadmap()
-        waypoints_aux = Roadmap.get_poi_from_graph()
+        self.Roadmap = BuildRoadmaps()
+        self.Roadmap.build_and_scale_roadmap()
+        waypoints_aux = self.Roadmap.get_poi_from_graph()
         return waypoints_aux
     
-    def append_to_waypoint_position(self,position):
-        # self.waypoints_position=self.load_wp_config_from_file()
-        self.waypoints_position[0].append(float(round(position[0])))
-        self.waypoints_position[1].append(float(round(position[1])))
-        self.waypoints_position[2].append(float(round(position[2])))
+    def append_to_waypoint_position(self,pos):
+        self.waypoints_position[0].append(float(round(pos[0])))
+        self.waypoints_position[1].append(float(round(pos[1])))
+        self.waypoints_position[2].append(float(round(pos[2])))
 
-    def closer_wp(self, position):
+    def closer_wp(self, pos):
         dist = float('inf')
         closer_wp = None
-        # rospy.logwarn('self.waypoints_positions')
-        # rospy.logwarn(len(self.waypoints_position))
-        # rospy.logwarn(type(self.waypoints_position))
-        # rospy.logwarn(self.waypoints_position)
-        
-        # rospy.logwarn('position')
-        # rospy.logwarn(position)
-        # rospy.logwarn(type(position))
-        
+      
         for i in range(len(self.waypoints_position[0])): # Don't compare with itself
-            dist_aux=sqrt((position[0] - self.waypoints_position[0][i])**2+(position[1] - self.waypoints_position[1][i])**2+(position[2] - self.waypoints_position[2][i])**2)
+            dist_aux=sqrt((pos[0] - self.waypoints_position[0][i])**2+(pos[1] - self.waypoints_position[1][i])**2+(pos[2] - self.waypoints_position[2][i])**2)
             if dist_aux.real<dist:
                 dist=dist_aux.real
                 closer_wp=i
@@ -116,14 +107,30 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION
         return response
     
-    def do_submerge_mission(self, data_location, duration=rospy.Duration()):
+    def do_submerge_mission(self, turbine, duration=rospy.Duration()):
         rospy.logdebug('Interface: \'Submerge Mission\' Action')
         start = rospy.Time.now()
+        start_pos = self.odom_pose.pose.pose.position
+        turbine_pos = self.get_turbine_start_position(int(turbine))
+        submerge_wp = self.load_submerge_wp_from_param()
+        # Offset the waypoints with the turbine position in a single pass.
+        submerge_wp = [[x + turbine_pos[0], y + turbine_pos[1], z] for x, y, z in zip(submerge_wp[0], submerge_wp[1], submerge_wp[2])]
+        pos = Point()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             self._rate.sleep()
-            completion_percentage = 'Submerge mission: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-            rospy.loginfo_throttle(1,completion_percentage)
-        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+            for wp_x, wp_y, wp_z in submerge_wp:
+                pos.x, pos.y, pos.z = wp_x, wp_y, wp_z
+                while self.squared_distance(self.odom_pose.pose.pose.position, pos) > self.EPS_DISTANCE**2:
+                    self.publish_position_fixed_orientation(pos)
+                    completion_percentage = 'Submerge mission: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                    rospy.loginfo_throttle(1,completion_percentage)
+            
+            while self.squared_distance(self.odom_pose.pose.pose.position, start_pos) > self.EPS_DISTANCE**2:
+                self.publish_position_fixed_orientation(start_pos)
+                completion_percentage = 'Returning to submerge point: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                rospy.loginfo_throttle(1,completion_percentage)
+
+        response = self.ACTION_SUCCESS     
         rospy.loginfo('Data acquired!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
@@ -146,28 +153,47 @@ class DemeterActionInterface(object):
         rospy.logdebug('Interface: Mock \'wait-to-recharge \' Action')
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
-            self._rate.sleep()
-            completion_percentage = 'Waiting to Recharge ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-            rospy.loginfo_throttle(1,completion_percentage)
-        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+            while self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
+                self.surface_if_submerged()           
+                self._rate.sleep()
+                completion_percentage = 'Waiting to Recharge ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                rospy.loginfo_throttle(1,completion_percentage)
+        response = self.ACTION_SUCCESS     
         rospy.loginfo('Recharged!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
     
-    def do_localize_cable(self, duration=rospy.Duration()):
+    def squared_distance(self, p1, p2):
+        return (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2
+    
+    def do_localize_cable(self, turbine, duration=rospy.Duration()):
         rospy.logdebug('Interface: Mock \'Localize\' Action')
         start = rospy.Time.now()
+        turbine_pos = self.get_turbine_start_position(int(turbine))
+        # Mock action: Go to the countor point more to the right (to avoid collision with the pole)        
+        DELTA_X = 5
+        DELTA_Z = -10
+        pos = Point()
+        pos.x=float(turbine_pos[0] + DELTA_X)
+        pos.y=float(turbine_pos[1])
+        pos.z=float(DELTA_Z)
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+            self.publish_position_fixed_orientation(pos)
             self._rate.sleep()
             completion_percentage = 'Localizing ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
-        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+        response = self.ACTION_SUCCESS     
         rospy.loginfo('Localizing!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
-        
+    
+    def get_turbine_start_position(self, turbine):
+        param = rospy.get_param('/build_roadmaps/scaled_turbine_coordinates')
+        turbine_pos = param[turbine]
+        return turbine_pos
+    
     def set_current_target_wp(self, wp_index):     
         self.get_init_position_param()
         self.append_to_waypoint_position(self.init_position)
@@ -181,7 +207,7 @@ class DemeterActionInterface(object):
     def get_init_position_param(self):
         self.init_position = rospy.get_param(str(self.namespace)+'planning/initial_position')       
 
-    def update_wp_position(self,waypoint):
+    def update_wp_position(self, waypoint):
         wp = -1
         dist_x = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2)
         dist_y = sqrt((self.odom_pose.pose.pose.position.y - self.target_wp[1])**2)
@@ -232,6 +258,7 @@ class DemeterActionInterface(object):
         self.cmd_pose_pub.publish(cmd_pose)
     
     def get_position(self):
+        rospy.logwarn(self.odom_pose.pose.pose.position)
         return self.odom_pose.pose.pose.position
 
     def get_orientation(self):
@@ -241,23 +268,42 @@ class DemeterActionInterface(object):
         return self.odom_pose.pose.pose.position
 
     def is_submerged(self):
-        position=self.get_position()
-        if position.z<self.SUBMERGED_Z:
+        # current_pos=self.get_position()
+        rospy.logwarn('Position z' + str(self.odom_pose.pose.pose.position.z))
+        rospy.logwarn('SUBMERGED Z' + str(self.SUBMERGED_Z))
+        # if current_pos.z<self.SUBMERGED_Z:
+        if float(self.odom_pose.pose.pose.position.z)<float(self.SUBMERGED_Z):
+            rospy.logwarn(float(self.odom_pose.pose.pose.position.z))
+            rospy.logwarn(float(self.SUBMERGED_Z))
+            rospy.logwarn('submerged!!')
             return True
         else:
+            rospy.logwarn('surfaced!!')
             return False
+    
+    def surface_if_submerged(self):
+        rospy.loginfo('Surfacing...')
+        pos = Point()
+        pos.x = self.odom_pose.pose.pose.position.x
+        pos.y = self.odom_pose.pose.pose.position.y
+        pos.z = self.SUBMERGED_Z
+        self.publish_position_fixed_orientation(pos)
+        self._wait(2) 
         
     def goto_surface(self):
-        position=self.get_position()
-        position.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
-        self.publish_position_fixed_orientation(position)
+        pos = Point()
+        pos = self.odom_pose.pose.pose.position
+        # current_pos2=self.get_position()
+        pos.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
+        self.publish_position_fixed_orientation(pos)
 
     def goto_origin(self):
         origin = self.load_origin_from_file()
-        position.x=float(origin[0])
-        position.y=float(origin[1])
-        position.z=float(origin[2])
-        self.publish_position_fixed_orientation(position)
+        pos = Point()
+        pos.x=float(origin[0])
+        pos.y=float(origin[1])
+        pos.z=float(origin[2])
+        self.publish_position_fixed_orientation(pos)
         return
 
     def orientation_comparison(self,q1,q2):

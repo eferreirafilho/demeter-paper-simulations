@@ -42,15 +42,13 @@ class InitWaypoint(object):
         # self.draw_weights()
         # self.draw_vehicle()
         # self.draw_turbines_labels()
-        plt.show()
+        # plt.show()
         
         # Get all allocated goals
         # for goal in self.allocated_goals:
             # self.add_goal_mission(goal)
         
         self.add_goal_mission(self.allocated_goals[0])
-        
-        
         
     def draw_roadmap(self):
         pos_dict = nx.get_node_attributes(self.G,'pos')
@@ -72,11 +70,12 @@ class InitWaypoint(object):
         self.add_object('data'+str(target_turbine),'data')
         self.add_fact('is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
         self.add_goal('data-sent', 'data'+str(target_turbine))
-        countor_points = self.get_countor_points_list()
-        for countor_point in countor_points:
-            if self.scaled_G.nodes[countor_point]['related_to'] == target_turbine:
-                self.add_fact('is-turbine-wp','waypoint'+str(countor_point),'turbine'+str(target_turbine))
-        
+        rospy.logwarn('target_turbine')
+        rospy.logwarn(target_turbine)
+        sensor_countor_point = self.get_sensor_countor_points(target_turbine)
+        rospy.logwarn('sensor_countor_point')
+        rospy.logwarn(sensor_countor_point)
+        self.add_fact('is-turbine-wp','waypoint'+str(sensor_countor_point),'turbine'+str(target_turbine))      
         
     def init_position_to_KB(self):
             self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
@@ -85,7 +84,6 @@ class InitWaypoint(object):
                 
             self.add_fact('at','vehicle'+str(self.vehicle_id),'wp_init_auv'+str(self.vehicle_id)) # Real initial position
             
-            # InitProblem.add_fact(self, 'at','vehicle'+str(self.vehicle_id),'wp_init_auv'+str(self.vehicle_id)) # Real initial position
             # Vehicle can move between initial position and closest waypoint
             self.add_fact('can-move', 'wp_init_auv'+str(self.vehicle_id), 'waypoint'+str(self.closer_wp)) # vehicle can move to its closer waypoint from initial waypoint
             dist=round(float(self.distance_to_closer_wp.real),2)
@@ -123,27 +121,26 @@ class InitWaypoint(object):
                 countor_points.append(node)
         return countor_points
     
-    def get_shortest_path_subgraph(self, source, source_type, target_turbine):
-        # Build a new graph using only the relevant POIs
-        # countor_points = self.get_countor_points_list()
-        
-        rospy.logwarn(source_type)
-        # find the shortest path from node 'source' to the closest countor point of target turbine
-                            
+    def get_shortest_path_subgraph(self, source, source_type, target):
+        # Build a new graph using only the relevant POIs        
         countor_points = self.get_countor_points_list()
 
-        if source_type == 'waypoint':
-            paths_and_distances = [(nx.dijkstra_path(self.scaled_G, source, point, weight='weight'),
-                                    nx.dijkstra_path_length(self.scaled_G, source, point, weight='weight'))
-                                for point in countor_points 
-                                if self.scaled_G.nodes[point]['related_to'] == target_turbine]
-        else: # source_type == 'turbine'
-            paths_and_distances = [(nx.dijkstra_path(self.scaled_G, point1, point2, weight='weight'),
-                                    nx.dijkstra_path_length(self.scaled_G, point1, point2, weight='weight'))
-                                for point1 in countor_points
-                                if self.scaled_G.nodes[point1]['related_to'] == source
-                                for point2 in countor_points
-                                if self.scaled_G.nodes[point2]['related_to'] == target_turbine]
+        # if source_type == 'waypoint':
+        #     paths_and_distances = [(nx.dijkstra_path(self.scaled_G, source, point, weight='weight'),
+        #                             nx.dijkstra_path_length(self.scaled_G, source, point, weight='weight'))
+        #                         for point in countor_points 
+        #                         if self.scaled_G.nodes[point]['related_to'] == target]
+        # elif source_type == 'turbine':
+        #     paths_and_distances = [(nx.dijkstra_path(self.scaled_G, point1, point2, weight='weight'),
+        #                             nx.dijkstra_path_length(self.scaled_G, point1, point2, weight='weight'))
+        #                         for point1 in countor_points
+        #                         if self.scaled_G.nodes[point1]['related_to'] == source
+        #                         for point2 in countor_points
+        #                         if self.scaled_G.nodes[point2]['related_to'] == target]
+        # else: # source: waypoint and target: waypoint source_type=general_waypoint
+        if source_type == 'general_waypoint':
+            paths_and_distances = [(nx.dijkstra_path(self.scaled_G, source, target, weight='weight'),
+                        nx.dijkstra_path_length(self.scaled_G, source, target, weight='weight'))]
 
         # Get the shortest path and the minimum distance
         shortest_path, min_distance = None, float('inf')
@@ -151,10 +148,11 @@ class InitWaypoint(object):
             if distance < min_distance:
                 shortest_path = path
                 min_distance = distance
+        rospy.logwarn(source_type)                            
         rospy.logwarn('shortest_path')
         rospy.logwarn(shortest_path)
         rospy.logwarn(source)
-        rospy.logwarn(target_turbine)
+        rospy.logwarn(target)
         
         # Extract the subgraph consisting of nodes in the shortest path
         subgraph_nodes = set(shortest_path)
@@ -162,6 +160,7 @@ class InitWaypoint(object):
         shortest_path_subgraph = self.scaled_G.subgraph(subgraph_nodes).edge_subgraph(subgraph_edges)
         return shortest_path_subgraph
     
+
     def build_reduced_graph(self):
         combined_pois = []
         combined_pois.extend(self.allocated_goals)
@@ -170,19 +169,46 @@ class InitWaypoint(object):
         
         rospy.logwarn(combined_pois)
         
-        # Create subgraphs for every pair of turbine in the allocated goals
-        for poi_i in combined_pois:
-            for poi_j in combined_pois:
-                if poi_i != poi_j:
-                    partial_subgraph = self.get_shortest_path_subgraph(int(poi_i), 'turbine', int(poi_j))
-                    self.reduced_G.add_nodes_from(partial_subgraph.nodes())
-                    self.reduced_G.add_edges_from(partial_subgraph.edges())
+        # # Create subgraphs for every pair of turbines in the allocated goals
+        # for poi_i in combined_pois:
+        #     for poi_j in combined_pois:
+        #         if poi_i != poi_j:
+        #             partial_subgraph = self.get_shortest_path_subgraph(int(poi_i), 'turbine', int(poi_j))
+        #             self.reduced_G.add_nodes_from(partial_subgraph.nodes())
+        #             self.reduced_G.add_edges_from(partial_subgraph.edges())
                     
-        # Create subgraphs from vehicle's closer waypoint to every turbine in the allocated goals
+        # # Create subgraphs from vehicle's closer waypoint to every turbine in the allocated goals
+        # for poi_i in combined_pois:
+        #     partial_subgraph = self.get_shortest_path_subgraph(int(self.closer_wp), 'waypoint', int(poi_i))
+        #     self.reduced_G.add_nodes_from(partial_subgraph.nodes())
+        #     self.reduced_G.add_edges_from(partial_subgraph.edges())
+        
+        # Create subgraphs from vehicle's closer waypoint to every countor point closest to the sensor for each turbine in the allocated goals
         for poi_i in combined_pois:
-                    partial_subgraph = self.get_shortest_path_subgraph(int(self.closer_wp), 'waypoint', int(poi_i))
-                    self.reduced_G.add_nodes_from(partial_subgraph.nodes())
-                    self.reduced_G.add_edges_from(partial_subgraph.edges())
+            rospy.logwarn('poi_i')
+            rospy.logwarn(poi_i)
+            
+            target = self.get_sensor_countor_points(poi_i)
+            rospy.logwarn(target)
+            rospy.logwarn(type(target))
+            partial_subgraph = self.get_shortest_path_subgraph(int(self.closer_wp), 'general_waypoint', int(target))
+            self.reduced_G.add_nodes_from(partial_subgraph.nodes())
+            self.reduced_G.add_edges_from(partial_subgraph.edges())
+    
+    def get_sensor_countor_points(self, target_turbine):
+        countor_points = self.get_countor_points_list()
+        
+        sensor_countor_point = None
+        max_x = float('-inf')
+        for countor_point in countor_points:
+            if self.scaled_G.nodes[countor_point]['related_to'] == target_turbine:
+                x_value = self.scaled_G.nodes[countor_point]['pos'][0]
+                if float(x_value) > float(max_x):
+                    max_x = x_value
+                    sensor_countor_point = countor_point
+        rospy.logwarn('sensor_countor_point')
+        rospy.logwarn(sensor_countor_point)
+        return sensor_countor_point
     
     def add_reduced_can_move(self):
         # Add can-move and traverse-cost only of relevant POI
@@ -201,6 +227,7 @@ class InitWaypoint(object):
             self.allocated_goals = rospy.get_param(self.namespace + 'goals_allocated')
             self.NUMBER_OF_TURBINES = len(self.allocated_goals)
             rospy.logwarn('Number of Turbines for vehicle: ' + str(self.namespace) + ' is: '+ str(self.NUMBER_OF_TURBINES))
+            rospy.logwarn('Turbines: ' + str(self.allocated_goals))
         except rospy.ROSException as e:
             # Handle the exception
             print("Error, goals not allocated: ", str(e))

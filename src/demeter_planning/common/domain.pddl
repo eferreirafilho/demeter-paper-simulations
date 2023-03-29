@@ -57,16 +57,16 @@
     ;define actions here
     (:durative-action localize-cable
         :parameters (?v - vehicle ?w - waypoint ?tu - turbine)
-        :duration(= ?duration 15)
+        :duration(= ?duration 5)
         :condition (and 
             (at start (at ?v ?w))
             (over all (is-turbine-wp ?w ?tu))
-            (at start (>= (battery-amount ?v) 15))
+            (at start (>= (battery-amount ?v) 5))
             (over all (is-surfaced ?v))
         )
         :effect (and 
             (at end (cable-localized ?tu))
-            (at start (decrease (battery-amount ?v) 15))
+            (at start (decrease (battery-amount ?v) 5))
             (at end (increase (battery-amount ?v) (* ?duration (recharge-rate ?v))))
             (at start (not (idle ?v)))
             (at end (idle ?v))
@@ -75,7 +75,7 @@
     
     (:durative-action submerge-mission
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
-        :duration(= ?duration 1)
+        :duration(= ?duration 100)
         :condition (and 
             (over all (cable-localized ?tu))
             (over all (is-turbine-wp ?w ?tu))
