@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from scipy.spatial import Voronoi, voronoi_plot_2d
 import numpy as np
 
-
 class BuildRoadmaps(object):
 
     def __init__(self):
@@ -271,7 +270,7 @@ if __name__ == '__main__':
     Roadmap.build_graph_from_voronoi()
     Roadmap.add_contour_points_to_graph()
     
-    # Roadmap.draw_graph()
+    Roadmap.draw_graph()
     
     if nx.is_connected(Roadmap.G):
         rospy.logwarn('Graph is connected, ok!')
@@ -279,6 +278,6 @@ if __name__ == '__main__':
         rospy.logwarn('Graph is not connected, create another roadmap!')
     
     Roadmap.scale_graph()    
-    # Roadmap.plot_scaled_points()
+    Roadmap.plot_scaled_points()
 
     Roadmap.create_turbines_world()

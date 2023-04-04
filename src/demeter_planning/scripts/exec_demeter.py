@@ -11,21 +11,20 @@ from rosplan_knowledge_msgs.srv import KnowledgeUpdateServiceRequest
 # Project
 from action_interface import DemeterActionInterface
 from rosplan_interface import DemeterInterface
-
+from create_problem_instance import PopulateKB
 
 class ExecDemeter(object):
     def __init__(self, update_frequency=4.):
-        rospy.init_node('exec_demeter')
-        rospy.loginfo('Executive started')
         rospy.sleep(2) # Wait for planning
         self.namespace = self.get_namespace()
         self.demeter_rosplan_interface = DemeterInterface(demeter=DemeterActionInterface(namespace=self.namespace))
         self.mission_success = False
-        
+        self.goal_state = list()
+
         rospy.sleep(2) # Wait for planning
         
         # Plan
-        self.rosplan_services()
+        # self.rosplan_services()
         self._rate = rospy.Rate(update_frequency)
                
     def rosplan_services(self):
@@ -77,10 +76,58 @@ class ExecDemeter(object):
            rospy.logwarn('Mission Failed')
            self.mission_success=False
         return response.goal_achieved
-  
+    
+        
+    def get_data_set_goal(self, data):
+        pred_names = [
+            'data-sent'
+        ]
+        params = [[KeyValue('d', data)]]
+        self.goal_state.append(list([pred_names, params]))
+        update_types = [
+            KnowledgeUpdateServiceRequest.ADD_GOAL,
+        ]
+        succeed = self.demeter_rosplan_interface.update_predicates(pred_names,params,update_types)
+        self._rate.sleep()
+        return succeed
+    
+    def cancel_mission(self):
+        self.mission_success = False
+        self._cancel_plan_proxy()
+        self._rate.sleep()
+        rospy.loginfo('Cancel Mission!')    
+    
+    # def clear_mission(self):
+    #     self.demeter_rosplan_interface.clear_data_sent_fact()
+    #     demeter.clear_goals()
+    #     demeter.clear_data_is_in_fact()
+    #     self.demeter_rosplan_interface.clear_carry_vehicle_fact()
+    #     self.demeter_rosplan_interface.clear_data_sent_fact()
+    #     self.cancel_mission()
+    
 
 if __name__ == '__main__':
     print('demeter_plan_exec')
+    rospy.loginfo('Executive started')
+    rospy.init_node('demeter_executive')
+    
+    mission_counter=0
     demeter = ExecDemeter()
+    demeter.rosplan_services()
+    
+    # while not rospy.is_shutdown():
+        # problem_instance.add_goal_mission(allocated_goals[0]) # Execute mission with priority
+        # problem_instance = PopulateKB()
+        # allocated_goals = problem_instance.load_allocation()
+        # while not demeter.mission_success:
+            # demeter._rate.sleep()
     demeter.execute_plan()
+        # demeter.cancel_mission()
+        # mission_counter = mission_counter + 1
+        # mission i succesfull
+        # allocated_goals = allocated_goals[1:] + [allocated_goals[0]] # Rotate goals
+        # demeter._rate.sleep()
+        # rospy.logwarn('Allocated List: ' + str(allocated_goals))
+        # rospy.logwarn('Mission Counter: ' + str(mission_counter))
+
     rospy.spin()

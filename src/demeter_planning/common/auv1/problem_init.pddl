@@ -33,7 +33,7 @@
     
     (= (speed vehicle1) 100)
 
-    (= (recharge-rate vehicle1) 0.01)
+    (= (recharge-rate vehicle1) 0.1)
     (= (recharge-rate-dedicated vehicle1) 10)
 
    

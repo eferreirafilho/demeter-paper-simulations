@@ -109,6 +109,7 @@ class DemeterActionInterface(object):
     
     def do_submerge_mission(self, turbine, duration=rospy.Duration()):
         rospy.logdebug('Interface: \'Submerge Mission\' Action')
+        response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position
         turbine_pos = self.get_turbine_start_position(int(turbine))
@@ -116,7 +117,7 @@ class DemeterActionInterface(object):
         # Offset the waypoints with the turbine position in a single pass.
         submerge_wp = [[x + turbine_pos[0], y + turbine_pos[1], z] for x, y, z in zip(submerge_wp[0], submerge_wp[1], submerge_wp[2])]
         pos = Point()
-        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and not (response == self.ACTION_SUCCESS):
             self._rate.sleep()
             for wp_x, wp_y, wp_z in submerge_wp:
                 pos.x, pos.y, pos.z = wp_x, wp_y, wp_z
@@ -129,15 +130,17 @@ class DemeterActionInterface(object):
                 self.publish_position_fixed_orientation(start_pos)
                 completion_percentage = 'Returning to submerge point: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
                 rospy.loginfo_throttle(1,completion_percentage)
-
-        response = self.ACTION_SUCCESS     
-        rospy.loginfo('Data acquired!')
+                response = self.ACTION_SUCCESS     
+            rospy.loginfo('Data acquired!')
+                
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
     
     def do_transmit_data(self, duration=rospy.Duration()):
         rospy.logdebug('Interface: Mock \'Transmit\' Action')
+        while self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
+            self.surface_if_submerged()   
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             self._rate.sleep()
@@ -151,10 +154,10 @@ class DemeterActionInterface(object):
     
     def do_wait_to_recharge(self, duration=rospy.Duration()):
         rospy.logdebug('Interface: Mock \'wait-to-recharge \' Action')
+        while self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
+                self.surface_if_submerged()           
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
-            while self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
-                self.surface_if_submerged()           
                 self._rate.sleep()
                 completion_percentage = 'Waiting to Recharge ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
                 rospy.loginfo_throttle(1,completion_percentage)

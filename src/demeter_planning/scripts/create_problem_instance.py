@@ -16,7 +16,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from build_roadmaps import BuildRoadmaps
 
-class InitWaypoint(object):
+class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
@@ -32,7 +32,7 @@ class InitWaypoint(object):
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
         rospy.logwarn('self.distance_to_closer_wp')
         rospy.logwarn(self.distance_to_closer_wp)
-        self.load_allocation()
+        self.allocated_goals = self.load_allocation()
 
         self.init_position_to_KB()
         self.build_reduced_graph()
@@ -45,10 +45,10 @@ class InitWaypoint(object):
         # plt.show()
         
         # Get all allocated goals
-        # for goal in self.allocated_goals:
-            # self.add_goal_mission(goal)
+        for goal in self.allocated_goals:
+            self.add_goal_mission(goal)
         
-        self.add_goal_mission(self.allocated_goals[0])
+        # self.add_goal_mission(self.allocated_goals)
         
     def draw_roadmap(self):
         pos_dict = nx.get_node_attributes(self.G,'pos')
@@ -124,20 +124,6 @@ class InitWaypoint(object):
     def get_shortest_path_subgraph(self, source, source_type, target):
         # Build a new graph using only the relevant POIs        
         countor_points = self.get_countor_points_list()
-
-        # if source_type == 'waypoint':
-        #     paths_and_distances = [(nx.dijkstra_path(self.scaled_G, source, point, weight='weight'),
-        #                             nx.dijkstra_path_length(self.scaled_G, source, point, weight='weight'))
-        #                         for point in countor_points 
-        #                         if self.scaled_G.nodes[point]['related_to'] == target]
-        # elif source_type == 'turbine':
-        #     paths_and_distances = [(nx.dijkstra_path(self.scaled_G, point1, point2, weight='weight'),
-        #                             nx.dijkstra_path_length(self.scaled_G, point1, point2, weight='weight'))
-        #                         for point1 in countor_points
-        #                         if self.scaled_G.nodes[point1]['related_to'] == source
-        #                         for point2 in countor_points
-        #                         if self.scaled_G.nodes[point2]['related_to'] == target]
-        # else: # source: waypoint and target: waypoint source_type=general_waypoint
         if source_type == 'general_waypoint':
             paths_and_distances = [(nx.dijkstra_path(self.scaled_G, source, target, weight='weight'),
                         nx.dijkstra_path_length(self.scaled_G, source, target, weight='weight'))]
@@ -148,11 +134,6 @@ class InitWaypoint(object):
             if distance < min_distance:
                 shortest_path = path
                 min_distance = distance
-        rospy.logwarn(source_type)                            
-        rospy.logwarn('shortest_path')
-        rospy.logwarn(shortest_path)
-        rospy.logwarn(source)
-        rospy.logwarn(target)
         
         # Extract the subgraph consisting of nodes in the shortest path
         subgraph_nodes = set(shortest_path)
@@ -164,24 +145,7 @@ class InitWaypoint(object):
     def build_reduced_graph(self):
         combined_pois = []
         combined_pois.extend(self.allocated_goals)
-        # combined_pois.append(self.closer_wp)
         self.reduced_G = nx.Graph()
-        
-        rospy.logwarn(combined_pois)
-        
-        # # Create subgraphs for every pair of turbines in the allocated goals
-        # for poi_i in combined_pois:
-        #     for poi_j in combined_pois:
-        #         if poi_i != poi_j:
-        #             partial_subgraph = self.get_shortest_path_subgraph(int(poi_i), 'turbine', int(poi_j))
-        #             self.reduced_G.add_nodes_from(partial_subgraph.nodes())
-        #             self.reduced_G.add_edges_from(partial_subgraph.edges())
-                    
-        # # Create subgraphs from vehicle's closer waypoint to every turbine in the allocated goals
-        # for poi_i in combined_pois:
-        #     partial_subgraph = self.get_shortest_path_subgraph(int(self.closer_wp), 'waypoint', int(poi_i))
-        #     self.reduced_G.add_nodes_from(partial_subgraph.nodes())
-        #     self.reduced_G.add_edges_from(partial_subgraph.edges())
         
         # Create subgraphs from vehicle's closer waypoint to every countor point closest to the sensor for each turbine in the allocated goals
         for poi_i in combined_pois:
@@ -224,10 +188,11 @@ class InitWaypoint(object):
     def load_allocation(self):
         # Load allocation of vehicles to goals from a goal allocation algorithm
         try:
-            self.allocated_goals = rospy.get_param(self.namespace + 'goals_allocated')
-            self.NUMBER_OF_TURBINES = len(self.allocated_goals)
+            allocated_goals = rospy.get_param(self.namespace + 'goals_allocated')
+            self.NUMBER_OF_TURBINES = len(allocated_goals)
             rospy.logwarn('Number of Turbines for vehicle: ' + str(self.namespace) + ' is: '+ str(self.NUMBER_OF_TURBINES))
-            rospy.logwarn('Turbines: ' + str(self.allocated_goals))
+            rospy.logwarn('Turbines: ' + str(allocated_goals))
+            return allocated_goals
         except rospy.ROSException as e:
             # Handle the exception
             print("Error, goals not allocated: ", str(e))
@@ -313,18 +278,7 @@ class InitWaypoint(object):
         else:
             return None
 
-    def problem_generation(self):
-        rospy.loginfo("Waiting for problem generation service")
-        rospy.wait_for_service('rosplan_problem_interface/problem_generation_server')
-        try:
-            rospy.loginfo("Calling problem generation service")
-            rospy.ServiceProxy('rosplan_problem_interface/problem_generation_server',Empty)()
-            rospy.loginfo("Problem file updated")
-            
-        except rospy.rospy.ServiceException:
-            rospy.loginfo("Service problem generation call failed")
-
 if __name__ == '__main__':
     rospy.logwarn('Populate KB for one vehicle, using its position')
     rospy.init_node('populate_KB', anonymous=True)
-    problem = InitWaypoint()
+    problem = PopulateKB()
