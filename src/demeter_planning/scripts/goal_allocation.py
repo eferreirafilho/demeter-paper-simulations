@@ -10,16 +10,24 @@ import networkx as nx
 class Allocation(object):
   def __init__(self):
     NUMBER_OF_TURBINES = 60
-    self.load_get_data_allocation_parameters()
-    self.build_graph()
+    self._rate = rospy.Rate(10)
+    self._wait(5)  
+    self.get_data_allocation_parameters()
+    Roadmap = BuildRoadmaps()
+    G = Roadmap.build_roadmap_with_turbines()
+    self.scaled_turbines_xy = []
+    for node, data in G.nodes(data=True):
+            if data['description'] == 'turbine':
+                self.scaled_turbines_xy.append(data['pos'])
+    
     self.goals = []
-    for sensor in self.data_idx:
-      self.goals.append([self.turbines_coordinates[0][sensor], self.turbines_coordinates[1][sensor]])
-      if sensor >= NUMBER_OF_TURBINES:
-        rospy.logwarn('Position of sensor out of turbine farm range!')
+    for turbine in self.data_idx:
+      self.goals.append([self.scaled_turbines_xy[turbine][0], self.scaled_turbines_xy[turbine][1]])
+      if turbine >= NUMBER_OF_TURBINES:
+        rospy.logwarn('WARNING: Position of sensor out of turbine farm range!')
         
       self.auv_positions = {}
-    self._rate = rospy.Rate(10)
+    rospy.logwarn('self.goals' + str(self.goals))
 
     # Get current robots positions
     for i in self.vehicle_idx:
@@ -28,7 +36,7 @@ class Allocation(object):
     self.robots = []
     for robot in self.auv_positions:
       self.robots.append(self.auv_positions[robot])
-    print("Robots Position: ", self.robots)
+    print(self.robots)
       
   def pose_callback(self, msg, i):
     self.auv_positions[i] = [msg.pose.pose.position.x, msg.pose.pose.position.y]
@@ -37,25 +45,14 @@ class Allocation(object):
     for _ in range(n_rate):
       self._rate.sleep()
 
-  def load_get_data_allocation_parameters(self):
+  def get_data_allocation_parameters(self):
     self.vehicle_idx = rospy.get_param("/goal_allocation/vehicle_idx")
     self.data_idx = rospy.get_param("/goal_allocation/data_idx")
     # self.poi_coordinates = rospy.get_param("/goal_allocation/poi_x"), rospy.get_param("/goal_allocation/poi_y") 
     
-  def build_graph(self):
+  def build_graph_get_waypoints(self):
     Roadmap = BuildRoadmaps()
-    G = Roadmap.build_and_scale_roadmap()
-    # Remove all nodes that aren't turbines
-    not_turbine_nodes = [n for n, attrs in G.nodes(data=True) if attrs['description'] != 'turbine']
-    G.remove_nodes_from(not_turbine_nodes)
-    rospy.logwarn(not_turbine_nodes)
-    #  extract the 'pos' attribute values for all nodes
-    pos_dict = nx.get_node_attributes(G, 'pos')
-    # extract the X and Y coordinates separately into two lists
-    x_coords = [pos_dict[node][0] for node in G.nodes()]
-    y_coords = [pos_dict[node][1] for node in G.nodes()]
-    # combine the X and Y coordinate lists into a list of coordinate pairs
-    self.turbines_coordinates = [x_coords, y_coords]
+    self.waypoints = Roadmap.build_and_scale_roadmap()
             
   def euclidean_distance(self, point1, point2):
     """Returns the Euclidean distance between two points."""
@@ -118,14 +115,10 @@ class Allocation(object):
     return ranked_solution[0]
   
   def find_index(self, point):
-    x_index = self.turbines_coordinates[0].index(point[0])
-    y_index = self.turbines_coordinates[1].index(point[1])
-
-    if x_index == y_index:
-      point_index = x_index
-    else:
-      print('point not in turbines_coordinates')
-    return point_index
+    for index, value in enumerate(self.scaled_turbines_xy):
+      if value[0] == point[0] and value[1] == point[1]:
+        return index
+    return -1
   
   def run_genetic_algorithm(self, POPULATION, MUTATION_RATE, N_GENERATIONS):
     return self.genetic_algorithm([self.random_allocation() for _ in range(POPULATION)], MUTATION_RATE, N_GENERATIONS)
@@ -140,11 +133,13 @@ if __name__ == '__main__':
   
   POPULATION = 10000
   MUTATION_RATE = 0.1
-  N_GENERATIONS = 700
+  N_GENERATIONS = 1000
   
   goal_allocation = Allocation()
   goal_allocation._wait(6)   
   solution = goal_allocation.run_genetic_algorithm(POPULATION, MUTATION_RATE, N_GENERATIONS)
+  
+  rospy.logwarn(solution)
   
   for vehicle in range(len(solution[1])):
     solution_vehicle = solution[1][int(vehicle)]

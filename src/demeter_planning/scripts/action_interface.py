@@ -68,10 +68,12 @@ class DemeterActionInterface(object):
         return origin
     
     def build_graph_get_waypoints(self):
-        self.Roadmap = BuildRoadmaps()
-        self.Roadmap.build_and_scale_roadmap()
-        waypoints_aux = self.Roadmap.get_poi_from_graph()
-        return waypoints_aux
+        Roadmap = BuildRoadmaps()
+        self.waypoints_aux = Roadmap.build_and_scale_roadmap()
+        # self.Roadmap = BuildRoadmaps()
+        # self.Roadmap.build_and_scale_roadmap()
+        # waypoints_aux = self.Roadmap.get_poi_from_graph()
+        return self.waypoints_aux
     
     def append_to_waypoint_position(self,pos):
         self.waypoints_position[0].append(float(round(pos[0])))

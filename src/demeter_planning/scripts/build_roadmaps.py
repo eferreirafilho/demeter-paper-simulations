@@ -2,6 +2,7 @@
 import rospy
 import networkx as nx
 import matplotlib.pyplot as plt
+from itertools import combinations
 from scipy.spatial import Voronoi, voronoi_plot_2d
 import numpy as np
 
@@ -9,16 +10,23 @@ class BuildRoadmaps(object):
 
     def __init__(self):
         rospy.logwarn('Build Roadmaps')
+        self._rate = rospy.Rate(10)
+        self.NUMBER_OF_COUNTOUR_POINTS = 5
+        self.DISTANCE_TO_TURBINE = 0.15
+        self.NUMBER_OF_TURBINES_CONSIDERED = 6
+        self.VISIBILITY_RADIUS = 1
+        self.BOUNDS_MAP = 50
             
     def load_turbines_xy(self):
-        self.NUMBER_OF_TURBINES_CONSIDERED=5
         turbines_xy = rospy.get_param("/build_roadmaps/turbines_x"), rospy.get_param("/build_roadmaps/turbines_y")
         first_n_turbines = (turbines_xy[0][:self.NUMBER_OF_TURBINES_CONSIDERED], turbines_xy[1][:self.NUMBER_OF_TURBINES_CONSIDERED]) # To reduce number of turbines in gazebo
-        self.turbines_xy = self.convert_minutes_to_km(first_n_turbines)
+        first_n_turbines = self.convert_minutes_to_km(first_n_turbines)
+        return first_n_turbines
 
     def load_corners_xy(self):
         corners_xy = rospy.get_param("/build_roadmaps/corners_x"), rospy.get_param("/build_roadmaps/corners_y") 
-        self.corners_xy = self.convert_minutes_to_km(corners_xy)
+        corners_xy = self.convert_minutes_to_km(corners_xy)
+        return corners_xy
         
     def convert_minutes_to_km(self, minutes):
         ONE_MINUTE_TO_KM = 1.85
@@ -27,89 +35,165 @@ class BuildRoadmaps(object):
             converted_corner = [x * ONE_MINUTE_TO_KM for x in corner]
             result.append(converted_corner)
         return result
-            
-    def build_voronoi(self):
-        turbines_xy_array = np.array(self.turbines_xy).T
-        corners_xy_array = np.array(self.corners_xy).T
+    
+    
+    def _wait(self, n_rate):
+        for _ in range(n_rate):
+            self._rate.sleep()
+      
+    def create_visibility_graph(self, turbines_xy, corners_xy):
+        
+        visibility_G = nx.Graph()       
+        corners = np.array(corners_xy).T
+        # Set corners as nodes
+        for corner_point in corners:
+            visibility_G.add_node(visibility_G.number_of_nodes(), pos = corner_point, description = 'corner', related_to = 'NaN')
+        obstacles = self.create_countor_point(turbines_xy)
 
-        # Compute the Voronoi diagram
-        self.voronoi_construction = Voronoi(np.concatenate((turbines_xy_array, corners_xy_array), axis=0))
+        # Set countor points as nodes
+        EPSILON = 0.001
+        for turbine, obs in enumerate(obstacles):
+            scaled_obs = self.scaled_obstacle(obs, scale_factor=1+EPSILON) # Scale obstacle a little to use the points in the visibility graph
+            # points = np.concatenate((points, scaled_obs), axis=0)
+            for countor_point in scaled_obs:
+                visibility_G.add_node(max(visibility_G.nodes())+1, pos = countor_point, description = 'countor_point', related_to = turbine)
 
-    def plot_voronoi(self):
-        # Visualize the Voronoi diagram with a fixed aspect ratio
-        fig, ax = plt.subplots(figsize=(6, 6))
-        ax.set_aspect('equal')
-        voronoi_plot_2d(self.voronoi_construction, ax=ax)
+        node_positions = []
+        # Get all pos attributes concatenated in a numpy array
+        for _, attrs in visibility_G.nodes(data=True):
+            node_positions.append(attrs['pos'])
+            node_positions_array = np.array(node_positions)
+
+        # Iterate through all pairs of points (p1, p2) except when they are the same
+        for node1, p1 in enumerate(node_positions_array):
+            for node2, p2 in enumerate(node_positions_array):
+                dist = np.linalg.norm(p1 - p2)  # compute the Euclidean distance between p1 and p2
+                if dist > self.VISIBILITY_RADIUS: # compute only within a region
+                    continue
+                if p1.tolist() != p2.tolist():
+                    obstructed = False
+                    # Check if there is an obstacle intersecting the line between p1 and p2
+                    for obs in obstacles:
+                        if not obstructed:
+                            for i in range(len(obs)):
+                                # Get consecutive vertices (a, b) of the obstacle polygon
+                                if i < len(obs) - 1:
+                                    a = obs[i]
+                                    b = obs[i + 1]
+                                else:
+                                    a = obs[i]
+                                    b = obs[0]
+                                
+                                # If line between p1 and p2 intersects with edge (a, b), set obstructed to True
+                                if self.intersects(p1, p2, a, b):
+                                    obstructed = True
+                                    break
+
+                    # If line between p1 and p2 is not obstructed, add an edge between them in visibility graph
+                    if not obstructed:
+                        visibility_G.add_edge(node1, node2)
+        return visibility_G, obstacles
+
+    def intersects(self, p1, p2, a, b):
+        v1 = p2 - p1
+        v2 = a - p1
+        v3 = b - p1
+        c1 = np.cross(v1, v2)
+        c2 = np.cross(v1, v3)
+        v4 = b - a
+        v5 = p1 - a
+        v6 = p2 - a
+        c3 = np.cross(v4, v5)
+        c4 = np.cross(v4, v6)
+        if np.sign(c1) != np.sign(c2) and np.sign(c3) != np.sign(c4):
+            return True
+        else:
+            return False
+    
+    def create_countor_point(self, turbines_xy): 
+        '''Countor points are considered obstacles in the visibility graph'''
+        countor_points=[]
+        for turbine in range(self.NUMBER_OF_TURBINES_CONSIDERED):
+            obs_aux = self.generate_equidistant_points(turbines_xy[0][turbine], turbines_xy[1][turbine], self.NUMBER_OF_COUNTOUR_POINTS, self.DISTANCE_TO_TURBINE)
+            countor_points.append(obs_aux)
+        return countor_points
+    
+    def scaled_obstacle(self, obs, scale_factor):
+        centroid = np.mean(obs, axis=0)
+        # Scale the polygon along both axes
+        obs_scaled = np.array([[(coord[0] - centroid[0]) * scale_factor + centroid[0],
+                                (coord[1] - centroid[1]) * scale_factor + centroid[1]] for coord in obs])   
+        return obs_scaled
+    
+    def plot_visibility_graph(self, visibility_G, obstacles):
+        fig, ax = plt.subplots()
+
+        # Plot the edges of the graph
+        for edge in visibility_G.edges():
+            p1, p2 = edge[0], edge[1]
+            plt.plot([visibility_G.nodes[p1]["pos"][0], visibility_G.nodes[p2]["pos"][0]], [visibility_G.nodes[p1]["pos"][1], visibility_G.nodes[p2]["pos"][1]], color='blue', linewidth=0.5)
+
+        # Plot the nodes of the graph
+        for node in visibility_G.nodes():
+            plt.scatter(visibility_G.nodes[node]["pos"][0], visibility_G.nodes[node]["pos"][1], color='red', s=20)
+
+        # Plot the obstacles
+        for i, obs in enumerate(obstacles):
+            obs_x = [point[0] for point in obs]
+            obs_y = [point[1] for point in obs]
+            obs_x.append(obs[0][0])
+            obs_y.append(obs[0][1])
+
+            plt.fill(obs_x, obs_y, 'gray', alpha=0.4)
+            plt.plot(obs_x, obs_y, color='black', linewidth=1.0)
+            # Plot obstacle number
+            obs_center_x = sum(obs_x[:-1]) / len(obs_x[:-1])
+            obs_center_y = sum(obs_y[:-1]) / len(obs_y[:-1])
+            plt.text(obs_center_x, obs_center_y, str(i), fontsize=12, color='red')
+        
+
+        ax.set_aspect('equal', adjustable='box')
+        plt.xlabel("X")
+        plt.ylabel("Y")
+        plt.title("Visibility Graph with Safe Regions")
         plt.show()
         
-    def create_countor_points(self, turbine):
-        NUMBER_OF_COUNTOUR_POINTS = 5
-        DISTANCE_TO_TURBINE = 0.1
-        contour_points = self.generate_equidistant_points(self.turbines_xy[0][turbine], self.turbines_xy[1][turbine], NUMBER_OF_COUNTOUR_POINTS, DISTANCE_TO_TURBINE)
-        voronoi_region = self.voronoi_construction.regions[self.voronoi_construction.point_region[turbine]]
-        return contour_points, voronoi_region
-    
-    def build_graph_from_voronoi(self):
-        self.G = nx.Graph()
-        # Add voronoi vertices and its positions
-        for idx, vertice in enumerate(self.voronoi_construction.vertices):
-            self.G.add_node(idx, pos = vertice, description = 'voronoi_vertice', related_to = idx)
-        # Add edges to the graph, corresponding to the Voronoi ridges
-        for ridge in self.voronoi_construction.ridge_vertices:
-            if all(index >= 0 for index in ridge):
-                u, v = ridge
-                self.G.add_edge(u, v)
-                self.G.add_edge(v, u)
-                # self.G.add_edge(*ridge)
-        
-    def add_contour_points_to_graph(self):
-        for turbine in range(len(self.turbines_xy[0])):
-            countor_point_node_index=[]
-            contour_points, voronoi_region = self.create_countor_points(turbine)
-            # Create contour nodes
-            for p in contour_points:
-                node_number=self.G.number_of_nodes()
-                countor_point_node_index.append(node_number)
-                self.G.add_node(node_number, pos = p, description = 'countor_point', related_to = turbine)
-            # Add edges between countour points
-            for i in range(len(countor_point_node_index)):
-                self.G.add_edge(countor_point_node_index[i], countor_point_node_index[(i+1)%len(countor_point_node_index)])
-                self.G.add_edge(countor_point_node_index[(i+1)%len(countor_point_node_index)],countor_point_node_index[i])
-            # Add edges from each Voronoi vertice to the closer countor point            
-            for v in voronoi_region:
-                dist = float('inf')
-                closer_countor = []
-                for p_idx, p in enumerate(contour_points):
-                    dist_countor_to_voronoi = ((self.voronoi_construction.vertices[v][0]-p[0])**2 + (self.voronoi_construction.vertices[v][1]-p[1])**2)**0.5
-                    if dist_countor_to_voronoi.real < dist.real:
-                        dist = dist_countor_to_voronoi.real
-                        closer_countor = p_idx
-                if closer_countor is not None:  # check for closer_countor being None
-                    self.G.add_edge(v, countor_point_node_index[closer_countor])
-                    self.G.add_edge(countor_point_node_index[closer_countor], v)
+    def remove_disconected_nodes(self, graph):
+        disconected_nodes = list(nx.isolates(graph))
+        graph.remove_nodes_from(disconected_nodes)
+        return graph
                     
-    def scale_graph(self):
-        self.G_with_turbines = self.G.copy()
-        for turbine in range(len(self.turbines_xy[0])):
-            self.G_with_turbines.add_node(self.G_with_turbines.number_of_nodes(), pos = [self.turbines_xy[0][turbine], self.turbines_xy[1][turbine]], description = 'turbine', related_to = turbine)
-        self.normalized_poi = self.normalize_around_zero(nx.get_node_attributes(self.G_with_turbines, 'pos'))
-        nx.set_node_attributes(self.G_with_turbines, self.normalized_poi, 'pos')
+    def scale_graph(self, graph):
+        normalized_poi = self.normalize_around_zero(nx.get_node_attributes(graph, 'pos'))
+        nx.set_node_attributes(graph, normalized_poi, 'pos')
+        scaled_turbines_xy = []
+        for node, data in graph.nodes(data=True):
+            if data['description'] == 'turbine':
+                pos = data['pos']
+                scaled_turbines_xy.append(pos)
+        self.set_scaled_turbines_as_ros_parameters(scaled_turbines_xy)
+        return graph
         
-    def get_scaled_graph(self):
-        G = nx.Graph()
-        G = self.G_with_turbines.copy()
-        return G
+    def add_turbines_to_graph(self, graph, turbines_xy):
+        
+        for turbine in range(len(turbines_xy[0])):
+            graph.add_node(max(graph.nodes)+1, pos = np.array([turbines_xy[0][turbine], turbines_xy[1][turbine]]), description = 'turbine', related_to = turbine)  
+        return graph
+        
+    # def get_scaled_graph(self):
+    #     G = nx.Graph()
+    #     G = G_with_turbines.copy()
+    #     return G
     
-    def plot_scaled_points(self):
+    def plot_scaled_points(self, graph):
         fig, ax = plt.subplots()
-        for i in range(len(self.G_with_turbines.nodes())):
-            node = self.G_with_turbines.nodes[i] 
-            if node['description'] == 'voronoi_vertice':
-                ax.scatter(node['pos'][0], node['pos'][1], color='red')
-            if node['description'] == 'countor_point':
-                ax.scatter(node['pos'][0], node['pos'][1], color='gray')
-            if node['description'] == 'turbine':
-                ax.scatter(node['pos'][0], node['pos'][1], color='blue')
+        for node, data in graph.nodes(data=True):
+            if data['description'] == 'turbine':
+                ax.scatter(data['pos'][0], data['pos'][1], color='blue')
+            if data['description'] == 'countor_point':
+                ax.scatter(data['pos'][0], data['pos'][1], color='red')
+            if data['description'] == 'corner':
+                ax.scatter(data['pos'][0], data['pos'][1], color='gray')
         ax.legend()
         plt.show()
             
@@ -122,10 +206,9 @@ class BuildRoadmaps(object):
             points[i] = [x, y]
         return points
     
-    def normalize_around_zero(self, vector_nodes, lower_bound=-125, upper_bound=125):
-        vector_nodes = np.array(list(vector_nodes.values()))
-        x_vals = [x for x, y in vector_nodes]
-        y_vals = [y for x, y in vector_nodes]
+    def normalize_around_zero(self, nodes_dict):
+        x_vals = [x for x, y in nodes_dict.values()]
+        y_vals = [y for x, y in nodes_dict.values()]
         x_min, x_max = min(x_vals), max(x_vals)
         y_min, y_max = min(y_vals), max(y_vals)
         x_range = (x_max - x_min) + 0.01
@@ -133,67 +216,38 @@ class BuildRoadmaps(object):
         x_centroid = (x_min + x_max) / 2
         y_centroid = (y_min + y_max) / 2
 
-        SHIFT_TO_THE_RIGHT = 120
+        SHIFT_TO_THE_RIGHT = 20
         SHIFT_UP = 20
-        normalized_x = [(x - x_centroid) / (x_range / 2) * (upper_bound - lower_bound) + (upper_bound + lower_bound) / 2 + SHIFT_TO_THE_RIGHT for x in x_vals]
-        normalized_y = [(y - y_centroid) / (y_range / 2) * (upper_bound - lower_bound) + (upper_bound + lower_bound) / 2 + SHIFT_UP for y in y_vals]
+        normalized_x = [(x - x_centroid) / (x_range / 2) * (self.BOUNDS_MAP + self.BOUNDS_MAP) + (self.BOUNDS_MAP - self.BOUNDS_MAP) / 2 + SHIFT_TO_THE_RIGHT for x in x_vals]
+        normalized_y = [(y - y_centroid) / (y_range / 2) * (self.BOUNDS_MAP + self.BOUNDS_MAP) + (self.BOUNDS_MAP - self.BOUNDS_MAP) / 2 + SHIFT_UP for y in y_vals]
 
         # create a new dictionary with the same keys as the input and the normalized values
         normalized_dict = {}
-        for i, (x, y) in enumerate(zip(normalized_x, normalized_y)):
-            normalized_dict[i] = np.array([x, y])
+        for key, (x, y) in zip(nodes_dict.keys(), zip(normalized_x, normalized_y)):
+            normalized_dict[key] = np.array([x, y])
         return normalized_dict
 
-    def build_and_scale_roadmap(self):
-        print('Build and Scale Roadmap')
-        self.load_turbines_xy()
-        self.load_corners_xy()
-        self.build_voronoi()
-        self.build_graph_from_voronoi()
-        self.add_contour_points_to_graph()
-        self.scale_graph()    
-        scaled_G_with_turbines = nx.Graph()
-        scaled_G_with_turbines = self.get_scaled_graph()
-        self.scaled_G = nx.Graph()
-        self.scaled_G = scaled_G_with_turbines.copy()
-        print('self.scaled_G nodes')
-        print(self.scaled_G.nodes())
-        return self.scaled_G
-    
-    def get_poi_from_graph(self):
-        G = nx.Graph()
-        G = self.scaled_G.copy()
-        # Remove turbine nodes
-        turbine_nodes = [n for n, attrs in G.nodes(data=True) if attrs['description'] == 'turbine']
-        G.remove_nodes_from(turbine_nodes)
-        # extract the 'pos' attribute values for all nodes
-        pos_dict = nx.get_node_attributes(G, 'pos')
-        # extract the X and Y coordinates separately into two lists
-        x_coords = [pos_dict[node][0] for node in G.nodes()]
-        y_coords = [pos_dict[node][1] for node in G.nodes()]
-        # combine the X and Y coordinate lists into a list of coordinate pairs
-        poi_coordinates = [x_coords, y_coords]
-        # Add distance to surface
-        Z_POI_DISTANCE = -0.5
-        poi_coordinates.append([Z_POI_DISTANCE]*len(poi_coordinates[0]))
-        return poi_coordinates
+    # def get_poi_from_graph(self):
+    #     G = nx.Graph()
+    #     G = self.scaled_G.copy()
+    #     # Remove turbine nodes
+    #     turbine_nodes = [n for n, attrs in G.nodes(data=True) if attrs['description'] == 'turbine']
+    #     G.remove_nodes_from(turbine_nodes)
+    #     # extract the 'pos' attribute values for all nodes
+    #     pos_dict = nx.get_node_attributes(G, 'pos')
+    #     # extract the X and Y coordinates separately into two lists
+    #     x_coords = [pos_dict[node][0] for node in G.nodes()]
+    #     y_coords = [pos_dict[node][1] for node in G.nodes()]
+    #     # combine the X and Y coordinate lists into a list of coordinate pairs
+    #     poi_coordinates = [x_coords, y_coords]
+    #     # Add distance to surface
+    #     Z_POI_DISTANCE = -0.5
+    #     poi_coordinates.append([Z_POI_DISTANCE]*len(poi_coordinates[0]))
+    #     return poi_coordinates
 
-    def create_turbines_world(self):
-        turbines_x = []
-        turbines_y = []
-        for i in range(len(self.G_with_turbines.nodes())):
-            node = self.G_with_turbines.nodes[i] 
-            if node['description'] == 'turbine':
-                # ax.scatter(node['pos'][0], node['pos'][1], color='blue')
-                turbines_x.append(node['pos'][0])
-                turbines_y.append(node['pos'][1])
+    def define_turbines_in_world_launch(self, graph):
         
-        # Combine the X and Y coordinates into pairs
-        self.coordinates = list(zip(turbines_x, turbines_y))
-        self.define_turbines_in_world_launch()
-        self.set_scaled_turbines_as_ros_parameters()
-        
-    def define_turbines_in_world_launch(self):
+        scaled_turbines_xy = rospy.get_param('/build_roadmaps/scaled_turbine_cordinates')
         with open("/home/edson/ws_demeter_rosplan/src/auv_gazebo/worlds/turbine.world", "w") as file:
             # Write header
             file.write('<?xml version="1.0" ?>\n')
@@ -211,7 +265,7 @@ class BuildRoadmaps(object):
             file.write('      <pose>0 0 -0.95 0 0 0</pose>\n')
             file.write('    </include>\n')
             # Write turbines
-            for i, (x, y) in enumerate(self.coordinates):
+            for i, (x, y) in enumerate(scaled_turbines_xy):
                 if i<self.NUMBER_OF_TURBINES_CONSIDERED:
                     file.write("  <include>\n")
                     file.write("    <name>turbine" + str(i) + "</name>\n")
@@ -250,34 +304,82 @@ class BuildRoadmaps(object):
             file.write('</world>')
             file.write('</sdf>')
             
-    def set_scaled_turbines_as_ros_parameters(self):
-        coordinates_float = [(float(x), float(y)) for x, y in self.coordinates]
-        rospy.set_param('/build_roadmaps/scaled_turbine_coordinates', coordinates_float)
+    def set_scaled_turbines_as_ros_parameters(self, scaled_turbines_xy):
+        scaled_list = [arr.tolist() for arr in scaled_turbines_xy]
+        rospy.set_param('/build_roadmaps/scaled_turbine_cordinates', scaled_list)
     
-
-    def draw_graph(self):
-        nx.draw(self.G, nx.get_node_attributes(self.G, 'pos'), node_size=10,with_labels=True)
+    def draw_graph(self, graph):
+        nx.draw(graph, nx.get_node_attributes(graph, 'pos'), node_size=10, with_labels=False)
         plt.show()
-
+        
+    def build_and_scale_roadmap(self):
+        turbines_xy = self.load_turbines_xy()
+        corners_xy = self.load_corners_xy()
+        visibility_G, countor_points = self.create_visibility_graph(turbines_xy, corners_xy)
+        scaled_visibility_G = self.scale_graph(visibility_G)    
+        return scaled_visibility_G
+    
+    def get_scaled_nodes_xy(self, G):
+        pos_dict = nx.get_node_attributes(G, 'pos')
+        x_coords, y_coords = zip(*[pos_dict[node] for node in G.nodes()])
+        return [x_coords, y_coords]
+        
+    def print_nodes_and_attributes(self, graph):
+        rospy.logwarn("Nodes and their attributes:")
+        for node, attrs in graph.nodes(data=True):
+            rospy.logwarn("{}: {}".format(node, attrs))
+            
+    def build_roadmap_with_turbines(self):
+        '''Create visibility graph and add turbines as edges to their countor points'''
+        turbines_xy = self.load_turbines_xy()
+        corners_xy = self.load_corners_xy()
+        visibility_G, countor_points = self.create_visibility_graph(turbines_xy, corners_xy)
+        visibility_G = self.remove_disconected_nodes(visibility_G)
+        self.print_nodes_and_attributes(visibility_G)
+        # Create a new graph and scale
+        visibility_G_with_turbines = visibility_G.copy()
+        
+        visibility_G_with_turbines = self.add_turbines_to_graph(visibility_G_with_turbines, turbines_xy)
+        scaled_visibility_G_with_turbines = self.scale_graph(visibility_G_with_turbines)    
+        
+        scaled_visibility_G_with_turbines = self.add_edges_to_turbines(scaled_visibility_G_with_turbines)   
+        return scaled_visibility_G_with_turbines
+    
+    def add_edges_to_turbines(self, graph):
+        '''To be used for allocation purposes'''
+        for node1, data1 in graph.nodes(data=True):
+            if data1['description'] == 'countor_point':
+                pos = data1['pos']
+                for node2, data2 in graph.nodes(data=True):
+                    if data2['description'] == 'turbine' and data2['related_to'] == node1:
+                        graph.add_edge(node1, node2)
+        return graph
+                        
 if __name__ == '__main__':
     rospy.logdebug('Build Roadmaps.init')
     rospy.init_node('build_roadmaps', anonymous=True)
+    
     Roadmap = BuildRoadmaps()
+
+    turbines_xy = Roadmap.load_turbines_xy()
+    corners_xy = Roadmap.load_corners_xy()
+    visibility_G, countor_points = Roadmap.create_visibility_graph(turbines_xy, corners_xy)
+    visibility_G = Roadmap.remove_disconected_nodes(visibility_G)
     
-    Roadmap.load_turbines_xy()
-    Roadmap.load_corners_xy()
-    Roadmap.build_voronoi()
-    Roadmap.build_graph_from_voronoi()
-    Roadmap.add_contour_points_to_graph()
+    Roadmap.plot_visibility_graph(visibility_G, countor_points)
     
-    Roadmap.draw_graph()
+    # Print atributtes of graph:
+    # Roadmap.print_nodes_and_attributes(visibility_G)
     
-    if nx.is_connected(Roadmap.G):
+    # Create a new graph and scale
+    visibility_G_with_turbines = visibility_G.copy()
+    visibility_G_with_turbines = Roadmap.add_turbines_to_graph(visibility_G_with_turbines, turbines_xy)
+    scaled_visibility_G_with_turbines = Roadmap.scale_graph(visibility_G_with_turbines)    
+    
+    if nx.is_connected(visibility_G):
         rospy.logwarn('Graph is connected, ok!')
     else:
         rospy.logwarn('Graph is not connected, create another roadmap!')
-    
-    Roadmap.scale_graph()    
-    Roadmap.plot_scaled_points()
-
-    Roadmap.create_turbines_world()
+    # Roadmap._wait(1)
+    Roadmap.define_turbines_in_world_launch(scaled_visibility_G_with_turbines)
+    Roadmap.plot_scaled_points(scaled_visibility_G_with_turbines)
