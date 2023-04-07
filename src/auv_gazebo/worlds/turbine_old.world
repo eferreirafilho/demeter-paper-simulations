@@ -12,36 +12,45 @@
       <uri>model://ocean_auv</uri>
       <pose>0 0 -0.95 0 0 0</pose>
     </include>
-  <include>
-    <name>turbine0</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>33.25651702790926 24.23753704432042 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine1</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>20.456383960823725 -9.03497604442089 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine2</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>14.393163034308817 65.74970549701871 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine3</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>1.7277682100340108 36.5577836361423 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine4</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-11.880794313920042 4.226945446139462 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine5</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-23.73775968132633 -25.7497054970193 0 0 0 0</pose>
-  </include>
+
+    <!-- Heightmap -->
+    <!-- <include>
+      <uri>model://sand_heightmap</uri>
+      <pose>0 0 -34 0 0 0</pose>
+    </include> -->
+
+    <!-- Turbine -->
+    <include>
+      <name>turbine1</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>0 0 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine2</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>0 50 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine3</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>50 0 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine4</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>0 -50 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine5</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>-50 0 0 0 0 0</pose>
+    </include>
+    <include>
+      <name>turbine6</name>
+      <uri>model://turbine_rotor</uri>
+      <pose>-50 -50 0 0 0 0</pose>
+    </include>
+
     <plugin name="underwater_current_plugin" filename="libuuv_underwater_current_ros_plugin.so">
       <namespace>hydrodynamics</namespace>
       <constant_current>
@@ -73,4 +82,6 @@
     </plugin>
 
     <plugin name="sc_interface" filename="libuuv_sc_ros_interface_plugin.so"/>
-</world></sdf>
+
+  </world>
+</sdf>

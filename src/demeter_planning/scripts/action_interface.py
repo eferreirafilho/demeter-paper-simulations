@@ -4,12 +4,10 @@ from random import randint
 from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped, Quaternion, Twist
+from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
 from std_msgs.msg import Float32
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
-from functools import partial
-import numpy as np
-import re
+from build_roadmaps import BuildRoadmaps
 
 class DemeterActionInterface(object):
 
@@ -18,130 +16,134 @@ class DemeterActionInterface(object):
     ACTION_SUCCESS = 1
     ACTION_FAIL = 0
     EPS_DISTANCE = 0.2 # Distance we consider that vehicle is at a waypoint
-    SUBMERGED_Z = 0.4 # Z Distance we consider that vehicle is on surface
-    SUBMERGED_Z_CMD = 0.2 # Z Distance we send vehicle to surface
+    SUBMERGED_Z = -1.5 # Z Distance we consider that vehicle is on surface
+    SUBMERGED_Z_CMD = -1 # Z Distance we send vehicle to surface
     EPS_ANGLE = 1 # Distance (degrees) we consider that a desired angle is achieved
 
-    def __init__(self, auv_name, update_frequency=10.0):
+    def __init__(self, namespace, update_frequency=10.):
         """
         A Class that interfaces ROSPlan and Demeter Vehicle for executing actions
         """
+        rospy.logwarn(namespace)
+        self.namespace=namespace
+        self.wp_reached = -1
         self.init_position = []
         self.waypoints_position = ['']
-        self.turbine_waypoints = []
+        self.previous_mode = ''
+        self.current_mode = ''
         self.external_intervened = False
         self.waypoints = list()
-        self.wp_reached = list()
-        self._current_wp = list()
-        self.target_wp = list()
-        self.odom_pose = []
-        self.cmd_pose_pub = []
-        self.number_of_vehicles = len(rospy.get_param('/init_populate_KB/vehicle_idx')) # Number of vehicles
-        self.number_of_data_sensors = len(rospy.get_param('/init_populate_KB/data_idx')) # Number of data sensors
-        self.turbines_xy = [rospy.get_param('/init_populate_KB/turbines_x'), rospy.get_param('/init_populate_KB/turbines_y')] # Turbines position
-        self.num_turbines = len(self.turbines_xy[0])
-        for i in range(self.number_of_vehicles):
-            self.odom_pose.append(Odometry())
-            self._current_wp.append(-1)
-            self.target_wp.append(-1)
-            self.wp_reached.append(-1)
-
-        self.base_waypoints = self.load_base_waypoints()
-        self.populate_turbine_waypoints()
+        self._current_wp = -1
+        self.target_wp = -1
+        self.odom_pose = Odometry()
         self._rate = rospy.Rate(update_frequency)
+        # self.Roadmap = BuildRoadmaps()
+        wp_array = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
+        rospy.logwarn('wp_array')
+        print(wp_array)
+        X = [wp[0] for wp in wp_array]
+        Y = [wp[1] for wp in wp_array]
+        Z = [wp[2] for wp in wp_array]
+        self.waypoints_position = [X, Y, Z] 
 
+        print('self.waypoints_position')
+        print(self.waypoints_position)
+        
+        # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
-        for vehicle_index in range(self.number_of_vehicles):
-            # Subscribers
-            rospy.Subscriber('/auv'+str(vehicle_index)+'/pose_gt', Odometry, self._pose_gt_cb, vehicle_index, queue_size=10)
-            # Publishers        
-            pub = rospy.Publisher('/auv'+str(vehicle_index)+'/cmd_pose', PoseStamped, queue_size=10)
-            self.cmd_pose_pub.append(pub)
+        # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10)#REAL ROBOT
+        rospy.Subscriber(str(self.namespace)+'pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
+        # Publisher
+        # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) #REAL ROBOT
+        self.cmd_pose_pub=rospy.Publisher(str(self.namespace)+'cmd_pose',PoseStamped, queue_size=10)
+        
+        init_position = self.get_position()
+        self.set_init_position_param(init_position)
 
-        self._wait(1) 
+        self._wait(2) 
             
     def _wait(self, n_rate):
         for _ in range(n_rate):
             self._rate.sleep()
         
-    def _pose_gt_cb(self, msg, vehicle_index):
-        self.odom_pose[vehicle_index] = msg
+    def _pose_gt_cb(self, msg):
+        self.odom_pose = msg
 
-    def load_wp_config_from_file(self):
-        waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
+    def load_submerge_wp_from_param(self):
+        waypoints = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_z")]
         return waypoints
-    
-    def load_base_waypoints(self):
-        self.base_waypoints = [rospy.get_param("/rosplan_demeter_exec/plan_wp_x"), rospy.get_param("/rosplan_demeter_exec/plan_wp_y"),rospy.get_param("/rosplan_demeter_exec/plan_wp_z")]
-        return self.base_waypoints
 
-    def populate_turbine_waypoints(self):
-        for turbine in range(self.num_turbines):
-            turbine_x = self.turbines_xy[0][turbine]
-            turbine_y = self.turbines_xy[1][turbine]
-            self.turbine_waypoints.append([])
-            for p in range(len(self.base_waypoints[0])):
-                # turbine_waypoint contains the waypoints shifted for each turbine
-                self.turbine_waypoints[turbine].append([turbine_x + self.base_waypoints[0][p], turbine_y + self.base_waypoints[1][p], self.base_waypoints[2][p]])
-            
     def load_origin_from_file(self):
-        origin = [rospy.get_param("/rosplan_demeter_exec/origin_x"), rospy.get_param("/rosplan_demeter_exec/origin_y"),rospy.get_param("/rosplan_demeter_exec/origin_z")]
+        origin = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_z")]
         return origin
+    
+    def append_to_waypoint_position(self, pos):      
+        self.waypoints_position[0].append(float(round(pos[0])))
+        self.waypoints_position[1].append(float(round(pos[1])))
+        self.waypoints_position[2].append(float(round(pos[2])))
 
-    def append_to_waypoint_position(self,position):
-        self.waypoints_position=self.load_wp_config_from_file()
-        self.waypoints_position[0].append(float(round(position[0])))
-        self.waypoints_position[1].append(float(round(position[1])))
-        self.waypoints_position[2].append(float(round(position[2])))
+    def closer_wp(self, pos):
+        dist = float('inf')
+        closer_wp = None
+        for i in range(len(self.waypoints_position[0])): # Don't compare with itself
+            dist_aux=sqrt((pos[0] - self.waypoints_position[0][i])**2+(pos[1] - self.waypoints_position[1][i])**2+(pos[2] - self.waypoints_position[2][i])**2)
+            if dist_aux.real<dist:
+                dist=dist_aux.real
+                closer_wp=i
+        return closer_wp
 
-    def closer_wp(self, position):
-        '''Returns the closest waypoint in the PDDL format'''
-        closest_distance = 1e10
-        closest_point = None
-        closest_index = None
-        for turbine, sublist in enumerate(self.turbine_waypoints):
-            for point, coord in enumerate(sublist):
-                distance = sqrt((position[0] - coord[0])**2 + (position[1] - coord[1])**2 + (position[2] - coord[2])**2)
-                if distance.real < closest_distance.real:
-                    closest_distance = distance
-                    closest_point = coord
-                    closest_index = (turbine,point)
-        return str('wp_turbine'+str(closest_index[0])+'_point'+str(closest_index[1]))
-
-    def do_move(self, vehicle_index, waypoint, duration=rospy.Duration()):
-        vehicle_index_int = int(vehicle_index[3]) 
-        self.wp_reached[vehicle_index_int] = -1
+    def do_move(self, waypoint, duration=rospy.Duration()):
+        self.wp_reached = -1
         start = rospy.Time.now()
-        self.set_current_target_wp(waypoint, vehicle_index_int) # Set current waypoint to internal variable
-        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached[vehicle_index_int])):
-            self.publish_wp_cmd_pose_fixed_orientation(vehicle_index_int)
-            self.update_wp_position(waypoint,vehicle_index_int)
-            
-            if self._current_wp[vehicle_index_int]==waypoint: # Query if vehicle is at target WP
-                self.wp_reached[vehicle_index_int]=waypoint # SUCCESS
+        rospy.logwarn('Moving to waypoint ' + str(waypoint))
+        
+        self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
+            self.publish_wp_cmd_pose_fixed_orientation(waypoint)
+            self.update_wp_position(waypoint)
+            if self._current_wp==waypoint: # Query if vehicle is at target WP
+                self.wp_reached=waypoint # SUCCESS
+                rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
             self._rate.sleep()
-            print('Moving to waypoint: ' + waypoint)
-        response = int(waypoint == self.wp_reached[vehicle_index_int])
-        print('Vehicle ' + str(vehicle_index_int) + ' response: ' + str(response))
+        response = int(waypoint == self.wp_reached)
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
         return response
     
-    def do_get_data(self, duration=rospy.Duration()):
-        rospy.logdebug('Interface: Mock \'Get Data\' Action')
+    def do_submerge_mission(self, turbine, duration=rospy.Duration()):
+        rospy.logdebug('Interface: \'Submerge Mission\' Action')
+        response = self.ACTION_FAIL
         start = rospy.Time.now()
-        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+        start_pos = self.odom_pose.pose.pose.position
+        turbine_pos = self.get_turbine_start_position(int(turbine))
+        submerge_wp = self.load_submerge_wp_from_param()
+        # Offset the waypoints with the turbine position in a single pass.
+        submerge_wp = [[x + turbine_pos[0], y + turbine_pos[1], z] for x, y, z in zip(submerge_wp[0], submerge_wp[1], submerge_wp[2])]
+        pos = Point()
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and not (response == self.ACTION_SUCCESS):
             self._rate.sleep()
-            completion_percentage = 'Getting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-            rospy.loginfo_throttle(1,completion_percentage)
-        response = self.ACTION_SUCCESS #MOCK SUCCESS     
-        rospy.loginfo('Data acquired!')
+            for wp_x, wp_y, wp_z in submerge_wp:
+                pos.x, pos.y, pos.z = wp_x, wp_y, wp_z
+                while self.squared_distance(self.odom_pose.pose.pose.position, pos) > self.EPS_DISTANCE**2:
+                    self.publish_position_fixed_orientation(pos)
+                    completion_percentage = 'Submerge mission: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                    rospy.loginfo_throttle(1,completion_percentage)
+            
+            while self.squared_distance(self.odom_pose.pose.pose.position, start_pos) > self.EPS_DISTANCE**2:
+                self.publish_position_fixed_orientation(start_pos)
+                completion_percentage = 'Returning to submerge point: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                rospy.loginfo_throttle(1,completion_percentage)
+                response = self.ACTION_SUCCESS     
+            rospy.loginfo('Data acquired!')
+                
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
     
     def do_transmit_data(self, duration=rospy.Duration()):
         rospy.logdebug('Interface: Mock \'Transmit\' Action')
+        while self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
+            self.surface_if_submerged()   
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             self._rate.sleep()
@@ -152,50 +154,97 @@ class DemeterActionInterface(object):
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
-        
-    def set_current_target_wp(self, waypoint_string, vehicle_index):     
-        turbine_idx, point_idx = [int(x) for x in re.findall(r'\d+', waypoint_string)]
-        target_position = self.turbine_waypoints[turbine_idx][point_idx]
-        self.target_wp[vehicle_index] = [target_position[0], target_position[1], target_position[2]]
+    
+    def do_wait_to_recharge(self, duration=rospy.Duration()):
+        rospy.logdebug('Interface: Mock \'wait-to-recharge \' Action')
+        while self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
+                self.surface_if_submerged()           
+        start = rospy.Time.now()
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+                self._rate.sleep()
+                completion_percentage = 'Waiting to Recharge ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                rospy.loginfo_throttle(1,completion_percentage)
+        response = self.ACTION_SUCCESS     
+        rospy.loginfo('Recharged!')
+        if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
+            response = self.OUT_OF_DURATION        
+        return response
+    
+    def squared_distance(self, p1, p2):
+        return (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2
+    
+    def do_localize_cable(self, turbine, duration=rospy.Duration()):
+        rospy.logdebug('Interface: Mock \'Localize\' Action')
+        start = rospy.Time.now()
+        turbine_pos = self.get_turbine_start_position(int(turbine))
+        # Mock action: Go to the countor point more to the right (to avoid collision with the pole)        
+        DELTA_X = 5
+        DELTA_Z = -10
+        pos = Point()
+        pos.x=float(turbine_pos[0] + DELTA_X)
+        pos.y=float(turbine_pos[1])
+        pos.z=float(DELTA_Z)
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+            self.publish_position_fixed_orientation(pos)
+            self._rate.sleep()
+            completion_percentage = 'Localizing ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            rospy.loginfo_throttle(1,completion_percentage)
+        response = self.ACTION_SUCCESS     
+        rospy.loginfo('Localizing!')
+        if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
+            response = self.OUT_OF_DURATION        
+        return response
+    
+    def get_turbine_start_position(self, turbine):
+        param = rospy.get_param(str(self.namespace) + 'rosplan_demeter_exec/scaled_turbines_xy')
+        print('param')
+        print(type(param))
+        print(param)
+        turbine_pos = param[turbine]
+        return turbine_pos
+    
+    def set_current_target_wp(self, wp_index):     
+        self.get_init_position_param()
+        self.append_to_waypoint_position(self.init_position)
+        wp_set=[item[wp_index] for item in self.waypoints_position] # Get specified waypoint
+        rospy.logwarn('Setting target waypoint to: ' + str(wp_set))
+        self.target_wp=wp_set
 
-    def set_init_position_param(self, position, vehicle_index):
-        rospy.set_param('/planning/initial_position/auv' + str(vehicle_index), [position.x, position.y, position.z])       
+    def set_init_position_param(self, position):
+        rospy.set_param(str(self.namespace)+'planning/initial_position', [position.x, position.y, position.z])       
 
-    def update_wp_position(self,waypoint,vehicle_index):
+    def get_init_position_param(self):
+        self.init_position = rospy.get_param(str(self.namespace)+'planning/initial_position')       
+
+    def update_wp_position(self, waypoint):
         wp = -1
-        
-        dist_x = sqrt((self.odom_pose[vehicle_index].pose.pose.position.x - self.target_wp[vehicle_index][0])**2)
-        dist_y = sqrt((self.odom_pose[vehicle_index].pose.pose.position.y - self.target_wp[vehicle_index][1])**2)
-        dist_z = sqrt((self.odom_pose[vehicle_index].pose.pose.position.z - self.target_wp[vehicle_index][2])**2)
-        # rospy.logwarn_throttle(1,'DISTANCES: ')
-        # rospy.logwarn_throttle(1,dist_x.real)
-        # rospy.logwarn_throttle(1,dist_y.real)
-        # rospy.logwarn_throttle(1,dist_z.real)
+        dist_x = sqrt((self.odom_pose.pose.pose.position.x - self.target_wp[0])**2)
+        dist_y = sqrt((self.odom_pose.pose.pose.position.y - self.target_wp[1])**2)
+        dist_z = sqrt((self.odom_pose.pose.pose.position.z - self.target_wp[2])**2)
+        dist = (dist_x.real + dist_y.real + dist_z.real)
         if dist_x.real<self.EPS_DISTANCE and dist_y.real<self.EPS_DISTANCE and dist_z.real<self.EPS_DISTANCE:
-            wp = waypoint
-        self._current_wp[vehicle_index] = wp
-        
-        
+            wp = waypoint          
+        self._current_wp = wp
         # rospy.loginfo_throttle(2,'Distance to target X: ' + str((dist_x.real,5)))
         # rospy.loginfo_throttle(2,'Distance to target Y: ' + str((dist_y.real,5)))
         # rospy.loginfo_throttle(2,'Distance to target Z: ' + str((dist_z.real,5)))
         # rospy.loginfo_throttle(2,'self.target[0]: ' + str(self.target_wp[0]))
         # rospy.loginfo_throttle(2,'self.target[1]: ' + str(self.target_wp[1]))
         # rospy.loginfo_throttle(2,'self.target[2]: ' + str(self.target_wp[2]))
+        rospy.loginfo_throttle(5,'Distance to target: ' + str((dist.real,5)))
         
-    def publish_wp_cmd_pose_fixed_orientation(self, vehicle_index): 
+    def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      
-        cmd_pose.pose.position.x=self.target_wp[vehicle_index][0]
-        cmd_pose.pose.position.y=self.target_wp[vehicle_index][1]
-        cmd_pose.pose.position.z=self.target_wp[vehicle_index][2]
+        cmd_pose.pose.position.x=self.target_wp[0]
+        cmd_pose.pose.position.y=self.target_wp[1]
+        cmd_pose.pose.position.z=self.target_wp[2]
         cmd_pose.pose.orientation.x=0
         cmd_pose.pose.orientation.y=0
         cmd_pose.pose.orientation.z=0
         cmd_pose.pose.orientation.w=1
-        # rospy.loginfo_throttle(1,'Publishing waypoint: ' + str(cmd_pose))
-        self.cmd_pose_pub[vehicle_index].publish(cmd_pose)
+        self.cmd_pose_pub.publish(cmd_pose)
         
-    def publish_position_fixed_orientation(self, pos, vehicle_index):
+    def publish_position_fixed_orientation(self,pos):
         cmd_pose=PoseStamped()      
         cmd_pose.pose.position.x=pos.x
         cmd_pose.pose.position.y=pos.y
@@ -204,7 +253,7 @@ class DemeterActionInterface(object):
         cmd_pose.pose.orientation.y=0
         cmd_pose.pose.orientation.z=0
         cmd_pose.pose.orientation.w=1
-        self.cmd_pose_pub[vehicle_index].publish(cmd_pose)
+        self.cmd_pose_pub.publish(cmd_pose)
 
     def publish_cmd_pose(self,pos,ori):
         cmd_pose=PoseStamped()      
@@ -217,45 +266,63 @@ class DemeterActionInterface(object):
         cmd_pose.pose.orientation.w=ori.w
         self.cmd_pose_pub.publish(cmd_pose)
     
-    def get_position(self,vehicle_index):
-        return self.odom_pose[vehicle_index].pose.pose.position
+    def get_position(self):
+        rospy.logwarn(self.odom_pose.pose.pose.position)
+        return self.odom_pose.pose.pose.position
 
-    def get_orientation(self, vehicle_index):
-        return self.odom_pose[vehicle_index].pose.pose.orientation
+    def get_orientation(self):
+        return self.odom_pose.pose.pose.orientation
     
-    def get_linear_velocity(self, vehicle_index):
-        return self.odom_pose[vehicle_index].pose.pose.position
+    def get_linear_velocity(self):
+        return self.odom_pose.pose.pose.position
 
     def is_submerged(self):
-        position=self.get_position()
-        if position.z<self.SUBMERGED_Z:
+        # current_pos=self.get_position()
+        rospy.logwarn('Position z' + str(self.odom_pose.pose.pose.position.z))
+        rospy.logwarn('SUBMERGED Z' + str(self.SUBMERGED_Z))
+        # if current_pos.z<self.SUBMERGED_Z:
+        if float(self.odom_pose.pose.pose.position.z)<float(self.SUBMERGED_Z):
+            rospy.logwarn(float(self.odom_pose.pose.pose.position.z))
+            rospy.logwarn(float(self.SUBMERGED_Z))
+            rospy.logwarn('submerged!!')
             return True
         else:
+            rospy.logwarn('surfaced!!')
             return False
+    
+    def surface_if_submerged(self):
+        rospy.loginfo('Surfacing...')
+        pos = Point()
+        pos.x = self.odom_pose.pose.pose.position.x
+        pos.y = self.odom_pose.pose.pose.position.y
+        pos.z = self.SUBMERGED_Z
+        self.publish_position_fixed_orientation(pos)
+        self._wait(2) 
         
     def goto_surface(self):
-        position=self.get_position()
-        position.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
-        self.publish_position_fixed_orientation(position)
+        pos = Point()
+        pos = self.odom_pose.pose.pose.position
+        # current_pos2=self.get_position()
+        pos.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
+        self.publish_position_fixed_orientation(pos)
 
     def goto_origin(self):
         origin = self.load_origin_from_file()
-        position.x=float(origin[0])
-        position.y=float(origin[1])
-        position.z=float(origin[2])
-        self.publish_position_fixed_orientation(position)
+        pos = Point()
+        pos.x=float(origin[0])
+        pos.y=float(origin[1])
+        pos.z=float(origin[2])
+        self.publish_position_fixed_orientation(pos)
         return
 
     def orientation_comparison(self,q1,q2):
         q1_inv=q1
         q1_inv.w=-q1_inv.w
-        print(q2)
-        print(q1_inv)
         qr = quaternion_multiply([q2.x,q2.y,q2.z,q2.w],[q1_inv.x,q1_inv.y,q1_inv.z,q1_inv.w])
         return qr
 
-    def rotate_vehicle(self, rotate_angle, rotate_axis, vehicle_index):
-        orientation_q = self.get_orientation(vehicle_index)
+    def rotate_vehicle(self, rotate_angle, rotate_axis):
+        orientation_q = self.get_orientation()
         orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
         (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
         if rotate_axis == 'roll': desired_orientation_list = quaternion_from_euler(current_roll + rotate_angle, current_pitch, current_yaw)
@@ -264,23 +331,23 @@ class DemeterActionInterface(object):
         (desired_roll, desired_pitch, desired_yaw) = euler_from_quaternion (desired_orientation_list)
         desired_orientation_q = Quaternion()
         desired_orientation_q.x, desired_orientation_q.y, desired_orientation_q.z, desired_orientation_q.w = desired_orientation_list[0], desired_orientation_list[1], desired_orientation_list[2], desired_orientation_list[3]  
-        position_q = self.get_position(vehicle_index) 
+        position_q = self.get_position() 
         self.publish_cmd_pose(position_q, desired_orientation_q)
         if rotate_axis == 'roll': 
             while abs(self.smallest_angular_distance(current_roll*(180/pi), desired_roll*(180/pi)))>self.EPS_ANGLE:
-                orientation_q = self.get_orientation(vehicle_index)
+                orientation_q = self.get_orientation()
                 orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
                 (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
             return True
         elif rotate_axis == 'pitch': 
             while abs(self.smallest_angular_distance(current_pitch*(180/pi), desired_pitch*(180/pi)))>self.EPS_ANGLE:
-                orientation_q = self.get_orientation(vehicle_index)
+                orientation_q = self.get_orientation()
                 orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
                 (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
             return True
         elif rotate_axis == 'yaw': 
             while abs(self.smallest_angular_distance(current_yaw*(180/pi), desired_yaw*(180/pi)))>self.EPS_ANGLE:
-                orientation_q = self.get_orientation(vehicle_index)
+                orientation_q = self.get_orientation()
                 orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
                 (current_roll, current_pitch, current_yaw) = euler_from_quaternion (orientation_list)
             return True
@@ -300,8 +367,8 @@ class DemeterActionInterface(object):
         # for i in range(4):
         #     self.rotate_vehicle(pi/2,'yaw')
 
-    def command_halt_vehicle(self,vehicle_index):
-        position=self.get_position(vehicle_index)
-        orientation=self.get_orientation(vehicle_index)
+    def command_halt_vehicle(self):
+        position=self.get_position()
+        orientation=self.get_orientation()
         rospy.loginfo('Vehicle Halted! Position: ' + str(position))
         self.publish_cmd_pose(position,orientation)

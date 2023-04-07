@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- Build Roadmap -->
+	<node pkg="demeter_planning" type="build_roadmaps.py" name="build_roadmaps" output="screen"> 
+		<rosparam file="$(find demeter_planning)/params/original_windfarm_coordinates.yaml" command="load"/>
+	</node>
+
+</launch>
