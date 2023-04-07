@@ -97,37 +97,47 @@ class ExecDemeter(object):
         self._rate.sleep()
         rospy.loginfo('Cancel Mission!')    
     
-    # def clear_mission(self):
-    #     self.demeter_rosplan_interface.clear_data_sent_fact()
-    #     demeter.clear_goals()
-    #     demeter.clear_data_is_in_fact()
-    #     self.demeter_rosplan_interface.clear_carry_vehicle_fact()
-    #     self.demeter_rosplan_interface.clear_data_sent_fact()
-    #     self.cancel_mission()
+    def clear_mission(self):
+        self.demeter_rosplan_interface.clear_data_sent_fact()
+        # demeter.clear_goals()
+        # demeter.clear_data_is_in_fact()
+        self.demeter_rosplan_interface.clear_carry_vehicle_fact()
+        # self.demeter_rosplan_interface.clear_data_sent_fact()
+        self.cancel_mission()
     
+    def shift_allocation_param(self):
+        param_name = str(self.namespace + "goals_allocated")
+        # get the current list from the parameter server
+        current_list = rospy.get_param(param_name)
+
+        # shift the list elements to the left by the given amount
+        shifted_list = current_list[1:] + current_list[:1]
+
+        # write the updated list back to the parameter server
+        rospy.set_param(param_name, shifted_list)
+
+        # return the updated list
+        return shifted_list        
 
 if __name__ == '__main__':
     print('demeter_plan_exec')
     rospy.loginfo('Executive started')
     rospy.init_node('demeter_executive')
     
-    mission_counter=0
+    
     demeter = ExecDemeter()
     demeter.rosplan_services()
     
-    # while not rospy.is_shutdown():
-        # problem_instance.add_goal_mission(allocated_goals[0]) # Execute mission with priority
-        # problem_instance = PopulateKB()
-        # allocated_goals = problem_instance.load_allocation()
+    while not rospy.is_shutdown():
+        mission_counter=0
+        demeter.execute_plan()
         # while not demeter.mission_success:
-            # demeter._rate.sleep()
-    demeter.execute_plan()
-        # demeter.cancel_mission()
+        #     demeter._rate.sleep()
+        # # Shift allocation
+        # demeter.clear_mission()
+        # demeter.shift_allocation_param()
         # mission_counter = mission_counter + 1
-        # mission i succesfull
-        # allocated_goals = allocated_goals[1:] + [allocated_goals[0]] # Rotate goals
         # demeter._rate.sleep()
-        # rospy.logwarn('Allocated List: ' + str(allocated_goals))
-        # rospy.logwarn('Mission Counter: ' + str(mission_counter))
+        # demeter.clear_mission()
 
     rospy.spin()
