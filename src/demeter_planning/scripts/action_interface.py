@@ -37,7 +37,17 @@ class DemeterActionInterface(object):
         self.target_wp = -1
         self.odom_pose = Odometry()
         self._rate = rospy.Rate(update_frequency)
-        self.waypoints_position = self.build_graph_get_waypoints()
+        # self.Roadmap = BuildRoadmaps()
+        wp_array = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
+        rospy.logwarn('wp_array')
+        print(wp_array)
+        X = [wp[0] for wp in wp_array]
+        Y = [wp[1] for wp in wp_array]
+        Z = [wp[2] for wp in wp_array]
+        self.waypoints_position = [X, Y, Z] 
+
+        print('self.waypoints_position')
+        print(self.waypoints_position)
         
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
@@ -67,15 +77,7 @@ class DemeterActionInterface(object):
         origin = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/origin_z")]
         return origin
     
-    def build_graph_get_waypoints(self):
-        Roadmap = BuildRoadmaps()
-        self.waypoints_aux = Roadmap.build_and_scale_roadmap()
-        # self.Roadmap = BuildRoadmaps()
-        # self.Roadmap.build_and_scale_roadmap()
-        # waypoints_aux = self.Roadmap.get_poi_from_graph()
-        return self.waypoints_aux
-    
-    def append_to_waypoint_position(self,pos):
+    def append_to_waypoint_position(self, pos):      
         self.waypoints_position[0].append(float(round(pos[0])))
         self.waypoints_position[1].append(float(round(pos[1])))
         self.waypoints_position[2].append(float(round(pos[2])))
@@ -83,7 +85,6 @@ class DemeterActionInterface(object):
     def closer_wp(self, pos):
         dist = float('inf')
         closer_wp = None
-      
         for i in range(len(self.waypoints_position[0])): # Don't compare with itself
             dist_aux=sqrt((pos[0] - self.waypoints_position[0][i])**2+(pos[1] - self.waypoints_position[1][i])**2+(pos[2] - self.waypoints_position[2][i])**2)
             if dist_aux.real<dist:
@@ -195,7 +196,10 @@ class DemeterActionInterface(object):
         return response
     
     def get_turbine_start_position(self, turbine):
-        param = rospy.get_param('/build_roadmaps/scaled_turbine_coordinates')
+        param = rospy.get_param(str(self.namespace) + 'rosplan_demeter_exec/scaled_turbines_xy')
+        print('param')
+        print(type(param))
+        print(param)
         turbine_pos = param[turbine]
         return turbine_pos
     

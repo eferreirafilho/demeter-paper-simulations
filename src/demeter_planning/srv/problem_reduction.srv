@@ -1,4 +1,0 @@
-int32 auv_id
-float32[] relevant_poi
----
-int32 result

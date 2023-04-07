@@ -11,14 +11,8 @@ class Allocation(object):
   def __init__(self):
     NUMBER_OF_TURBINES = 60
     self._rate = rospy.Rate(10)
-    self._wait(5)  
     self.get_data_allocation_parameters()
-    Roadmap = BuildRoadmaps()
-    G = Roadmap.build_roadmap_with_turbines()
-    self.scaled_turbines_xy = []
-    for node, data in G.nodes(data=True):
-            if data['description'] == 'turbine':
-                self.scaled_turbines_xy.append(data['pos'])
+    self.get_roadmap_parameters()
     
     self.goals = []
     for turbine in self.data_idx:
@@ -27,7 +21,6 @@ class Allocation(object):
         rospy.logwarn('WARNING: Position of sensor out of turbine farm range!')
         
       self.auv_positions = {}
-    rospy.logwarn('self.goals' + str(self.goals))
 
     # Get current robots positions
     for i in self.vehicle_idx:
@@ -49,6 +42,9 @@ class Allocation(object):
     self.vehicle_idx = rospy.get_param("/goal_allocation/vehicle_idx")
     self.data_idx = rospy.get_param("/goal_allocation/data_idx")
     # self.poi_coordinates = rospy.get_param("/goal_allocation/poi_x"), rospy.get_param("/goal_allocation/poi_y") 
+  
+  def get_roadmap_parameters(self):
+    self.scaled_turbines_xy = rospy.get_param("/goal_allocation/scaled_turbines_xy")
     
   def build_graph_get_waypoints(self):
     Roadmap = BuildRoadmaps()
@@ -132,21 +128,19 @@ if __name__ == '__main__':
   rospy.spin
   
   POPULATION = 10000
-  MUTATION_RATE = 0.1
+  MUTATION_RATE = 0.3
   N_GENERATIONS = 1000
   
   goal_allocation = Allocation()
-  goal_allocation._wait(6)   
   solution = goal_allocation.run_genetic_algorithm(POPULATION, MUTATION_RATE, N_GENERATIONS)
   
-  rospy.logwarn(solution)
+  print("Solution: " + str(solution))
   
   for vehicle in range(len(solution[1])):
     solution_vehicle = solution[1][int(vehicle)]
     solution_ids=[]
     for i in solution[1][int(vehicle)]:
       goal_allocation.find_index(i)
-      print('Vehicle: ' + str(vehicle) + ' Allocated data: ')
-      print(goal_allocation.find_index(i))
+      print('Vehicle: ' + str(vehicle) + ' Allocated data: ' + str(goal_allocation.find_index(i)))
       solution_ids.append(goal_allocation.find_index(i))
     goal_allocation.set_solution_to_ros_param(vehicle, solution_ids)

@@ -12,8 +12,8 @@
 
   <include file="$(find auv_descriptions)/launch/upload_auv.launch">
 		<arg name="namespace" value="auv1"/>
-    <arg name="x" value="-23"/>
-    <arg name="y" value="-27"/>
+    <arg name="x" value="-18"/>
+    <arg name="y" value="-21"/>
     <arg name="z" value="-1"/>
 	</include>
 

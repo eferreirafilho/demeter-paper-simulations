@@ -14,21 +14,34 @@ from action_interface import DemeterActionInterface
 import re
 import networkx as nx
 import matplotlib.pyplot as plt
-from build_roadmaps import BuildRoadmaps
+import pickle
+import roslib
+from rospkg import RosPack
 
 class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
         rospy.logwarn('Create Problem - Populating KB with robots initial position and goals')
+        self.SCALE_TRAVERSE_COSTS = 0.1
         self.namespace = rospy.get_namespace()
+        self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
+
         self.vehicle_id = self.extract_number_from_string(self.namespace)
         action_interface_object = DemeterActionInterface(self.namespace)
         self.position = action_interface_object.get_position()
         action_interface_object.set_init_position_param(self.position)  
         self.closer_wp = action_interface_object.closer_wp([self.position.x, self.position.y, self.position.z])
-        self.build_graph()
-        closer_wp_position = [self.poi_position[0][self.closer_wp],  self.poi_position[1][self.closer_wp], self.poi_position[2][self.closer_wp]]
+        self.load_graph()
+        self.remove_turbines_from_graph()
+        self.add_distances_as_weights()
+        for node, attrs in self.scaled_G.nodes(data=True):
+            rospy.logwarn("{}: {}".format(node, attrs))
+                    
+        self.poi_position = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
+        
+        closer_wp_position = self.poi_position[self.closer_wp]
+        
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
         rospy.logwarn('self.distance_to_closer_wp')
         rospy.logwarn(self.distance_to_closer_wp)
@@ -45,10 +58,11 @@ class PopulateKB(object):
         # plt.show()
         
         # Get all allocated goals
-        for goal in self.allocated_goals:
-            self.add_goal_mission(goal)
+        # for goal in self.allocated_goals:
+            # self.add_goal_mission(goal)
         
-        # self.add_goal_mission(self.allocated_goals)
+        rospy.logwarn(self.allocated_goals)
+        self.add_goal_mission(self.allocated_goals[0])
         
     def draw_roadmap(self):
         pos_dict = nx.get_node_attributes(self.G,'pos')
@@ -89,23 +103,25 @@ class PopulateKB(object):
             dist=round(float(self.distance_to_closer_wp.real),2)
             if dist == 0: #Workaround, PDDL complains about distance equal to zero
                 dist = 0.01
-            self.update_functions('traverse-cost', [KeyValue('w', 'wp_init_auv'+str(self.vehicle_id)), KeyValue('w', 'waypoint'+str(self.closer_wp))], dist, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+            self.update_functions('traverse-cost', [KeyValue('w', 'wp_init_auv'+str(self.vehicle_id)), KeyValue('w', 'waypoint'+str(self.closer_wp))], self.SCALE_TRAVERSE_COSTS*dist, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
 
-    def build_graph(self):
-        Roadmap = BuildRoadmaps()
-        self.scaled_G = Roadmap.build_and_scale_roadmap()
+    def load_graph(self):
+        with open(self.package_path + "/params/scaled_visibility_G_with_turbines.pickle", "rb") as f:
+            self.scaled_G = pickle.load(f)
+
+    def remove_turbines_from_graph(self):
         # Remove all turbine nodes
         turbine_nodes = [n for n, attrs in self.scaled_G.nodes(data=True) if attrs['description'] == 'turbine']
         self.scaled_G.remove_nodes_from(turbine_nodes)
-        self.poi_position = Roadmap.get_poi_from_graph()
-
+        # self.poi_position = Roadmap.build_roadmap_get_waypoints()
         if nx.is_connected(self.scaled_G):
             rospy.logwarn('Graph is connected, ok!')
         else:
             rospy.logwarn('Graph is not connected, create another roadmap!')
-
-        node_pos=nx.get_node_attributes(self.scaled_G,'pos') 
+        
+    def add_distances_as_weights(self):
         # Add distances as weights
+        node_pos=nx.get_node_attributes(self.scaled_G,'pos') 
         for u, v in self.scaled_G.edges():
             x1, y1 = node_pos[int(u)]
             x2, y2 = node_pos[int(v)]
@@ -155,13 +171,14 @@ class PopulateKB(object):
             target = self.get_sensor_countor_points(poi_i)
             rospy.logwarn(target)
             rospy.logwarn(type(target))
+            rospy.logwarn('self.closer_wp')
+            rospy.logwarn(self.closer_wp)
             partial_subgraph = self.get_shortest_path_subgraph(int(self.closer_wp), 'general_waypoint', int(target))
             self.reduced_G.add_nodes_from(partial_subgraph.nodes())
             self.reduced_G.add_edges_from(partial_subgraph.edges())
     
     def get_sensor_countor_points(self, target_turbine):
         countor_points = self.get_countor_points_list()
-        
         sensor_countor_point = None
         max_x = float('-inf')
         for countor_point in countor_points:
@@ -170,8 +187,7 @@ class PopulateKB(object):
                 if float(x_value) > float(max_x):
                     max_x = x_value
                     sensor_countor_point = countor_point
-        rospy.logwarn('sensor_countor_point')
-        rospy.logwarn(sensor_countor_point)
+
         return sensor_countor_point
     
     def add_reduced_can_move(self):
@@ -180,10 +196,10 @@ class PopulateKB(object):
             self.add_fact('can-move', 'waypoint'+str(u), 'waypoint'+str(v))
             self.add_fact('can-move', 'waypoint'+str(v), 'waypoint'+str(u))
             dist = round(self.scaled_G.edges[u, v]['weight'],2)
-            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(u)), KeyValue('w', 'waypoint'+str(v))], dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(u)), KeyValue('w', 'waypoint'+str(v))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
             # Euclidean distance is the same. Will change when using directed weighted graphs
             dist = round(self.scaled_G.edges[v, u]['weight'],2)
-            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(v)), KeyValue('w', 'waypoint'+str(u))], dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(v)), KeyValue('w', 'waypoint'+str(u))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
     
     def load_allocation(self):
         # Load allocation of vehicles to goals from a goal allocation algorithm
