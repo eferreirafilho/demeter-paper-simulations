@@ -7,8 +7,8 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs message_ge
 ## Declare ROS messages and services
 #add_message_files(DIRECTORY msg FILES Num.msg)
 # add_service_files(DIRECTORY srv FILES AddTwoInts.srv)
-add_service_files(DIRECTORY srv FILES multiplier.srv)
-add_service_files(DIRECTORY srv FILES problem_reduction.srv)
+#add_service_files(DIRECTORY srv FILES multiplier.srv)
+#add_service_files(DIRECTORY srv FILES problem_reduction.srv)
 
 
 ## Generate added messages and services
@@ -27,6 +27,6 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 #add_dependencies(odometry_listener tutorials_generate_messages_cpp)
 #target_link_libraries(manc_lidarsim ${catkin_LIBRARIES})
 
-catkin_install_python(PROGRAMS scripts/service_server_node.py scripts/problem_reduction_server_node.py 
+catkin_install_python(PROGRAMS
   DESTINATION $(CATKIN_PACKAGE_BIN_DESTINATION)
 )
