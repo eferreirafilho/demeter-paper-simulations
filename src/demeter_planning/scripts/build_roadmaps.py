@@ -42,7 +42,6 @@ class BuildRoadmaps(object):
             result.append(converted_corner)
         return result
     
-    
     def _wait(self, n_rate):
         for _ in range(n_rate):
             self._rate.sleep()
@@ -247,28 +246,11 @@ class BuildRoadmaps(object):
             normalized_dict[key] = np.array([x, y])
         return normalized_dict
 
-    # def get_poi_from_graph(self):
-    #     G = nx.Graph()
-    #     G = self.scaled_G.copy()
-    #     # Remove turbine nodes
-    #     turbine_nodes = [n for n, attrs in G.nodes(data=True) if attrs['description'] == 'turbine']
-    #     G.remove_nodes_from(turbine_nodes)
-    #     # extract the 'pos' attribute values for all nodes
-    #     pos_dict = nx.get_node_attributes(G, 'pos')
-    #     # extract the X and Y coordinates separately into two lists
-    #     x_coords = [pos_dict[node][0] for node in G.nodes()]
-    #     y_coords = [pos_dict[node][1] for node in G.nodes()]
-    #     # combine the X and Y coordinate lists into a list of coordinate pairs
-    #     poi_coordinates = [x_coords, y_coords]
-    #     # Add distance to surface
-    #     Z_POI_DISTANCE = -0.5
-    #     poi_coordinates.append([Z_POI_DISTANCE]*len(poi_coordinates[0]))
-    #     return poi_coordinates
-
     def define_turbines_in_world_launch(self, graph, scaled_turbines_xy):
         
         # scaled_turbines_xy = rospy.get_param('/build_roadmaps/scaled_turbine_cordinates')
-        with open("/home/edson/ws_demeter_rosplan/src/auv_gazebo/worlds/turbine.world", "w") as file:
+        package_path = roslib.packages.get_pkg_dir("auv_gazebo")
+        with open(str(package_path) + "/worlds/turbine.world", "w") as file:
             # Write header
             file.write('<?xml version="1.0" ?>\n')
             file.write('<sdf version="1.6">\n')
@@ -384,15 +366,6 @@ class BuildRoadmaps(object):
                 turbine_nodes.append(node)
         graph.remove_nodes_from(turbine_nodes)
         return graph
-    
-    # def build_roadmap_with_turbines(self):
-    #     '''Create visibility graph and add turbines as edges to their countor points'''
-    #     visibility_G = self.build_roadmaps()
-    #     visibility_G_with_turbines = visibility_G.copy()
-    #     visibility_G_with_turbines = self.add_turbines_to_graph(visibility_G_with_turbines, turbines_xy)
-    #     scaled_visibility_G_with_turbines, _ = self.scale_graph(visibility_G_with_turbines)    
-    #     scaled_visibility_G_with_turbines = self.add_edges_to_turbines(scaled_visibility_G_with_turbines)   
-    #     return scaled_visibility_G_with_turbines
     
     def add_edges_to_turbines(self, graph):
         '''To be used for allocation purposes'''
