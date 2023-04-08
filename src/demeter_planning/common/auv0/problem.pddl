@@ -9,37 +9,59 @@
     turbine0 turbine1 turbine2 turbine3 turbine4 turbine5 turbine6 - turbine
 )
 (:init
-    (can-move wp_init_auv0 waypoint16)
-    (can-move waypoint16 waypoint2)
-    (can-move waypoint2 waypoint16)
-    (can-move waypoint16 waypoint11)
-    (can-move waypoint11 waypoint16)
-    (can-move waypoint1 waypoint2)
-    (can-move waypoint2 waypoint1)
+    (can-move wp_init_auv0 waypoint21)
+    (can-move waypoint1 waypoint5)
+    (can-move waypoint5 waypoint1)
+    (can-move waypoint7 waypoint21)
+    (can-move waypoint21 waypoint7)
+    (can-move waypoint7 waypoint6)
+    (can-move waypoint6 waypoint7)
+    (can-move waypoint21 waypoint5)
+    (can-move waypoint5 waypoint21)
 
     (is-in data0 turbine0)
 
 
 
-    (at vehicle0 waypoint11)
+    (at vehicle0 wp_init_auv0)
 
+    (is-surfaced vehicle0)
 
-    (data-sent data2)
 
     (empty vehicle0)
 
 
+    (tide-low currenttide)
 
 
+    (is-turbine-wp waypoint1 turbine0)
+
+    (not-recharging vehicle0)
 
 
+    (= (battery-amount vehicle0) 100)
 
+    (= (recharge-rate vehicle0) 1)
 
+    (= (recharge-rate-dedicated vehicle0) 100)
 
+    (= (traverse-cost wp_init_auv0 waypoint21) 1.508)
+    (= (traverse-cost waypoint1 waypoint5) 0.646)
+    (= (traverse-cost waypoint5 waypoint1) 0.646)
+    (= (traverse-cost waypoint7 waypoint21) 2.882)
+    (= (traverse-cost waypoint21 waypoint7) 2.882)
+    (= (traverse-cost waypoint7 waypoint6) 0.646)
+    (= (traverse-cost waypoint6 waypoint7) 0.646)
+    (= (traverse-cost waypoint21 waypoint5) 4.316)
+    (= (traverse-cost waypoint5 waypoint21) 4.316)
 
+    (= (total-missions-completed) 0)
 
+    (= (speed vehicle0) 100000)
 
 )
 (:goal (and
+    (data-sent data0)
 ))
+(:metric maximize (total-missions-completed))
 )

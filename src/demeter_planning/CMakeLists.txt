@@ -10,7 +10,6 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs message_ge
 # add_service_files(DIRECTORY srv FILES multiplier.srv)
 # add_service_files(DIRECTORY srv FILES problem_reduction.srv)
 
-
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
 
