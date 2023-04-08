@@ -7,9 +7,8 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs message_ge
 ## Declare ROS messages and services
 #add_message_files(DIRECTORY msg FILES Num.msg)
 # add_service_files(DIRECTORY srv FILES AddTwoInts.srv)
-#add_service_files(DIRECTORY srv FILES multiplier.srv)
-#add_service_files(DIRECTORY srv FILES problem_reduction.srv)
-
+# add_service_files(DIRECTORY srv FILES multiplier.srv)
+# add_service_files(DIRECTORY srv FILES problem_reduction.srv)
 
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
