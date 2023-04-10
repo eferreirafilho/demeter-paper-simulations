@@ -385,7 +385,7 @@ if __name__ == '__main__':
     visibility_G = Roadmap.build_roadmaps()
        
     # Print atributtes of graph:
-    Roadmap.print_nodes_and_attributes(visibility_G)
+    # Roadmap.print_nodes_and_attributes(visibility_G)
     
     # Create a new graph and scale
     visibility_G_with_turbines = visibility_G.copy()
@@ -397,7 +397,7 @@ if __name__ == '__main__':
     Roadmap.set_scaled_turbines_as_ros_parameters(scaled_turbines_xy)
 
     scaled_visibility_G = Roadmap.remove_turbines_from_graph(scaled_visibility_G_with_turbines)
-    Roadmap.print_nodes_and_attributes(scaled_visibility_G)
+    # Roadmap.print_nodes_and_attributes(scaled_visibility_G)
     Roadmap.set_waypoints_as_ros_parameters(scaled_visibility_G)
     
     if nx.is_connected(visibility_G):

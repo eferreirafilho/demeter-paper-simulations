@@ -25,7 +25,7 @@
     (is-surfaced vehicle0)
     (not-recharging vehicle0)
 
-    (is-in data0 turbine0)
+    ; (is-in data0 turbine0)
     
     (empty vehicle0)
 

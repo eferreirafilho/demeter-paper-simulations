@@ -117,8 +117,8 @@
     )
 
     (:durative-action transmit-data
-        :parameters (?v - vehicle ?d - data ?w - waypoint)
-        :duration (= ?duration 20)
+        :parameters (?v - vehicle ?d - data)
+        :duration (= ?duration 2)
         :condition (and 
             (at start (carry ?v ?d))
             (at start (> (battery-amount ?v) 50))

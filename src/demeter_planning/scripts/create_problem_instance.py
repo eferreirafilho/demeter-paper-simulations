@@ -23,21 +23,22 @@ class PopulateKB(object):
     mutex = Lock()
     def __init__(self):
         rospy.logwarn('Create Problem - Populating KB with robots initial position and goals')
+        sleep(5)
         self.SCALE_TRAVERSE_COSTS = 0.1
         self.namespace = rospy.get_namespace()
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
 
         self.vehicle_id = self.extract_number_from_string(self.namespace)
         action_interface_object = DemeterActionInterface(self.namespace)
+        
+
         self.position = action_interface_object.get_position()
         action_interface_object.set_init_position_param(self.position)  
         self.closer_wp = action_interface_object.closer_wp([self.position.x, self.position.y, self.position.z])
         self.load_graph()
         self.remove_turbines_from_graph()
         self.add_distances_as_weights()
-        for node, attrs in self.scaled_G.nodes(data=True):
-            rospy.logwarn("{}: {}".format(node, attrs))
-                    
+                        
         self.poi_position = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
         
         closer_wp_position = self.poi_position[self.closer_wp]
@@ -61,7 +62,14 @@ class PopulateKB(object):
         # for goal in self.allocated_goals:
             # self.add_goal_mission(goal)
         
+        rospy.logwarn('Create problem instance: self.allocated_goals')
         rospy.logwarn(self.allocated_goals)
+        # Clear KB
+        for goal in self.allocated_goals:
+            self.remove_fact('data-sent', 'data'+str(goal))
+            self.remove_goal('data-sent', 'data'+str(goal))
+
+        
         self.add_goal_mission(self.allocated_goals[0])
         
     def draw_roadmap(self):
@@ -90,6 +98,7 @@ class PopulateKB(object):
         rospy.logwarn('sensor_countor_point')
         rospy.logwarn(sensor_countor_point)
         self.add_fact('is-turbine-wp','waypoint'+str(sensor_countor_point),'turbine'+str(target_turbine))      
+   
         
     def init_position_to_KB(self):
             self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
@@ -269,6 +278,19 @@ class PopulateKB(object):
             knowledge.attribute_name=goal_fact
             knowledge.values.append(diagnostic_msgs.msg.KeyValue("d", goal_obj))     
             resp = update_client(KnowledgeUpdateServiceRequest.ADD_GOAL, knowledge)
+        except rospy.ServiceException:
+            rospy.loginfo("Service call failed")  
+            
+    def remove_goal(self, goal_fact, goal_obj):   
+        rospy.wait_for_service('rosplan_knowledge_base/update')
+        try:  
+            rospy.loginfo('Remove Goal ' + goal_fact + ' ' + goal_obj)
+            update_client = rospy.ServiceProxy('rosplan_knowledge_base/update', KnowledgeUpdateService)
+            knowledge = KnowledgeItem()
+            knowledge.knowledge_type=KnowledgeItem.FACT
+            knowledge.attribute_name=goal_fact
+            knowledge.values.append(diagnostic_msgs.msg.KeyValue("d", goal_obj))     
+            resp = update_client(KnowledgeUpdateServiceRequest.REMOVE_GOAL, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed")  
 

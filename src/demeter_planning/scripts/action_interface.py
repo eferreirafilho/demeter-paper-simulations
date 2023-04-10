@@ -39,16 +39,10 @@ class DemeterActionInterface(object):
         self._rate = rospy.Rate(update_frequency)
         # self.Roadmap = BuildRoadmaps()
         wp_array = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
-        rospy.logwarn('wp_array')
-        print(wp_array)
         X = [wp[0] for wp in wp_array]
         Y = [wp[1] for wp in wp_array]
         Z = [wp[2] for wp in wp_array]
         self.waypoints_position = [X, Y, Z] 
-
-        print('self.waypoints_position')
-        print(self.waypoints_position)
-        
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
         # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10)#REAL ROBOT
@@ -197,9 +191,6 @@ class DemeterActionInterface(object):
     
     def get_turbine_start_position(self, turbine):
         param = rospy.get_param(str(self.namespace) + 'rosplan_demeter_exec/scaled_turbines_xy')
-        print('param')
-        print(type(param))
-        print(param)
         turbine_pos = param[turbine]
         return turbine_pos
     

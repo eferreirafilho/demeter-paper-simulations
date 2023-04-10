@@ -87,19 +87,14 @@ class DemeterInterface(object):
         duration = rospy.Duration(msg.duration)
         # Parse action message
         if msg.name == 'move':
-            rospy.logwarn('msg.name = move')
             self._action_threaded(msg, self.move, [msg.parameters, duration])
         if msg.name == 'submerge-mission':
-            rospy.logwarn('msg.name = submerge-mission')
             self._action_threaded(msg, self.submerge_mission, [msg.parameters, duration])
         if msg.name == 'transmit-data':
-            rospy.logwarn('msg.name = transmit-data')
             self._action_threaded(msg, self.transmit_data, [duration])
         if msg.name == 'wait-to-recharge':
-            rospy.logwarn('msg.name = wait-to-recharge')
             self._action_threaded(msg, self.wait_to_recharge, [duration])
         if msg.name == 'localize-cable':
-            rospy.logwarn('msg.name = localize-cable')
             self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
 
     def _action_threaded(self, action_dispatch, action_func, action_params=list()):
@@ -274,7 +269,6 @@ class DemeterInterface(object):
             if param.key == 'd': # from Data d
                 data_location = int(param.value[4:])
                 break
-            rospy.logwarn(param)
         response = self.demeter.do_submerge_mission(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
         return response
     
@@ -289,7 +283,6 @@ class DemeterInterface(object):
     def localize_cable(self, dispatch_params, duration=rospy.Duration(60, 0)):
         for param in dispatch_params:
             if param.key == 'tu': # to Waypoint z
-                rospy.logwarn(param.value)
                 turbine = param.value[7:]
                 break
         response = self.demeter.do_localize_cable(turbine, duration)
