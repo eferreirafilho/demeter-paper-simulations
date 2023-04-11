@@ -144,6 +144,7 @@ class BuildRoadmaps(object):
         # Plot the nodes of the graph
         for node in visibility_G.nodes():
             plt.scatter(visibility_G.nodes[node]["pos"][0], visibility_G.nodes[node]["pos"][1], color='red', s=20)
+            plt.text(visibility_G.nodes[node]["pos"][0], visibility_G.nodes[node]["pos"][1], node, fontsize=9, color='black')
 
         # Plot the obstacles
         for i, obs in enumerate(obstacles):

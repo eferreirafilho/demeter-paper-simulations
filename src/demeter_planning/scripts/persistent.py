@@ -24,31 +24,25 @@ if __name__ == '__main__':
     print('Persistent Planning')
     rospy.loginfo('Persistent Planning started')
     rospy.init_node('persistent_planning')
+    NUMBER_OF_MISSIONS = 6
+    
     mission_count=0
-    while mission_count < 6:
-        populate = PopulateKB()  
+    while mission_count < NUMBER_OF_MISSIONS:
         demeter = ExecDemeter()
+        demeter.clear_KB()
+        populate = PopulateKB()  
         #while not demeter.mission_success:
         while not demeter.mission_completed():
             demeter.execute_plan()
-            sleep(5)
-        demeter.cancel_mission()
-        sleep(3)
-        
+            sleep(2)
+        demeter.clear_KB()
+        sleep(2)
         demeter = None
         populate = None
         sleep(1)
         shift_allocation_param()        
-        sleep(5)
+        sleep(3)
         rospy.logwarn('Persistent Goal: ' + str(mission_count) + ' Successfull!!!')
         mission_count+=1
-    # populate2 = PopulateKB()  
-    # demeter2 = ExecDemeter()
-    # sleep(5)
-    
-    # while not demeter2.mission_success:
-    #     demeter2.execute_plan()
-    
-    # print('Persistent Planning Finished2')
     rospy.spin()
     

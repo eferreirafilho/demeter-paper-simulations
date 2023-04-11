@@ -1,22 +1,15 @@
-Number of literals: 13
-Constructing lookup tables: [10%] [20%] [30%] [40%] [50%] [60%] [70%] [80%] [90%] [100%] [110%] [120%] [130%] [140%] [150%]
-Post filtering unreachable actions:  [10%] [20%] [30%] [40%] [50%] [60%] [70%] [80%] [90%] [100%] [110%] [120%] [130%] [140%] [150%]
+Number of literals: 10
+Constructing lookup tables:
+Post filtering unreachable actions: 
 [01;34mNo analytic limits found, not considering limit effects of goal-only operators[00m
-Pruning (move vehicle0 waypoint2 waypoint1) - never appeared in initial RPG
-Pruning (move vehicle0 wp_init_auv0 waypoint1) - never appeared in initial RPG
-Pruning (move vehicle0 waypoint16 waypoint11) - never appeared in initial RPG
-Pruning (move vehicle0 waypoint2 waypoint11) - never appeared in initial RPG
-Pruning (move vehicle0 wp_init_auv0 waypoint11) - never appeared in initial RPG
-Pruning (move vehicle0 waypoint11 waypoint16) - never appeared in initial RPG
-Pruning (move vehicle0 waypoint2 waypoint16) - never appeared in initial RPG
-Pruning (move vehicle0 waypoint1 waypoint2) - never appeared in initial RPG
-Pruning (move vehicle0 waypoint11 waypoint2) - never appeared in initial RPG
-Pruning (move vehicle0 waypoint16 waypoint2) - never appeared in initial RPG
-Pruning (localize-cable vehicle0 waypoint1 turbine0) - never appeared in initial RPG
-Pruning (localize-cable vehicle0 waypoint16 turbine3) - never appeared in initial RPG
-Pruning (submerge-mission vehicle0 data3 waypoint16 currenttide turbine3) - never appeared in initial RPG
-Pruning (transmit-data vehicle0 data3) - never appeared in initial RPG
-Pruning (wait-to-recharge vehicle0) - never appeared in initial RPG
-Initial heuristic = -1.000
-;; Problem unsolvable!
+None of the ground temporal actions in this problem have been recognised as compression-safe
+Initial heuristic = 10.000
+b (9.000 | 13400.000)b (8.000 | 13400.000)b (7.000 | 331600.001)b (6.000 | 331600.001)b (4.000 | 331605.002)b (2.000 | 331805.003);;;; Solution Found
+; States evaluated: 11
+; Cost: 331807.004
 ; Time 0.00
+0.000: (move vehicle0 wp_init_auv0 waypoint16)  [13400.000]
+13400.001: (move vehicle0 waypoint16 waypoint11)  [318200.000]
+331600.002: (localize-cable vehicle0 waypoint11 turbine2)  [5.000]
+331605.003: (submerge-mission vehicle0 data2 waypoint11 currenttide turbine2)  [200.000]
+331805.004: (transmit-data vehicle0 data2)  [2.000]

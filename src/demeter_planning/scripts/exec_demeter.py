@@ -39,7 +39,10 @@ class ExecDemeter(object):
         self._parser_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_parsing_interface/parse_plan', Empty)
         rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan')
         self._dispatch_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan', DispatchService)
+        rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch')
         self._cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch', Empty)
+        rospy.wait_for_service(str(self.namespace)+'/rosplan_knowledge_base/clear')
+        self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'/rosplan_knowledge_base/clear', Empty)
         try:
             rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
         except rospy.ServiceException as e:
@@ -105,13 +108,14 @@ class ExecDemeter(object):
         self._rate.sleep()
         rospy.loginfo('Cancel Mission!')    
     
-    def clear_mission(self):
-        self.demeter_rosplan_interface.clear_data_sent_fact()
+    def clear_KB(self):
+        self._clear_KB_proxy()
+        # self.demeter_rosplan_interface.clear_data_sent_fact()
         # demeter.clear_goals()
         # demeter.clear_data_is_in_fact()
-        self.demeter_rosplan_interface.clear_carry_vehicle_fact()
+        # self.demeter_rosplan_interface.clear_carry_vehicle_fact()
         # self.demeter_rosplan_interface.clear_data_sent_fact()
-        self.cancel_mission()
+        # self.cancel_mission()
      
 
 # if __name__ == '__main__':

@@ -30,7 +30,6 @@ class PopulateKB(object):
 
         self.vehicle_id = self.extract_number_from_string(self.namespace)
         action_interface_object = DemeterActionInterface(self.namespace)
-        
 
         self.position = action_interface_object.get_position()
         action_interface_object.set_init_position_param(self.position)  
@@ -49,8 +48,27 @@ class PopulateKB(object):
         self.allocated_goals = self.load_allocation()
 
         self.init_position_to_KB()
-        self.build_reduced_graph()
-        self.add_reduced_can_move()
+        target = self.get_sensor_countor_points(self.allocated_goals[0])
+        reduced_waypoints = self.get_shortest_path_subgraph(int(self.closer_wp), 'general_waypoint', int(target))
+        self.add_reduced_can_move(reduced_waypoints)
+        self.add_object('vehicle'+str(self.vehicle_id), 'vehicle')
+        self.add_object('currenttide', 'tide')
+        # if not action_interface_object.is_submerged():
+        self.add_fact('is-surfaced', 'vehicle'+str(self.vehicle_id))
+        self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
+        self.add_fact('tide-low', 'currenttide')
+        self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
+        FULL_BATTERY = 100 # TODO: keep track of battery
+        RECHARGE_RATE = 1 
+        RECHARGE_RATE_DEDICATED = 100 
+        self.update_functions('battery-amount', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], FULL_BATTERY, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        self.update_functions('recharge-rate', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], RECHARGE_RATE, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        self.update_functions('recharge-rate-dedicated', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], RECHARGE_RATE_DEDICATED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        SPEED = 100000 
+        self.update_functions('total-missions-completed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], 0, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        self.update_functions('speed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], SPEED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        
+        
         
         # self.draw_roadmap()
         # self.draw_weights()
@@ -65,9 +83,9 @@ class PopulateKB(object):
         rospy.logwarn('Create problem instance: self.allocated_goals')
         rospy.logwarn(self.allocated_goals)
         # Clear KB
-        for goal in self.allocated_goals:
-            self.remove_fact('data-sent', 'data'+str(goal))
-            self.remove_goal('data-sent', 'data'+str(goal))
+        # for goal in self.allocated_goals:
+        #     self.remove_fact('data-sent', 'data'+str(goal))
+        #     self.remove_goal('data-sent', 'data'+str(goal))
 
         
         self.add_goal_mission(self.allocated_goals[0])
@@ -102,8 +120,7 @@ class PopulateKB(object):
         
     def init_position_to_KB(self):
             self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
-            for turbine in self.allocated_goals:
-                self.add_object('turbine'+str(turbine),'turbine') # Define turbine objects
+            self.add_object('turbine'+str(self.allocated_goals[0]),'turbine') # Define turbine objects
                 
             self.add_fact('at','vehicle'+str(self.vehicle_id),'wp_init_auv'+str(self.vehicle_id)) # Real initial position
             
@@ -147,8 +164,10 @@ class PopulateKB(object):
         return countor_points
     
     def get_shortest_path_subgraph(self, source, source_type, target):
-        # Build a new graph using only the relevant POIs        
-        countor_points = self.get_countor_points_list()
+        # Build a new graph using only the relevant POIs  
+        rospy.logwarn('source: ' + str(source))      
+        rospy.logwarn('source_type: ' + str(source_type))      
+        rospy.logwarn('target: ' + str(target))      
         if source_type == 'general_waypoint':
             paths_and_distances = [(nx.dijkstra_path(self.scaled_G, source, target, weight='weight'),
                         nx.dijkstra_path_length(self.scaled_G, source, target, weight='weight'))]
@@ -159,33 +178,8 @@ class PopulateKB(object):
             if distance < min_distance:
                 shortest_path = path
                 min_distance = distance
-        
-        # Extract the subgraph consisting of nodes in the shortest path
-        subgraph_nodes = set(shortest_path)
-        subgraph_edges = [(shortest_path[i], shortest_path[i+1]) for i in range(len(shortest_path)-1)]
-        shortest_path_subgraph = self.scaled_G.subgraph(subgraph_nodes).edge_subgraph(subgraph_edges)
-        return shortest_path_subgraph
-    
-
-    def build_reduced_graph(self):
-        combined_pois = []
-        combined_pois.extend(self.allocated_goals)
-        self.reduced_G = nx.Graph()
-        
-        # Create subgraphs from vehicle's closer waypoint to every countor point closest to the sensor for each turbine in the allocated goals
-        for poi_i in combined_pois:
-            rospy.logwarn('poi_i')
-            rospy.logwarn(poi_i)
-            
-            target = self.get_sensor_countor_points(poi_i)
-            rospy.logwarn(target)
-            rospy.logwarn(type(target))
-            rospy.logwarn('self.closer_wp')
-            rospy.logwarn(self.closer_wp)
-            partial_subgraph = self.get_shortest_path_subgraph(int(self.closer_wp), 'general_waypoint', int(target))
-            self.reduced_G.add_nodes_from(partial_subgraph.nodes())
-            self.reduced_G.add_edges_from(partial_subgraph.edges())
-    
+        return shortest_path        
+      
     def get_sensor_countor_points(self, target_turbine):
         countor_points = self.get_countor_points_list()
         sensor_countor_point = None
@@ -199,17 +193,17 @@ class PopulateKB(object):
 
         return sensor_countor_point
     
-    def add_reduced_can_move(self):
-        # Add can-move and traverse-cost only of relevant POI
-        for u, v in self.reduced_G.edges():
-            self.add_fact('can-move', 'waypoint'+str(u), 'waypoint'+str(v))
-            self.add_fact('can-move', 'waypoint'+str(v), 'waypoint'+str(u))
-            dist = round(self.scaled_G.edges[u, v]['weight'],2)
-            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(u)), KeyValue('w', 'waypoint'+str(v))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-            # Euclidean distance is the same. Will change when using directed weighted graphs
-            dist = round(self.scaled_G.edges[v, u]['weight'],2)
-            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(v)), KeyValue('w', 'waypoint'+str(u))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-    
+    def add_reduced_can_move(self, reduced_waypoints):
+        # Add can-move and traverse-cost only of relevant waypoints
+        for i, wp in enumerate(reduced_waypoints[:-1]):
+            node_from = reduced_waypoints[i]
+            node_to = reduced_waypoints[i+1]
+            self.add_fact('can-move', 'waypoint'+str(node_from), 'waypoint'+str(node_to))
+            dist = round(self.scaled_G.edges[node_from, node_to]['weight'],2)
+            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(node_from)), KeyValue('w', 'waypoint'+str(node_to))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        for wp in reduced_waypoints:
+            self.add_object('waypoint' + str(wp), 'waypoint')
+            
     def load_allocation(self):
         # Load allocation of vehicles to goals from a goal allocation algorithm
         try:
