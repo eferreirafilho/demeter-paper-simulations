@@ -1,116 +1,109 @@
-#!/usr/bin/env python
-"""
-Consider an offshore wind turbine farm with M turbines and N autonomous vehicles. There is a directed roadmap connecting each turbine, vehicles can move between the turbines with cost given by the weights of the roadmap. There are two possible missions that each robot can execute when at a turbine: get-data and measure-vortex. Each mission takes a time t to be executed and has a variable B associated with. The variable B states when it was the last time this mission was executed. I want to get the allocation and order of each vehicle and missions, minimizing the total time for all the missions to be executed, while giving priority for missions that haven't been executed for a long time.
-"""
 import pulp
+import matplotlib.pyplot as plt
+import random
 
-# Example data
-M = 3  # number of turbines
-N = 2  # number of vehicles
-T = 2  # number of mission types
-alpha = 0.3
+def distance(coord1, coord2):
+    return ((coord1[0] - coord2[0]) ** 2 + (coord1[1] - coord2[1]) ** 2) ** 0.5
 
-# Example times and costs
-t = {
-    (1, 1, 1): 1,
-    (1, 1, 2): 1,
-    (1, 2, 1): 1,
-    (1, 2, 2): 1,
-    (2, 1, 1): 1,
-    (2, 1, 2): 1,
-    (2, 2, 1): 1,
-    (2, 2, 2): 1,
-    (3, 1, 1): 1,
-    (3, 1, 2): 1,
-    (3, 2, 1): 1,
-    (3, 2, 2): 1,
-}
+def mtsp(cities, salesmen, depot):
+    problem = pulp.LpProblem("Multiple Traveling Salesmen Problem", pulp.LpMinimize)
 
-# Last time a mission was executed
-B = {
-    (1, 1): 5,
-    (1, 2): 6,
-    (2, 1): 4,
-    (2, 2): 7,
-    (3, 1): 3,
-    (3, 2): 8,
-}
+    # x is a binary variable that indicates whether a salesman travels directly between two cities
+    x = pulp.LpVariable.dicts("x", ((i, j) for i in cities for j in cities if i != j), cat="Binary")
+    # u is an integer variable that assigns a sequential number to each city in a given tour.
+    u = pulp.LpVariable.dicts("u", cities, lowBound=1, upBound=len(cities) - 1, cat="Integer")
+    
+    # The objective function is to maximize the number of visited cities
+    problem += pulp.lpSum(x[i, j] for i in cities for j in cities if i != j)
 
-# Cost for a vehicle to travel from turbine i to turbine l
-C = {
-    (1, 2): 2,
-    (1, 3): 3,
-    (2, 1): 2,
-    (2, 3): 1,
-    (3, 1): 3,
-    (3, 2): 1,
-}
+    # Constraints
+    # These constraints ensure that each city is visited exactly once by exactly one salesman. Specifically, for each city that is not the depot, we create two constraints: one that requires that exactly one outgoing edge from city is selected (i.e., one salesman visits city), and one that requires that exactly one incoming edge to city is selected (i.e., city is visited by exactly one salesman).
+    # for city in cities:
+    #     if city != depot:
+    #         problem += pulp.lpSum(x[city, j] for j in cities if city != j) <= 1
+    #         problem += pulp.lpSum(x[j, city] for j in cities if city != j) <= 1
 
-# # Vehicle start position
-# S = {
-#     (1): 2,
-#     (2): 3    
-# }
+    # The triangular inequality is satisfied:
+    for i, j in x:
+        if i != depot and j != depot:
+            problem += u[i] - u[j] + (len(cities) - 1) * x[i, j] <= len(cities) - 2
 
-# Define the problem
-problem = pulp.LpProblem('OffshoreWindTurbineFarm', pulp.LpMinimize)
+    # Each salesman starts and ends their tour at the depot:
+    problem += pulp.lpSum(x[depot, j] for j in cities if depot != j) == salesmen
+    # problem += pulp.lpSum(x[i, depot] for i in cities if depot != i) == salesmen
+    
+    time_limit = 5000
+    print('Time limit: ' + str(time_limit))
+    problem += pulp.lpSum(distance(cities[i], cities[j]) * x[i, j] for i in cities for j in cities if i != j) <= time_limit
 
-# Variables
-x = pulp.LpVariable.dicts('x', [(turbine_i, vehicle_j, mission_k) for turbine_i in range(1, M+1) for vehicle_j in range(1, N+1) for mission_k in range(1, T+1)], cat='Binary')
-y = pulp.LpVariable.dicts('y', [(turbine_i, turbine_l, vehicle_j) for turbine_i in range(1, M+1) for turbine_l in range(1, M+1) for vehicle_j in range(1, N+1) if turbine_i != turbine_l], cat='Binary')
+    # Solve problem
+    problem.solve()
 
-# Objective function
-objective = pulp.lpSum(t[turbine_i, vehicle_j, mission_k] * x[turbine_i, vehicle_j, mission_k] for i in range(1, M+1) for vehicle_j in range(1, N+1) for mission_k in range(1, T+1)) \
-            + alpha * pulp.lpSum(B[turbine_i, mission_k] for turbine_i in range(1, M+1) for mission_k in range(1, T+1))
+    # Extract solution
+    tours = []
+    visited = [depot]
 
-problem += objective
+    for _ in range(salesmen):
+        i = depot
+        tour = [i]
 
-# Constraints
-"""
-1. Each mission k must be executed at each turbine_i i at least once: 
-"""
-for turbine_i in range(1, M+1):
-    for mission_k in range(1, T+1):
-        problem += pulp.lpSum(x[turbine_i, vehicle_j, mission_k] for vehicle_j in range(1, N+1)) >= 1
+        while True:
+            try:
+                i = [j for j in cities if (i, j) in x and x[i, j].varValue == 1 and j != depot and j not in visited][0]
+                tour.append(i)
+                visited.append(i)
+            except IndexError:
+                tour.append(depot)
+                break
 
-"""
-2. Each vehicle j can execute only one mission at a time: 
-"""
-# for vehicle_j in range(1, N+1):
-    # problem += pulp.lpSum(x[turbine_i, vehicle_j, mission_k] for turbine_i in range(1, M+1) for mission_k in range(1, T+1)) <= 1
+        tours.append(tour[:-1])
 
-"""
-3. Vehicle j can travel from turbine i to turbine l with cost C(i, l): 
-"""
-for turbine_i in range(1, M+1):
-    for l in range(1, M+1):
-        if turbine_i != turbine_l:
-            for vehicle_j in range(1, N+1):
-                for mission_k1 in range(1, T+1):
-                    for mission_k2 in range(1, T+1):
-                        problem += x[turbine_i, vehicle_j, mission_k1] + x[turbine_l, vehicle_j, mission_k2] - y[turbine_i, turbine_l, vehicle_j] <= 1
+    return tours, problem.objective.value()
 
+# Example usage
+random.seed(42)
+n_cities = 12
+n_salesmen = 4
+depot = 0
+cities = {i: (random.randint(0, 100), random.randint(0, 100)) for i in range(n_cities)}
 
-# Solve the problem
-problem.solve()
-print("Status:", pulp.LpStatus[problem.status])
+tours, total_distance = mtsp(cities, n_salesmen, depot)
 
+print("Tours:", tours)
+print("Total distance:", total_distance)
 
-# Print the results
-for turbine_i in range(1, M+1):
-    for vehicle_j in range(1, N+1):
-        for mission_k in range(1, T+1):
-            if x[turbine_i, vehicle_j, mission_k].value() == 1:
-                print("Vehicle", vehicle_j, "executes mission", mission_k, "at turbine", turbine_i)      
+# plot cities
+x = [city[0] for city in cities.values()]
+y = [city[1] for city in cities.values()]
 
-# Print the routes
-print("Vehicles' routes:")
-for turbine_i in range(1, M+1):
-    for turbine_l in range(1, M+1):
-        if turbine_i != turbine_l:
-            for vehicle_j in range(1, N+1):
-                if y[turbine_i, turbine_l, vehicle_j].value() == 1:
-                    print("Vehicle", vehicle_j, "travels from turbine", turbine_i, "to turbine", turbine_l)
-                else:
-                    print("Vehicle", vehicle_j, "don't travels from turbine", turbine_i, "to turbine", turbine_l)
-                    
+plt.scatter(x, y, color='black')
+
+# plot tours
+for i, tour in enumerate(tours):
+    if i == 0:
+        color_i = 'blue'
+    elif i == 1:
+        color_i = 'red'
+    elif i == 2:
+        color_i = 'green'
+    else:
+        color_i = 'yellow'
+    
+    tour_cities = [cities[city_idx] for city_idx in tour]
+    tour_cities.append(tour_cities[0])  # connect back to the starting city
+    
+    tour_x = [city[0] for city in tour_cities]
+    tour_y = [city[1] for city in tour_cities]
+    
+    plt.plot(tour_x, tour_y, linestyle='--', linewidth=2, color=color_i)
+
+#add labels
+plt.title('City Tours')
+plt.xlabel('X')
+plt.ylabel('Y')
+plt.xticks(range(0, 101, 20))
+plt.yticks(range(0, 71, 20))
+
+# show plot
+plt.show()
+

@@ -128,58 +128,6 @@ class DemeterInterface(object):
         _cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'/rosplan_plan_dispatcher/cancel_dispatch', Empty)
         _cancel_plan_proxy()
 
-    def call_query_service(self):
-        rospy.wait_for_service(str(self.namespace)+'/rosplan_knowledge_base/query_state')
-        try:
-            query_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/query_state', KnowledgeQueryService)
-            resp1 = query_proxy(self.query)
-            return resp1.results
-        except rospy.ServiceException:
-            rospy.loginfo("Service query call failed")
-
-    def data_sent_kb_query(self):
-        query1 = KnowledgeItem()
-        query1.knowledge_type = KnowledgeItem.FACT
-        query1.attribute_name = "data-sent"
-        query1.values.append(diagnostic_msgs.msg.KeyValue("d","data1"))
-        self.query.append(query1)
-        self._rate.sleep()
-        result = self.call_query_service()
-        return result[-1]
-
-    def clear_data_sent_fact(self):
-        self.data_sent_kb_query()
-        if self.call_query_service():
-            pred_names = [
-            'data-sent'
-            ]
-            params = [[KeyValue('d', 'data1')]]
-            update_types = [
-                KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
-            ]
-            self.update_predicates(pred_names,params,update_types)
-
-    def clear_carry_vehicle_fact(self):
-        if self.call_query_service():
-            pred_names = [
-            'carry'
-            ]
-            params = [[KeyValue('v', 'vehicle1'), KeyValue('d', 'data1')]]
-            update_types = [
-                KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
-            ]
-            self.update_predicates(pred_names,params,update_types)
-
-    def add_empty_vehicle_fact(self):
-        pred_names = [
-        'empty'
-        ]
-        params = [[KeyValue('v', 'vehicle1')]]
-        update_types = [
-            KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE,
-        ]
-        self.update_predicates(pred_names,params,update_types)
-
     def knowledge_update(self, event):
         self.KB_update_waypoint()
         

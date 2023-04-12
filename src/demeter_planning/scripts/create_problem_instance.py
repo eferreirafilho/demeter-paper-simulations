@@ -23,14 +23,17 @@ class PopulateKB(object):
     mutex = Lock()
     def __init__(self):
         rospy.logwarn('Create Problem - Populating KB with robots initial position and goals')
-        sleep(5)
         self.SCALE_TRAVERSE_COSTS = 0.1
+        self.SPEED = 100000 # Scale speed 
+        self.FULL_BATTERY = 100 # TODO: keep track of battery
+        self.RECHARGE_RATE = 1 # While doing other tasks
+        self.RECHARGE_RATE_DEDICATED = 100 
+
+        sleep(2)
         self.namespace = rospy.get_namespace()
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
-
         self.vehicle_id = self.extract_number_from_string(self.namespace)
         action_interface_object = DemeterActionInterface(self.namespace)
-
         self.position = action_interface_object.get_position()
         action_interface_object.set_init_position_param(self.position)  
         self.closer_wp = action_interface_object.closer_wp([self.position.x, self.position.y, self.position.z])
@@ -39,73 +42,31 @@ class PopulateKB(object):
         self.add_distances_as_weights()
                         
         self.poi_position = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
-        
         closer_wp_position = self.poi_position[self.closer_wp]
         
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
-        rospy.logwarn('self.distance_to_closer_wp')
-        rospy.logwarn(self.distance_to_closer_wp)
+        rospy.logwarn('self.distance_to_closer_wp: ' + str(self.distance_to_closer_wp))
         self.allocated_goals = self.load_allocation()
-
+                       
+        self.add_goal_mission(self.allocated_goals[0])
+        
+    def populate_KB(self):
         self.init_position_to_KB()
         target = self.get_sensor_countor_points(self.allocated_goals[0])
         reduced_waypoints = self.get_shortest_path_subgraph(int(self.closer_wp), 'general_waypoint', int(target))
         self.add_reduced_can_move(reduced_waypoints)
         self.add_object('vehicle'+str(self.vehicle_id), 'vehicle')
         self.add_object('currenttide', 'tide')
-        # if not action_interface_object.is_submerged():
         self.add_fact('is-surfaced', 'vehicle'+str(self.vehicle_id))
         self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
         self.add_fact('tide-low', 'currenttide')
         self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
-        FULL_BATTERY = 100 # TODO: keep track of battery
-        RECHARGE_RATE = 1 
-        RECHARGE_RATE_DEDICATED = 100 
-        self.update_functions('battery-amount', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], FULL_BATTERY, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-        self.update_functions('recharge-rate', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], RECHARGE_RATE, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-        self.update_functions('recharge-rate-dedicated', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], RECHARGE_RATE_DEDICATED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-        SPEED = 100000 
+        self.update_functions('battery-amount', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.FULL_BATTERY, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        self.update_functions('recharge-rate', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        self.update_functions('recharge-rate-dedicated', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE_DEDICATED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('total-missions-completed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], 0, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-        self.update_functions('speed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], SPEED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-        
-        
-        
-        # self.draw_roadmap()
-        # self.draw_weights()
-        # self.draw_vehicle()
-        # self.draw_turbines_labels()
-        # plt.show()
-        
-        # Get all allocated goals
-        # for goal in self.allocated_goals:
-            # self.add_goal_mission(goal)
-        
-        rospy.logwarn('Create problem instance: self.allocated_goals')
-        rospy.logwarn(self.allocated_goals)
-        # Clear KB
-        # for goal in self.allocated_goals:
-        #     self.remove_fact('data-sent', 'data'+str(goal))
-        #     self.remove_goal('data-sent', 'data'+str(goal))
-
-        
-        self.add_goal_mission(self.allocated_goals[0])
-        
-    def draw_roadmap(self):
-        pos_dict = nx.get_node_attributes(self.G,'pos')
-        self.xy_pos = []
-        for key in pos_dict:
-            val = pos_dict[key][:2]
-            self.xy_pos.append(val)
-        nx.draw(self.G,pos=self.xy_pos,node_size=10,with_labels=True)
-        
-    def draw_weights(self):
-        labels=nx.get_edge_attributes(self.G,'weight')
-        nx.draw_networkx_edge_labels(self.G,self.xy_pos,edge_labels=labels,font_size=5)
-        
-    def draw_vehicle(self):
-        pos = [self.position.x, self.position.y]
-        plt.plot(pos[0], pos[1], 'rs', markersize=10)
-
+        self.update_functions('speed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.SPEED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+    
     def add_goal_mission(self, target_turbine):   
         self.add_object('data'+str(target_turbine),'data')
         self.add_fact('is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
@@ -116,7 +77,6 @@ class PopulateKB(object):
         rospy.logwarn('sensor_countor_point')
         rospy.logwarn(sensor_countor_point)
         self.add_fact('is-turbine-wp','waypoint'+str(sensor_countor_point),'turbine'+str(target_turbine))      
-   
         
     def init_position_to_KB(self):
             self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
@@ -139,14 +99,12 @@ class PopulateKB(object):
         # Remove all turbine nodes
         turbine_nodes = [n for n, attrs in self.scaled_G.nodes(data=True) if attrs['description'] == 'turbine']
         self.scaled_G.remove_nodes_from(turbine_nodes)
-        # self.poi_position = Roadmap.build_roadmap_get_waypoints()
         if nx.is_connected(self.scaled_G):
             rospy.logwarn('Graph is connected, ok!')
         else:
             rospy.logwarn('Graph is not connected, create another roadmap!')
         
     def add_distances_as_weights(self):
-        # Add distances as weights
         node_pos=nx.get_node_attributes(self.scaled_G,'pos') 
         for u, v in self.scaled_G.edges():
             x1, y1 = node_pos[int(u)]
@@ -190,7 +148,6 @@ class PopulateKB(object):
                 if float(x_value) > float(max_x):
                     max_x = x_value
                     sensor_countor_point = countor_point
-
         return sensor_countor_point
     
     def add_reduced_can_move(self, reduced_waypoints):

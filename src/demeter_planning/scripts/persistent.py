@@ -13,12 +13,9 @@ def shift_allocation_param():
     print(current_list)
     # shift the list elements to the left by the given amount
     shifted_list = current_list[1:] + current_list[:1]
-
     # write the updated list back to the parameter server
     rospy.set_param(param_name, shifted_list)
     print(shifted_list)
-    # return the updated list
-    # return shifted_list       
 
 if __name__ == '__main__':
     print('Persistent Planning')
@@ -26,8 +23,8 @@ if __name__ == '__main__':
     rospy.init_node('persistent_planning')
     NUMBER_OF_MISSIONS = 6
     
-    mission_count=0
-    while mission_count < NUMBER_OF_MISSIONS:
+    mission_counter=0
+    while mission_counter < NUMBER_OF_MISSIONS:
         demeter = ExecDemeter()
         demeter.clear_KB()
         populate = PopulateKB()  
@@ -42,7 +39,7 @@ if __name__ == '__main__':
         sleep(1)
         shift_allocation_param()        
         sleep(3)
-        rospy.logwarn('Persistent Goal: ' + str(mission_count) + ' Successfull!!!')
-        mission_count+=1
+        rospy.logwarn('Persistent Goal: ' + str(mission_counter) + ' Successfull!!!')
+        mission_counter+=1
     rospy.spin()
     

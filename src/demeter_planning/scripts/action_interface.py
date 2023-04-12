@@ -37,7 +37,6 @@ class DemeterActionInterface(object):
         self.target_wp = -1
         self.odom_pose = Odometry()
         self._rate = rospy.Rate(update_frequency)
-        # self.Roadmap = BuildRoadmaps()
         wp_array = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
         X = [wp[0] for wp in wp_array]
         Y = [wp[1] for wp in wp_array]
@@ -45,15 +44,13 @@ class DemeterActionInterface(object):
         self.waypoints_position = [X, Y, Z] 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
-        # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10)#REAL ROBOT
+        # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10) # REAL ROBOT
         rospy.Subscriber(str(self.namespace)+'pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
         # Publisher
-        # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) #REAL ROBOT
+        # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) # REAL ROBOT
         self.cmd_pose_pub=rospy.Publisher(str(self.namespace)+'cmd_pose',PoseStamped, queue_size=10)
-        
         init_position = self.get_position()
         self.set_init_position_param(init_position)
-
         self._wait(2) 
             
     def _wait(self, n_rate):
@@ -86,11 +83,11 @@ class DemeterActionInterface(object):
                 closer_wp=i
         return closer_wp
 
+    # Actions
     def do_move(self, waypoint, duration=rospy.Duration()):
         self.wp_reached = -1
         start = rospy.Time.now()
         rospy.logwarn('Moving to waypoint ' + str(waypoint))
-        
         self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
             self.publish_wp_cmd_pose_fixed_orientation(waypoint)
@@ -183,6 +180,7 @@ class DemeterActionInterface(object):
             self._rate.sleep()
             completion_percentage = 'Localizing ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
+            self.rotate_in_place()
         response = self.ACTION_SUCCESS     
         rospy.loginfo('Localizing!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
@@ -216,12 +214,6 @@ class DemeterActionInterface(object):
         if dist_x.real<self.EPS_DISTANCE and dist_y.real<self.EPS_DISTANCE and dist_z.real<self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        # rospy.loginfo_throttle(2,'Distance to target X: ' + str((dist_x.real,5)))
-        # rospy.loginfo_throttle(2,'Distance to target Y: ' + str((dist_y.real,5)))
-        # rospy.loginfo_throttle(2,'Distance to target Z: ' + str((dist_z.real,5)))
-        # rospy.loginfo_throttle(2,'self.target[0]: ' + str(self.target_wp[0]))
-        # rospy.loginfo_throttle(2,'self.target[1]: ' + str(self.target_wp[1]))
-        # rospy.loginfo_throttle(2,'self.target[2]: ' + str(self.target_wp[2]))
         rospy.loginfo_throttle(5,'Distance to target: ' + str((dist.real,5)))
         
     def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
@@ -271,7 +263,6 @@ class DemeterActionInterface(object):
         # current_pos=self.get_position()
         rospy.logwarn('Position z' + str(self.odom_pose.pose.pose.position.z))
         rospy.logwarn('SUBMERGED Z' + str(self.SUBMERGED_Z))
-        # if current_pos.z<self.SUBMERGED_Z:
         if float(self.odom_pose.pose.pose.position.z)<float(self.SUBMERGED_Z):
             rospy.logwarn(float(self.odom_pose.pose.pose.position.z))
             rospy.logwarn(float(self.SUBMERGED_Z))
@@ -293,7 +284,6 @@ class DemeterActionInterface(object):
     def goto_surface(self):
         pos = Point()
         pos = self.odom_pose.pose.pose.position
-        # current_pos2=self.get_position()
         pos.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
         self.publish_position_fixed_orientation(pos)
 
@@ -354,9 +344,6 @@ class DemeterActionInterface(object):
         self.rotate_vehicle(-pi/6,'yaw')
         self.rotate_vehicle(-pi/6,'yaw')
         self.rotate_vehicle(pi/6,'yaw')
-        # 360 degrees rotation:
-        # for i in range(4):
-        #     self.rotate_vehicle(pi/2,'yaw')
 
     def command_halt_vehicle(self):
         position=self.get_position()

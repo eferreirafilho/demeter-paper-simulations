@@ -22,11 +22,7 @@ class ExecDemeter(object):
         self.mission_success = False
         self.goal_state = list()
         self.rosplan_services()
-        # self.clear_mission()
         rospy.sleep(2) # Wait for planning
-        
-        # Plan
-        # self.rosplan_services()
                
     def rosplan_services(self):
         # Service proxies: Problem Generation, Planning, Parsing, Dispatching
@@ -110,33 +106,3 @@ class ExecDemeter(object):
     
     def clear_KB(self):
         self._clear_KB_proxy()
-        # self.demeter_rosplan_interface.clear_data_sent_fact()
-        # demeter.clear_goals()
-        # demeter.clear_data_is_in_fact()
-        # self.demeter_rosplan_interface.clear_carry_vehicle_fact()
-        # self.demeter_rosplan_interface.clear_data_sent_fact()
-        # self.cancel_mission()
-     
-
-# if __name__ == '__main__':
-    # print('demeter_plan_exec')
-    # rospy.loginfo('Executive started')
-    # rospy.init_node('demeter_executive')
-    
-    
-    # demeter = ExecDemeter()
-    # # demeter.rosplan_services()
-    
-    # while not rospy.is_shutdown():
-    #     mission_counter=0
-    #     demeter.execute_plan()
-        # while not demeter.mission_success:
-        #     demeter._rate.sleep()
-        # # Shift allocation
-        # demeter.clear_mission()
-        # demeter.shift_allocation_param()
-        # mission_counter = mission_counter + 1
-        # demeter._rate.sleep()
-        # demeter.clear_mission()
-
-    # rospy.spin()
