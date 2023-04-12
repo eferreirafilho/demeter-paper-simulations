@@ -49,6 +49,7 @@ class PopulateKB(object):
         self.allocated_goals = self.load_allocation()
                        
         self.add_goal_mission(self.allocated_goals[0])
+        self.populate_KB()
         
     def populate_KB(self):
         self.init_position_to_KB()
@@ -105,6 +106,7 @@ class PopulateKB(object):
             rospy.logwarn('Graph is not connected, create another roadmap!')
         
     def add_distances_as_weights(self):
+        # Add distances as weights
         node_pos=nx.get_node_attributes(self.scaled_G,'pos') 
         for u, v in self.scaled_G.edges():
             x1, y1 = node_pos[int(u)]
@@ -148,6 +150,7 @@ class PopulateKB(object):
                 if float(x_value) > float(max_x):
                     max_x = x_value
                     sensor_countor_point = countor_point
+
         return sensor_countor_point
     
     def add_reduced_can_move(self, reduced_waypoints):
@@ -192,6 +195,7 @@ class PopulateKB(object):
         return sqrt((p1.x - p2[0])**2 + (p1.y - p2[1])**2 + (p1.z - p2[2])**2)
 
     def add_object(self,obj_name, obj_type):   
+        self.mutex.acquire()
         rospy.wait_for_service('rosplan_knowledge_base/update')
         try:  
             rospy.loginfo('Add ' + obj_name + ' Object')
@@ -203,8 +207,10 @@ class PopulateKB(object):
             resp = update_client(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed")    
+        self.mutex.release()
 
     def add_fact(self,*fact):
+        self.mutex.acquire()
         rospy.wait_for_service('rosplan_knowledge_base/update')
         try:
             update_client = rospy.ServiceProxy('rosplan_knowledge_base/update', KnowledgeUpdateService)     
@@ -218,8 +224,10 @@ class PopulateKB(object):
             resp = update_client(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed") 
-            
-    def add_goal(self,goal_fact, goal_obj):   
+        self.mutex.release()
+
+    def add_goal(self,goal_fact, goal_obj):
+        self.mutex.acquire()
         rospy.wait_for_service('rosplan_knowledge_base/update')
         try:  
             rospy.loginfo('Add Goal ' + goal_fact + ' ' + goal_obj)
@@ -231,8 +239,10 @@ class PopulateKB(object):
             resp = update_client(KnowledgeUpdateServiceRequest.ADD_GOAL, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed")  
+        self.mutex.release()
             
     def remove_goal(self, goal_fact, goal_obj):   
+        self.mutex.acquire()
         rospy.wait_for_service('rosplan_knowledge_base/update')
         try:  
             rospy.loginfo('Remove Goal ' + goal_fact + ' ' + goal_obj)
@@ -244,8 +254,10 @@ class PopulateKB(object):
             resp = update_client(KnowledgeUpdateServiceRequest.REMOVE_GOAL, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed")  
-
+        self.mutex.release()        
+        
     def remove_fact(self,*fact):
+        self.mutex.acquire()        
         rospy.wait_for_service('rosplan_knowledge_base/update')
         try:
             update_client = rospy.ServiceProxy('rosplan_knowledge_base/update', KnowledgeUpdateService)     
@@ -259,6 +271,7 @@ class PopulateKB(object):
             resp = update_client(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed") 
+        self.mutex.release()        
             
     def extract_number_from_string(self, string):
         match = re.search(r'\d+', string)
