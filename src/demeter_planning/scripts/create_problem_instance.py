@@ -24,10 +24,10 @@ class PopulateKB(object):
     def __init__(self):
         rospy.logwarn('Create Problem - Populating KB with robots initial position and goals')
         self.SCALE_TRAVERSE_COSTS = 0.1
-        self.SPEED = 100000 # Scale speed 
-        self.FULL_BATTERY = 100 # TODO: keep track of battery
-        self.RECHARGE_RATE = 1 # While doing other tasks
-        self.RECHARGE_RATE_DEDICATED = 100 
+        self.SPEED = 100 # Scale speed 
+        self.FULL_BATTERY = 20 # TODO: keep track of battery
+        self.RECHARGE_RATE = 0.01 # While doing other tasks
+        self.RECHARGE_RATE_DEDICATED = 10
 
         sleep(2)
         self.namespace = rospy.get_namespace()

@@ -125,17 +125,16 @@
             (over all (is-surfaced ?v)))
         
         :effect (and 
-            ; (at end (is-in ?d ?tu))
             (at end (not (carry ?v ?d)))
             (at end (data-sent ?d))
             (at end (empty ?v))     
             (at start (decrease (battery-amount ?v) 50))
             (at end (increase (battery-amount ?v) (* ?duration (recharge-rate ?v))))
-            ; (at start (not-recharging ?v))
-            ; (at end (not (not-recharging ?v)))
             (at end (increase (total-missions-completed ?v) 100))
-            (at start (not (idle ?v)))
-            (at end (idle ?v))
+
+            ;not idle and idle effects commented allows for other actions to run in pararell with this
+            ; (at start (not (idle ?v)))
+            ; (at end (idle ?v))
             )
     )
     (:durative-action wait-to-recharge
@@ -148,13 +147,15 @@
             (over all (is-surfaced ?v))
             ; (over all (at ?v ?w))
             (at start (< (battery-amount ?v) 100))
-            ; (over all (not-recharging ?v))
+            ; (at start (not-recharging ?v))
             (over all (idle ?v))
         )
         :effect (and
             (at end (increase (battery-amount ?v) (* ?duration (recharge-rate-dedicated ?v))))
             ; (at start (not (not-recharging ?v)))
             ; (at end (not-recharging ?v))
+            (at start (not (idle ?v)))
+            (at end (idle ?v))
         )
     )
 )
