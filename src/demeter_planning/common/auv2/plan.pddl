@@ -1,0 +1,14 @@
+Number of literals: 9
+Constructing lookup tables:
+Post filtering unreachable actions: 
+[01;34mNo analytic limits found, not considering limit effects of goal-only operators[00m
+None of the ground temporal actions in this problem have been recognised as compression-safe
+Initial heuristic = 8.000
+b (7.000 | 11700.000)b (6.000 | 11700.000)b (4.000 | 11705.001)b (2.000 | 11905.002);;;; Solution Found
+; States evaluated: 9
+; Cost: 11907.003
+; Time 0.00
+0.000: (move vehicle2 wp_init_auv2 waypoint7)  [11700.000]
+11700.001: (localize-cable vehicle2 waypoint7 turbine1)  [5.000]
+11705.002: (submerge-mission vehicle2 data1 waypoint7 currenttide turbine1)  [200.000]
+11905.003: (transmit-data vehicle2 data1)  [2.000]

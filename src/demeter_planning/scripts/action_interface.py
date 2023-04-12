@@ -180,7 +180,6 @@ class DemeterActionInterface(object):
             self._rate.sleep()
             completion_percentage = 'Localizing ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
-            self.rotate_in_place()
         response = self.ACTION_SUCCESS     
         rospy.loginfo('Localizing!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:

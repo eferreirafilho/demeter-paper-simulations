@@ -16,9 +16,9 @@ class BuildRoadmaps(object):
     def __init__(self):
         rospy.logwarn('Build Roadmaps')
         self._rate = rospy.Rate(10)
-        self.NUMBER_OF_COUNTOUR_POINTS = 4
+        self.NUMBER_OF_COUNTOUR_POINTS = 5
         self.DISTANCE_TO_TURBINE = 0.10
-        self.NUMBER_OF_TURBINES_CONSIDERED = 12
+        self.NUMBER_OF_TURBINES_CONSIDERED = 7
         self.VISIBILITY_RADIUS = 1
         self.BOUNDS_MAP = 25
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")

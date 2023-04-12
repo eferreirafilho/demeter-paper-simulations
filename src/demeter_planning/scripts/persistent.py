@@ -21,7 +21,7 @@ if __name__ == '__main__':
     print('Persistent Planning')
     rospy.loginfo('Persistent Planning started')
     rospy.init_node('persistent_planning')
-    NUMBER_OF_MISSIONS = 6
+    NUMBER_OF_MISSIONS = 15 # For each vehicle
     
     mission_counter=0
     while mission_counter < NUMBER_OF_MISSIONS:
