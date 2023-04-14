@@ -15,17 +15,14 @@ from create_problem_instance import PopulateKB
 
 class ExecDemeter(object):
     def __init__(self, update_frequency=4.):
+        self._rate = rospy.Rate(update_frequency)
         rospy.sleep(2) # Wait for planning
         self.namespace = self.get_namespace()
         self.demeter_rosplan_interface = DemeterInterface(demeter=DemeterActionInterface(namespace=self.namespace))
         self.mission_success = False
         self.goal_state = list()
-
+        self.rosplan_services()
         rospy.sleep(2) # Wait for planning
-        
-        # Plan
-        # self.rosplan_services()
-        self._rate = rospy.Rate(update_frequency)
                
     def rosplan_services(self):
         # Service proxies: Problem Generation, Planning, Parsing, Dispatching
@@ -38,8 +35,14 @@ class ExecDemeter(object):
         self._parser_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_parsing_interface/parse_plan', Empty)
         rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan')
         self._dispatch_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan', DispatchService)
+        rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch')
         self._cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch', Empty)
-        rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
+        rospy.wait_for_service(str(self.namespace)+'/rosplan_knowledge_base/clear')
+        self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'/rosplan_knowledge_base/clear', Empty)
+        try:
+            rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
+        except rospy.ServiceException as e:
+            rospy.logwarn("Service already registered: %s", e)
         rospy.Subscriber(str(self.namespace)+'rosplan_plan_dispatcher/action_feedback', ActionFeedback, self.check_action_feedback, queue_size=10)
             
     def get_namespace(self):
@@ -63,6 +66,8 @@ class ExecDemeter(object):
             self._planner_proxy()
         except:
             rospy.logwarn('Planning attempt failed')
+            self.mission_success=False
+            return self.mission_success
         self._rate.sleep()
         rospy.loginfo('Execute mission plan ...')
         self._parser_proxy()
@@ -75,69 +80,16 @@ class ExecDemeter(object):
         else:
            rospy.logwarn('Mission Failed')
            self.mission_success=False
-        return response.goal_achieved
-    
+           return self.mission_success
         
-    def get_data_set_goal(self, data):
-        pred_names = [
-            'data-sent'
-        ]
-        params = [[KeyValue('d', data)]]
-        self.goal_state.append(list([pred_names, params]))
-        update_types = [
-            KnowledgeUpdateServiceRequest.ADD_GOAL,
-        ]
-        succeed = self.demeter_rosplan_interface.update_predicates(pred_names,params,update_types)
-        self._rate.sleep()
-        return succeed
-    
+    def mission_completed(self):
+        return self.mission_success
+        
     def cancel_mission(self):
         self.mission_success = False
         self._cancel_plan_proxy()
         self._rate.sleep()
         rospy.loginfo('Cancel Mission!')    
     
-    def clear_mission(self):
-        self.demeter_rosplan_interface.clear_data_sent_fact()
-        # demeter.clear_goals()
-        # demeter.clear_data_is_in_fact()
-        self.demeter_rosplan_interface.clear_carry_vehicle_fact()
-        # self.demeter_rosplan_interface.clear_data_sent_fact()
-        self.cancel_mission()
-    
-    def shift_allocation_param(self):
-        param_name = str(self.namespace + "goals_allocated")
-        # get the current list from the parameter server
-        current_list = rospy.get_param(param_name)
-
-        # shift the list elements to the left by the given amount
-        shifted_list = current_list[1:] + current_list[:1]
-
-        # write the updated list back to the parameter server
-        rospy.set_param(param_name, shifted_list)
-
-        # return the updated list
-        return shifted_list        
-
-if __name__ == '__main__':
-    print('demeter_plan_exec')
-    rospy.loginfo('Executive started')
-    rospy.init_node('demeter_executive')
-    
-    
-    demeter = ExecDemeter()
-    demeter.rosplan_services()
-    
-    while not rospy.is_shutdown():
-        mission_counter=0
-        demeter.execute_plan()
-        # while not demeter.mission_success:
-        #     demeter._rate.sleep()
-        # # Shift allocation
-        # demeter.clear_mission()
-        # demeter.shift_allocation_param()
-        # mission_counter = mission_counter + 1
-        # demeter._rate.sleep()
-        # demeter.clear_mission()
-
-    rospy.spin()
+    def clear_KB(self):
+        self._clear_KB_proxy()

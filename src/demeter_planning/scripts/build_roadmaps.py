@@ -18,7 +18,7 @@ class BuildRoadmaps(object):
         self._rate = rospy.Rate(10)
         self.NUMBER_OF_COUNTOUR_POINTS = 5
         self.DISTANCE_TO_TURBINE = 0.10
-        self.NUMBER_OF_TURBINES_CONSIDERED = 6
+        self.NUMBER_OF_TURBINES_CONSIDERED = 7
         self.VISIBILITY_RADIUS = 1
         self.BOUNDS_MAP = 25
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
@@ -54,8 +54,6 @@ class BuildRoadmaps(object):
         for corner_point in corners:
             visibility_G.add_node(visibility_G.number_of_nodes(), pos = corner_point, description = 'corner', related_to = 'NaN')
         obstacles = self.create_countor_point(turbines_xy)
-
-        
 
         # Set countor points as nodes
         EPSILON = 0.001
@@ -144,6 +142,8 @@ class BuildRoadmaps(object):
         # Plot the nodes of the graph
         for node in visibility_G.nodes():
             plt.scatter(visibility_G.nodes[node]["pos"][0], visibility_G.nodes[node]["pos"][1], color='red', s=20)
+            # Text in all nodes
+            # plt.text(visibility_G.nodes[node]["pos"][0], visibility_G.nodes[node]["pos"][1], node, fontsize=9, color='black')
 
         # Plot the obstacles
         for i, obs in enumerate(obstacles):
@@ -198,11 +198,6 @@ class BuildRoadmaps(object):
         H = nx.relabel_nodes(G, mapping)
                 
         return H
-
-    # def get_scaled_graph(self):
-    #     G = nx.Graph()
-    #     G = G_with_turbines.copy()
-    #     return G
     
     def plot_scaled_points(self, graph):
         fig, ax = plt.subplots()
@@ -335,7 +330,6 @@ class BuildRoadmaps(object):
         with open(yaml_path, 'wb') as pickle_file:
             pickle.dump(graph, pickle_file)
    
-        
     def draw_graph(self, graph):
         nx.draw(graph, nx.get_node_attributes(graph, 'pos'), node_size=10, with_labels=False)
         plt.show()
@@ -385,7 +379,7 @@ if __name__ == '__main__':
     visibility_G = Roadmap.build_roadmaps()
        
     # Print atributtes of graph:
-    Roadmap.print_nodes_and_attributes(visibility_G)
+    # Roadmap.print_nodes_and_attributes(visibility_G)
     
     # Create a new graph and scale
     visibility_G_with_turbines = visibility_G.copy()
@@ -397,11 +391,11 @@ if __name__ == '__main__':
     Roadmap.set_scaled_turbines_as_ros_parameters(scaled_turbines_xy)
 
     scaled_visibility_G = Roadmap.remove_turbines_from_graph(scaled_visibility_G_with_turbines)
-    Roadmap.print_nodes_and_attributes(scaled_visibility_G)
+    # Roadmap.print_nodes_and_attributes(scaled_visibility_G)
     Roadmap.set_waypoints_as_ros_parameters(scaled_visibility_G)
     
     if nx.is_connected(visibility_G):
         rospy.logwarn('Graph is connected, ok!')
     else:
         rospy.logwarn('Graph is not connected, create another roadmap!')
-    Roadmap.plot_scaled_points(scaled_visibility_G_with_turbines)
+    # Roadmap.plot_scaled_points(scaled_visibility_G_with_turbines)

@@ -1,0 +1,26 @@
+<launch>
+
+
+  <include file="$(find demeter_planning)/launch/allocation.launch"/>
+
+
+	<node pkg="demeter_planning" type="battery.py" name="battery_controller" output="screen"/>
+
+  <!-- Launch planning_ns.launch with namespace=auv0 -->
+  <include file="$(find demeter_planning)/launch/planning_ns.launch">
+    <arg name="namespace" value="auv0" />
+  </include>
+
+  <!-- Launch planning_ns.launch with namespace=auv1 -->
+  <include file="$(find demeter_planning)/launch/planning_ns.launch">
+    <arg name="namespace" value="auv1" />
+  </include>
+
+  <!-- Launch planning_ns.launch with namespace=auv1 -->
+  <include file="$(find demeter_planning)/launch/planning_ns.launch">
+    <arg name="namespace" value="auv2" />
+  </include>
+
+  <!-- Add more instances of planning_ns.launch for additional robots -->
+
+</launch>

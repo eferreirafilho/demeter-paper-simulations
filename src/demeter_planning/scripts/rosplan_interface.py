@@ -2,6 +2,7 @@
 
 # 3rd Party Packages
 from threading import Lock
+import threading
 
 # ROS Packages
 import rospy
@@ -15,7 +16,6 @@ from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
                                         KnowledgeUpdateServiceRequest,
                                         KnowledgeQueryService)
 from action_interface import DemeterActionInterface
-import threading
 
 class DemeterInterface(object):
 
@@ -81,26 +81,22 @@ class DemeterInterface(object):
             update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
         succeed = self.update_predicates(predicate_names, parameters, update_types)
         return succeed
-    import threading
 
     def _dispatch_cb(self, msg):
         duration = rospy.Duration(msg.duration)
         # Parse action message
         if msg.name == 'move':
-            rospy.logwarn('msg.name = move')
             self._action_threaded(msg, self.move, [msg.parameters, duration])
         if msg.name == 'submerge-mission':
-            rospy.logwarn('msg.name = submerge-mission')
             self._action_threaded(msg, self.submerge_mission, [msg.parameters, duration])
         if msg.name == 'transmit-data':
-            rospy.logwarn('msg.name = transmit-data')
             self._action_threaded(msg, self.transmit_data, [duration])
         if msg.name == 'wait-to-recharge':
-            rospy.logwarn('msg.name = wait-to-recharge')
             self._action_threaded(msg, self.wait_to_recharge, [duration])
         if msg.name == 'localize-cable':
-            rospy.logwarn('msg.name = localize-cable')
             self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
+        if msg.name == 'surface':
+            self._action_threaded(msg, self.surface, [duration])
 
     def _action_threaded(self, action_dispatch, action_func, action_params=list()):
         # Create a new thread for the action function
@@ -132,58 +128,6 @@ class DemeterInterface(object):
     def cancel_plan(self):
         _cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'/rosplan_plan_dispatcher/cancel_dispatch', Empty)
         _cancel_plan_proxy()
-
-    def call_query_service(self):
-        rospy.wait_for_service(str(self.namespace)+'/rosplan_knowledge_base/query_state')
-        try:
-            query_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/query_state', KnowledgeQueryService)
-            resp1 = query_proxy(self.query)
-            return resp1.results
-        except rospy.ServiceException:
-            rospy.loginfo("Service query call failed")
-
-    def data_sent_kb_query(self):
-        query1 = KnowledgeItem()
-        query1.knowledge_type = KnowledgeItem.FACT
-        query1.attribute_name = "data-sent"
-        query1.values.append(diagnostic_msgs.msg.KeyValue("d","data1"))
-        self.query.append(query1)
-        self._rate.sleep()
-        result = self.call_query_service()
-        return result[-1]
-
-    def clear_data_sent_fact(self):
-        self.data_sent_kb_query()
-        if self.call_query_service():
-            pred_names = [
-            'data-sent'
-            ]
-            params = [[KeyValue('d', 'data1')]]
-            update_types = [
-                KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
-            ]
-            self.update_predicates(pred_names,params,update_types)
-
-    def clear_carry_vehicle_fact(self):
-        if self.call_query_service():
-            pred_names = [
-            'carry'
-            ]
-            params = [[KeyValue('v', 'vehicle1'), KeyValue('d', 'data1')]]
-            update_types = [
-                KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE,
-            ]
-            self.update_predicates(pred_names,params,update_types)
-
-    def add_empty_vehicle_fact(self):
-        pred_names = [
-        'empty'
-        ]
-        params = [[KeyValue('v', 'vehicle1')]]
-        update_types = [
-            KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE,
-        ]
-        self.update_predicates(pred_names,params,update_types)
 
     def knowledge_update(self, event):
         self.KB_update_waypoint()
@@ -274,7 +218,6 @@ class DemeterInterface(object):
             if param.key == 'd': # from Data d
                 data_location = int(param.value[4:])
                 break
-            rospy.logwarn(param)
         response = self.demeter.do_submerge_mission(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
         return response
     
@@ -289,10 +232,13 @@ class DemeterInterface(object):
     def localize_cable(self, dispatch_params, duration=rospy.Duration(60, 0)):
         for param in dispatch_params:
             if param.key == 'tu': # to Waypoint z
-                rospy.logwarn(param.value)
                 turbine = param.value[7:]
                 break
         response = self.demeter.do_localize_cable(turbine, duration)
+        return response
+    
+    def surface(self, duration=rospy.Duration(60, 0)):
+        response = self.demeter.do_surface(duration)
         return response
     
     

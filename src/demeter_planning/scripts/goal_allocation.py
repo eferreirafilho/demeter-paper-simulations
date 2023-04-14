@@ -29,7 +29,6 @@ class Allocation(object):
     self.robots = []
     for robot in self.auv_positions:
       self.robots.append(self.auv_positions[robot])
-    print(self.robots)
       
   def pose_callback(self, msg, i):
     self.auv_positions[i] = [msg.pose.pose.position.x, msg.pose.pose.position.y]
@@ -41,15 +40,10 @@ class Allocation(object):
   def get_data_allocation_parameters(self):
     self.vehicle_idx = rospy.get_param("/goal_allocation/vehicle_idx")
     self.data_idx = rospy.get_param("/goal_allocation/data_idx")
-    # self.poi_coordinates = rospy.get_param("/goal_allocation/poi_x"), rospy.get_param("/goal_allocation/poi_y") 
   
   def get_roadmap_parameters(self):
     self.scaled_turbines_xy = rospy.get_param("/goal_allocation/scaled_turbines_xy")
-    
-  def build_graph_get_waypoints(self):
-    Roadmap = BuildRoadmaps()
-    self.waypoints = Roadmap.build_and_scale_roadmap()
-            
+               
   def euclidean_distance(self, point1, point2):
     """Returns the Euclidean distance between two points."""
     return math.sqrt((point1[0] - point2[0])**2 + (point1[1] - point2[1])**2)
@@ -127,9 +121,9 @@ if __name__ == '__main__':
   rospy.init_node('goal_allocation', anonymous=True)
   rospy.spin
   
-  POPULATION = 10000
-  MUTATION_RATE = 0.3
-  N_GENERATIONS = 1000
+  POPULATION = 20000
+  MUTATION_RATE = 0.5
+  N_GENERATIONS = 2000
   
   goal_allocation = Allocation()
   solution = goal_allocation.run_genetic_algorithm(POPULATION, MUTATION_RATE, N_GENERATIONS)
