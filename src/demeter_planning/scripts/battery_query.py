@@ -24,7 +24,7 @@ if __name__ == "__main__":
     query1 = KnowledgeItem()
     query1 = ExprBase()
     query1.knowledge_type = KnowledgeItem.FUNCTION
-    query1.attribute_name = "battery-amount"
+    query1.attribute_name = "battery-level"
     query1.values.append(diagnostic_msgs.msg.KeyValue("v", "vehicle0"))
     # query1.values.append(diagnostic_msgs.msg.KeyValue("wp", "wp0"))
     query.append(query1)

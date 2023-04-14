@@ -38,7 +38,7 @@ if __name__ == '__main__':
         populate = None
         sleep(1)
         shift_allocation_param()        
-        sleep(3)
+        sleep(2)
         rospy.logwarn('Persistent Goal: ' + str(mission_counter) + ' Successfull!!!')
         mission_counter+=1
     rospy.spin()

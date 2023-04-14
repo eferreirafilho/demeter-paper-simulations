@@ -26,8 +26,8 @@ class PopulateKB(object):
         self.SCALE_TRAVERSE_COSTS = 0.1
         self.SPEED = 100 # Scale speed 
         self.FULL_BATTERY = 20 # TODO: keep track of battery
-        self.RECHARGE_RATE = 0.01 # While doing other tasks
-        self.RECHARGE_RATE_DEDICATED = 10
+        self.RECHARGE_RATE = 0.01 # While doing other tasks #TODO: Change here and in battery controller at the same time
+        self.RECHARGE_RATE_DEDICATED = 10 #TODO: Change here and in battery controller at the same time
 
         sleep(2)
         self.namespace = rospy.get_namespace()
@@ -62,7 +62,7 @@ class PopulateKB(object):
         self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
         self.add_fact('tide-low', 'currenttide')
         self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
-        self.update_functions('battery-amount', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.FULL_BATTERY, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        self.update_functions('battery-level', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.FULL_BATTERY, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('recharge-rate', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('recharge-rate-dedicated', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE_DEDICATED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('total-missions-completed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], 0, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)

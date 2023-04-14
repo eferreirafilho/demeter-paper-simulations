@@ -2,6 +2,7 @@
 
 # 3rd Party Packages
 from threading import Lock
+import threading
 
 # ROS Packages
 import rospy
@@ -15,7 +16,6 @@ from rosplan_knowledge_msgs.srv import (GetDomainOperatorDetailsService,
                                         KnowledgeUpdateServiceRequest,
                                         KnowledgeQueryService)
 from action_interface import DemeterActionInterface
-import threading
 
 class DemeterInterface(object):
 
@@ -81,7 +81,6 @@ class DemeterInterface(object):
             update_types.append(KnowledgeUpdateServiceRequest.REMOVE_KNOWLEDGE)
         succeed = self.update_predicates(predicate_names, parameters, update_types)
         return succeed
-    import threading
 
     def _dispatch_cb(self, msg):
         duration = rospy.Duration(msg.duration)
