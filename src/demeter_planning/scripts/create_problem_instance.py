@@ -4,6 +4,7 @@ from cmath import sqrt
 from time import sleep
 from std_srvs.srv import Empty
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Float32
 import rospy
 from nav_msgs.msg import Odometry
 from rosplan_knowledge_msgs.srv import *
@@ -23,14 +24,16 @@ class PopulateKB(object):
     mutex = Lock()
     def __init__(self):
         rospy.logwarn('Create Problem - Populating KB with robots initial position and goals')
-        self.SCALE_TRAVERSE_COSTS = 0.1
+        self.SCALE_TRAVERSE_COSTS = 0.5
         self.SPEED = 100 # Scale speed 
         self.FULL_BATTERY = 20 # TODO: keep track of battery
         self.RECHARGE_RATE = 0.01 # While doing other tasks #TODO: Change here and in battery controller at the same time
         self.RECHARGE_RATE_DEDICATED = 10 #TODO: Change here and in battery controller at the same time
 
-        sleep(2)
+        sleep(1)
         self.namespace = rospy.get_namespace()
+        sleep(1)
+        self.battery_level_subscribers()
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self.vehicle_id = self.extract_number_from_string(self.namespace)
         action_interface_object = DemeterActionInterface(self.namespace)
@@ -62,7 +65,7 @@ class PopulateKB(object):
         self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
         self.add_fact('tide-low', 'currenttide')
         self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
-        self.update_functions('battery-level', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.FULL_BATTERY, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        self.update_functions('battery-level', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.battery_level, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('recharge-rate', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('recharge-rate-dedicated', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE_DEDICATED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('total-missions-completed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], 0, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
@@ -279,6 +282,14 @@ class PopulateKB(object):
             return int(match.group())
         else:
             return None
+
+    def battery_level_subscribers(self):
+        self.battery_level = [0]
+        sub_topic = self.namespace + "/battery_level_emulated"
+        # rospy.Subscriber(sub_topic, Float32, self.battery_level_callback)
+        msg = rospy.wait_for_message(sub_topic, Float32)
+        self.battery_level = msg.data
+
 
 if __name__ == '__main__':
     rospy.logwarn('Populate KB for one vehicle, using its position')

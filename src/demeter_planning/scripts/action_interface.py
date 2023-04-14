@@ -133,8 +133,6 @@ class DemeterActionInterface(object):
     
     def do_transmit_data(self, duration=rospy.Duration()):
         rospy.logdebug('Interface: Mock \'Transmit\' Action')
-        while self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
-            self.surface_if_submerged()   
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             self._rate.sleep()
@@ -146,10 +144,22 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
+    def do_surface(self, duration=rospy.Duration()):
+        rospy.logdebug('Interface: \'Surface\' Action')
+        start = rospy.Time.now()
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
+            self.surface_if_submerged()   
+            completion_percentage = 'Surfacing: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            rospy.loginfo_throttle(1,completion_percentage)
+            self._rate.sleep()
+        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+        rospy.loginfo('Surfaced!')
+        if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
+            response = self.OUT_OF_DURATION        
+        return response
+    
     def do_wait_to_recharge(self, duration=rospy.Duration()):
-        rospy.logdebug('Interface: Mock \'wait-to-recharge \' Action')
-        while self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
-                self.surface_if_submerged()           
+        rospy.logdebug('Interface: Mock \'wait-to-recharge \' Action') # Actual action is handled in BatteryController class
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
                 self._rate.sleep()

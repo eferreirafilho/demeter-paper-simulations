@@ -32,6 +32,7 @@
         (is-turbine-wp ?w - waypoint ?tu - turbine)
         (not-recharging ?v - vehicle)
         (idle ?v - vehicle)
+    (is-submerged ?v - vehicle)
 )
     ;define actions here
     (:durative-action move
@@ -42,7 +43,7 @@
             (at start (at ?v ?y))
             (at start (> (battery-level ?v) (traverse-cost ?y ?z)))
             (over all (is-surfaced ?v)))
-           
+                   
         :effect (and 
             (at end (at ?v ?z))
             ; (at end (been-at ?v ?y))
@@ -70,6 +71,8 @@
             (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
             (at start (not (idle ?v)))
             (at end (idle ?v))
+            (at end (is-submerged ?v))
+            (at end (not (is-surfaced ?v)))
         )
     )
     
@@ -91,7 +94,9 @@
             (at end (not (empty ?v)))
             (at start (decrease (battery-level ?v) 80))
             (at start (not (is-surfaced ?v)))
-            (at end (is-surfaced ?v))
+            ; (at end (is-surfaced ?v))
+            (at start (is-submerged ?v))
+            ; (at end (not (is-submerged ?v)))
             (at start (not (idle ?v)))
             (at end (idle ?v))
         )
@@ -109,6 +114,8 @@
             (at start (decrease (battery-level ?v) 20))
             (at start (not (is-surfaced ?v)))
             (at end (is-surfaced ?v))
+            (at start (is-submerged ?v))
+            (at end (not (is-submerged ?v)))
             (at end (vortex-data-measured ?vx))
             (at end (increase (total-missions-completed ?v) 1))
             (at start (not (idle ?v)))
@@ -136,6 +143,25 @@
             ; (at start (not (idle ?v)))
             ; (at end (idle ?v))
             )
+    )
+     (:durative-action surface
+        :parameters (?v - vehicle)
+        :duration 
+            (= ?duration 5)
+        :condition (and 
+            (at start  (is-submerged ?v))
+            (at start (> (battery-level ?v) 5))
+            (over all (idle ?v))
+        )
+        :effect (and
+            (at end (not (is-submerged ?v)))
+            (at end (is-surfaced ?v))
+            ; (at start (not (not-recharging ?v)))
+            ; (at end (not-recharging ?v))
+            (at start (not (idle ?v)))
+            (at end (idle ?v))
+            (at start (decrease (battery-level ?v) 5))
+        )
     )
     (:durative-action wait-to-recharge
         :parameters (?v - vehicle)

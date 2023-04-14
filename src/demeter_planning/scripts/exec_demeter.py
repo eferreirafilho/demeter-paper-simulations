@@ -84,20 +84,7 @@ class ExecDemeter(object):
         
     def mission_completed(self):
         return self.mission_success
-    
-    def get_data_set_goal(self, data):
-        pred_names = [
-            'data-sent'
-        ]
-        params = [[KeyValue('d', data)]]
-        self.goal_state.append(list([pred_names, params]))
-        update_types = [
-            KnowledgeUpdateServiceRequest.ADD_GOAL,
-        ]
-        succeed = self.demeter_rosplan_interface.update_predicates(pred_names,params,update_types)
-        self._rate.sleep()
-        return succeed
-    
+        
     def cancel_mission(self):
         self.mission_success = False
         self._cancel_plan_proxy()

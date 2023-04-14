@@ -1,51 +1,49 @@
 (define (problem task)
 (:domain demeter-domain-with-weather)
 (:objects
-    vehicle0 - vehicle
-    wp_init_auv0 waypoint17 waypoint22 - waypoint
-    data4 - data
+    vehicle1 - vehicle
+    wp_init_auv1 waypoint32 - waypoint
+    data6 - data
     currenttide - tide
-    turbine4 - turbine
+    turbine6 - turbine
 )
 (:init
-    (can-move wp_init_auv0 waypoint17)
-    (can-move waypoint17 waypoint22)
+    (can-move wp_init_auv1 waypoint32)
 
-    (is-in data4 turbine4)
-
+    (is-in data6 turbine6)
 
 
-    (at vehicle0 wp_init_auv0)
 
-    (is-surfaced vehicle0)
+    (at vehicle1 wp_init_auv1)
 
+    (is-surfaced vehicle1)
 
-    (empty vehicle0)
+    
+    (empty vehicle1)
 
 
     (tide-low currenttide)
 
 
-    (is-turbine-wp waypoint22 turbine4)
+    (is-turbine-wp waypoint32 turbine6)
 
-    (not-recharging vehicle0)
+    (not-recharging vehicle1)
 
 
-    (= (battery-amount vehicle0) 20)
+    (= (battery-level vehicle1) 20)
 
-    (= (recharge-rate vehicle0) 0)
+    (= (recharge-rate vehicle1) 0.01)
 
-    (= (recharge-rate-dedicated vehicle0) 100)
+    (= (recharge-rate-dedicated vehicle1) 10)
 
-    (= (traverse-cost wp_init_auv0 waypoint17) 0.001)
-    (= (traverse-cost waypoint17 waypoint22) 2.362)
+    (= (traverse-cost wp_init_auv1 waypoint32) 0.973)
 
-    (= (total-missions-completed vehicle0) 0)
+    (= (total-missions-completed vehicle1) 0)
 
-    (= (speed vehicle0) 100)
+    (= (speed vehicle1) 100)
 
 )
 (:goal (and
-    (data-sent data4)
+    (data-sent data6)
 ))
 )

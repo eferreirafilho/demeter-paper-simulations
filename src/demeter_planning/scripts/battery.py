@@ -7,9 +7,9 @@ from threading import Lock
 
 INIT_BATTERY_LEVEL = 100 # %
 NUMBER_OF_THRUSTERS = 6
-THRUSTERS_CONSUMPTION_FACTOR = 0.0105
-RECHARGING_RATE = 0.0100
-RECHARGING_RATE_DEDICATED = 10
+THRUSTERS_CONSUMPTION_FACTOR = 0.0005
+RECHARGING_RATE = 0.01
+RECHARGING_RATE_DEDICATED = 3
         
 class BatteryController(object):
 
@@ -80,10 +80,11 @@ class BatteryController(object):
         self.mean_thruster_usage = self.get_mean_thruster()
         
     def action_dispatch_callback(self, msg, arg):
+        rospy.logwarn(msg.name)
         if msg.name == 'wait-to-recharge':
             self.recharging_dedicated[arg] = 1
             rospy.logwarn('Recharging dedicated')
-        else:
+        if msg.name == 'move' or msg.name == 'localize-cable' or msg.name == 'submerge-mission': # Actions that stop wait-to-recharge action
             self.recharging_dedicated[arg] = 0
             
     def battery_level_callback(self, msg, vehicle_idx):
