@@ -86,6 +86,10 @@ class BatteryController(object):
             rospy.logwarn('Recharging dedicated')
         if msg.name == 'move' or msg.name == 'localize-cable' or msg.name == 'submerge-mission': # Actions that stop wait-to-recharge action
             self.recharging_dedicated[arg] = 0
+        if msg.name == 'move' or msg.name == 'transmit-data': # Actions on the surface
+            self.recharging[arg] = 1
+        else:
+            self.recharging[arg] = 0
             
     def battery_level_callback(self, msg, vehicle_idx):
         self.battery_level[vehicle_idx] = msg.data
