@@ -20,6 +20,9 @@
   <build_depend>tf</build_depend>
   <build_depend>gazebo_ros</build_depend>
   
+  <build_depend>uuv_gazebo_ros_plugins</build_depend>
+  
+
   <run_depend>geometry_msgs</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
@@ -28,6 +31,7 @@
 
   <run_depend>tf</run_depend>
   <run_depend>gazebo_ros</run_depend>
+  <run_depend>uuv_gazebo_ros_plugins</run_depend>
 
 
   <export>

@@ -1,4 +1,4 @@
-Number of literals: 11
+Number of literals: 10
 Constructing lookup tables:
 Post filtering unreachable actions: 
 No semaphore facts found, returning
@@ -7,25 +7,24 @@ No semaphore facts found, returning
 - Duration of (wait-to-recharge vehicle0) is not constant-bounded
 Non-constant-bounded duration-dependent effect ((battery-amount vehicle0) +=10.000*?duration) makes effects on 0 be order-dependent
 None of the ground temporal actions in this problem have been recognised as compression-safe
-Initial heuristic = 14.000, admissible cost estimate 0.000
-b (13.000 | 11.800)b (12.000 | 11.800)b (11.000 | 62.101)b (10.000 | 62.101)b (9.000 | 328.002)b (8.000 | 328.002)b (6.000 | 333.003)b (4.000 | 341.499)b (2.000 | 549.501)(G)
+Initial heuristic = 12.000, admissible cost estimate 0.000
+b (11.000 | 11.700)b (10.000 | 11.700)b (9.000 | 249.900)b (8.000 | 249.901)b (6.000 | 254.902)b (4.000 | 263.398)b (2.000 | 471.400)(G)
 ; No metric specified - using makespan
 
-; Plan found with metric 551.502
-; States evaluated so far: 21
+; Plan found with metric 473.401
+; States evaluated so far: 18
 ; States pruned based on pre-heuristic cost lower bound: 0
 ; Time 0.02
-0.000: (move vehicle0 wp_init_auv0 waypoint2)  [11.800]
-11.801: (move vehicle0 waypoint2 waypoint3)  [50.300]
-62.102: (move vehicle0 waypoint3 waypoint12)  [265.900]
-328.003: (localize-cable vehicle0 waypoint12 turbine2)  [5.000]
-333.004: (wait-to-recharge vehicle0)  [8.495]
-341.500: (submerge-mission vehicle0 data2 waypoint12 currenttide turbine2)  [200.000]
-541.501: (wait-to-recharge vehicle0)  [8.000]
-549.502: (transmit-data vehicle0 data2)  [2.000]
+0.000: (move vehicle0 wp_init_auv0 waypoint7)  [11.700]
+11.701: (move vehicle0 waypoint7 waypoint2)  [238.200]
+249.902: (localize-cable vehicle0 waypoint2 turbine0)  [5.000]
+254.903: (wait-to-recharge vehicle0)  [8.495]
+263.399: (submerge-mission vehicle0 data0 waypoint2 currenttide turbine0)  [200.000]
+463.400: (wait-to-recharge vehicle0)  [8.000]
+471.401: (transmit-data vehicle0 data0)  [2.000]
 
- * All goal deadlines now no later than 551.502
+ * All goal deadlines now no later than 473.401
 
 Resorting to best-first search
 Running WA* with W = 5.000, not restarting with goal states
-b (13.000 | 11.800)b (12.000 | 11.800)b (11.000 | 62.101)b (10.000 | 62.101)b (9.000 | 328.002)b (8.000 | 328.002)b (6.000 | 336.003)b (4.000 | 341.004)b (2.000 | 549.501)
+b (11.000 | 11.700)b (10.000 | 11.700)b (9.000 | 249.900)b (8.000 | 249.901)b (6.000 | 257.902)b (4.000 | 262.903)b (2.000 | 471.400)(G)b (0.000 | 473.401)

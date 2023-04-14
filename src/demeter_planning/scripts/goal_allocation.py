@@ -84,8 +84,8 @@ class Allocation(object):
       for element in population:
         ranked_solution.append((self.fitness(element), element))
       ranked_solution.sort(reverse=True)
-      if random.random()<0.1:
-        print("Generation " ,i, " best solution: ", ranked_solution[0])
+      # if random.random()<0.1:
+        # print("Generation " ,i, " best solution: ", ranked_solution[0])
       
       # Selection by truncation
       best_solutions_with_fitness = ranked_solution[:len(population)//2] # 50% of the population, selection by truncation
@@ -122,7 +122,7 @@ if __name__ == '__main__':
   rospy.spin
   
   POPULATION = 20000
-  MUTATION_RATE = 0.2
+  MUTATION_RATE = 0.5
   N_GENERATIONS = 2000
   
   goal_allocation = Allocation()
