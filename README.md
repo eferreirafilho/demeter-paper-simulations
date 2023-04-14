@@ -59,9 +59,6 @@ roslaunch demeter_planning multi.launch
 ```
 This package launches the allocation of goal to vehicles, the planner for all the vehicles,the battery emulator, executes and monitor the plans persistently.
 
-<p align="center">
-  <img width="400" height="210" src="https://user-images.githubusercontent.com/92797165/194417539-e4f86353-ee23-43cd-98ec-35ba4f70f693.png">
-</p>
 
 #### Comments:
 - This package creates problems files dinamically (common/auv{i}/problem.pddl), generates plans (common/auv{i}/plan.pddl) and execute the plan by publishing poses to /auv{i}/cmd_pose.
@@ -74,9 +71,11 @@ This package launches the allocation of goal to vehicles, the planner for all th
 
 - Action **move** return success if vehicle has reached the waypoint within the time described in common/auv{i}/domain.pddl. Plan fails otherwise.
 
-- Actions **get_data** and **transmit_data** are simulated, vehicle just wait in position for some time (as defined in common/auv{i}/domain.pddl) and the action always returns as successfull.
+- Actions **transmit_data** is simulated, vehicle just wait in position for some time (as defined in common/auv{i}/domain.pddl) and the action always returns as successfull.
 
-- Actions **get_data** and **transmit_data**
+- Action **submerge-mission** is sucessfull if last way point in plan_wp was reached, simulating data-retrieval from sensor. 
+
+- Action **wait-to-recharge** recharge the Vehicle (when in surface) and block most other action. 
 
 - The threadsholds that we consider a vehicle is at a waypoint and is at the surface can be manually changed within file scripts/interface.py.
 
