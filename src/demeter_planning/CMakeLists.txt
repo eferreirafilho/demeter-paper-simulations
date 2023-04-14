@@ -6,6 +6,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs message_ge
 
 ## Declare ROS messages and services
 
+
 ## Generate added messages and services
 generate_messages(DEPENDENCIES std_msgs geometry_msgs)
 
