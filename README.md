@@ -14,14 +14,28 @@ git clone https://github.com/KCL-Planning/ROSPlan.git
 git clone https://github.com/codres-ali/auv_sim.git
 ```
 
-## Actions: move, submerge-mission, transmit_data, wait-to-recharge, localize-cable, surface 
+## Pre-planning
 
-First, a visibility graph is created and saved in scaled_visibility_G_with_turbines.pickle. This consider as many turbines as set in get_data_allocation.yaml and create a roadmap to avoid collisions with turbines.
+A visibility graph is created and saved in scaled_visibility_G_with_turbines.pickle. This consider as many turbines as set in get_data_allocation.yaml and create a roadmap to avoid collisions with turbines.
 
 ![visibility_graph](https://user-images.githubusercontent.com/92797165/232097906-bedde59f-6862-4dbf-a4b3-dbc34de8e41d.png)
 
 Vehicles can only move between allowed waypoints (as will be created in /auv{i}/common/problem.pddl). Robots share the same domain.pddl, bbut each one has its own problem.pddl and plan.pddl. Problem and Plan files update dynamically.
+
 There is only one possible mission: "submerge-mission". A mission called "measure-vortex" will also be implemented.
+
+
+## Actions
+
+Possible PDDl actions: move, submerge-mission, transmit-data, wait-to-recharge, localize-cable, surface.
+
+- Action **move** return success if vehicle has reached the waypoint within the time described in common/auv{i}/domain.pddl. Plan fails otherwise.
+
+- Actions **transmit-data** is simulated, vehicle just wait in position for some time (as defined in common/auv{i}/domain.pddl) and the action always returns as successfull.
+
+- Action **submerge-mission** is sucessfull if last way point in plan_wp was reached, simulating data-retrieval from sensor. 
+
+- Action **wait-to-recharge** recharge the Vehicle (when in surface) and block most of other actions. Note that is possible to set the vehicle to also recharge while executing other surface actions (RECHARGE_RATE == 0 in battery.py).  
 
 ## Parameters
 
@@ -62,14 +76,6 @@ This package launches the allocation of goal to vehicles, the planning system (p
 - When the vehicle is not positioned at a waypoint and planning is required, a waypoint with the current position of the vehicle is created. 
 
 - The plan is a sequence of actions with maximum time for completion. If an action exceeds the time allocated for it (in the domain.pddl file), the action will fail. 
-
-- Action **move** return success if vehicle has reached the waypoint within the time described in common/auv{i}/domain.pddl. Plan fails otherwise.
-
-- Actions **transmit_data** is simulated, vehicle just wait in position for some time (as defined in common/auv{i}/domain.pddl) and the action always returns as successfull.
-
-- Action **submerge-mission** is sucessfull if last way point in plan_wp was reached, simulating data-retrieval from sensor. 
-
-- Action **wait-to-recharge** recharge the Vehicle (when in surface) and block most other action. 
 
 - The threadsholds that we consider a vehicle is at a waypoint and is at the surface can be manually changed within file scripts/interface.py.
 
