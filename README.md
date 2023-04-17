@@ -1,11 +1,6 @@
 # DEMETER planning package
 
-Package responsible for planning. To be used in the DEMETER Spike Demo (October 2022).
-
-<p align="center">
-  <img width="500" height="270" src="https://user-images.githubusercontent.com/92797165/192383504-d70cca79-b639-4cb6-a7f0-90dcb56cfeb1.png">
-  
-</p>
+Package responsible for planning in DEMETER project.
 
 ## Prerequisite:
 
@@ -57,8 +52,7 @@ roslaunch demeter_planning roadmap.launch
 ```sh
 roslaunch demeter_planning multi.launch
 ```
-This package launches the allocation of goal to vehicles, the planner for all the vehicles,the battery emulator, executes and monitor the plans persistently.
-
+This package launches the allocation of goal to vehicles, the planning system (planning_ns.launch) for each vehicle, the battery emulator, executes and monitor the plans persistently.
 
 #### Comments:
 - This package creates problems files dinamically (common/auv{i}/problem.pddl), generates plans (common/auv{i}/plan.pddl) and execute the plan by publishing poses to /auv{i}/cmd_pose.
@@ -97,4 +91,7 @@ roslaunch demeter_planning visualise.launch
 
 A demonstration
 
-The video is accelerated 3 times.
+The video is accelerated 11 times. Top right shows the trajectories of two vehicles. Bottom right shows parts of the planning for each vehicle.
+
+https://user-images.githubusercontent.com/92797165/232446333-e61e62b5-6f55-4282-9d90-302a4433ec61.mp4
+
