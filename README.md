@@ -1,11 +1,6 @@
 # DEMETER planning package
 
-Package responsible for planning. To be used in the DEMETER Spike Demo (October 2022).
-
-<p align="center">
-  <img width="500" height="270" src="https://user-images.githubusercontent.com/92797165/192383504-d70cca79-b639-4cb6-a7f0-90dcb56cfeb1.png">
-  
-</p>
+Package responsible for planning in DEMETER project.
 
 ## Prerequisite:
 
@@ -19,109 +14,93 @@ git clone https://github.com/KCL-Planning/ROSPlan.git
 git clone https://github.com/codres-ali/auv_sim.git
 ```
 
-## Actions: move, get_data, transmit_data
+## Pre-planning
 
-Vehicle can only move between allowed waypoints (as will be created in common/problem.pddl).
-Vehicles can move to next waypoint in the cable and to the surface. The vehicle cannot move back through cable waypoints (unless this option is activated by the user).
+A visibility graph is created and saved in scaled_visibility_G_with_turbines.pickle. This consider as many turbines as set in get_data_allocation.yaml and create a roadmap to avoid collisions with turbines.
 
-There are basically only two possible missions: "get data mission" and "go to waypoint mission". In the "get data mission", the generated plan will most probably be a sequence of **move** actions, than a **get_data** action and a **transmit_data** action. 
+![visibility_graph](https://user-images.githubusercontent.com/92797165/232097906-bedde59f-6862-4dbf-a4b3-dbc34de8e41d.png)
 
-The aim here is to exemplify the integration of systems within DEMETER project. 
-Future work will deal with more complex actions and systems, in which automated planning will have a greater impact.
+Vehicles can only move between allowed waypoints (as will be created in /auv{i}/common/problem.pddl). Robots share the same domain.pddl, bbut each one has its own problem.pddl and plan.pddl. Problem and Plan files update dynamically.
 
-## Waypoints
+There is only one possible mission: "submerge-mission". A mission called "measure-vortex" will also be implemented.
 
-Inside folder /params, a YAML file define the waypoints. User can define as many waypoints as he/she wants (at least two).
+
+## Actions
+
+Possible PDDl actions: move, submerge-mission, transmit-data, wait-to-recharge, localize-cable, surface.
+
+- Action **move** return success if vehicle has reached the waypoint within the time described in common/auv{i}/domain.pddl. Plan fails otherwise.
+
+- Actions **transmit-data** is simulated, vehicle just wait in position for some time (as defined in common/auv{i}/domain.pddl) and the action always returns as successfull.
+
+- Action **submerge-mission** is sucessfull if last way point in plan_wp was reached, simulating data-retrieval from sensor. 
+
+- Action **wait-to-recharge** recharge the Vehicle (when in surface) and block most of other actions. Note that is possible to set the vehicle to also recharge while executing other surface actions (RECHARGE_RATE == 0 in battery.py).  
+
+## Parameters
+
+original_windfarm_coodinates.yaml: The original position of turbines and corners of Robin Rigg wind farm 
+get_data_allocation.yaml: number of vehicles and turbines that have sensors
+plan_wp.yaml: waypoints related to submerge-mission action. Relative to the turbines positions, define at least two points.
+scaled_turbines_xy.yaml: turbines that are considered scaled to Gazebo size
+
+Inside folder /params, a YAML file define the waypoints. 
 
 The first waypoint defined in this file will be defined as a "surface waypoint". The vehicle can move from any waypoint to the "surface waypoint". Data can only be transmitted from this waypoint.
 
-The location of the data to be retrieved is set by the GUI dropdown menu.
-
 ## To run:
-```sh
-Change branch to: /rhul
-```
 
 ### 1st terminal:
 Run position_demo.launch
 ```sh
 roslaunch auv_autonomy position_demo.launch
 ```
-This package launches gazebo, the vehicle and the environment. This package is able to receive a pose through /auv/cmd_pose and guide the vehicle to the received pose.
+This package launches gazebo, the vehicles and the environment. The vehicles can be set in /auv_autonomy/launch/position_demo.launch and auv_descriptions/launch/multiple_auvs.launch. They have to be set manually for now. This package is able to receive poses through /auv{i}/cmd_pose and guide the vehicle to the received pose.
 
-### 2nd terminal:
+### 2nd terminal (If pickle graph is not saved):
+
+Run build_graph.launch
 ```sh
-roslaunch demeter_planning gui_planning.launch
+roslaunch demeter_planning roadmap.launch
 ```
-This package launches the planner and a GUI to select mission and start the planner.
 
-<p align="center">
-  <img width="400" height="210" src="https://user-images.githubusercontent.com/92797165/194417539-e4f86353-ee23-43cd-98ec-35ba4f70f693.png">
-</p>
+### 3nd terminal:
+```sh
+roslaunch demeter_planning multi.launch
+```
+
+This package launches the allocation of goal to vehicles, the planning system (planning_ns.launch) for each vehicle, the battery emulator, executes and monitor the plans persistently.
 
 #### Comments:
-- This package creates a problem file (common/problem.pddl), generates a plan (common/plan.pddl) and execute the plan by publishing poses to /auv/cmd_pose.
+- This package creates problems files dinamically (common/auv{i}/problem.pddl), generates plans (common/auv{i}/plan.pddl) and execute the plan by publishing poses to /auv{i}/cmd_pose.
 
-- **Position is subscribed from topic /auv/pose_gt and a desired pose is published in topic /auv/cmd_pose (in planning: a desired position and a fixed orientation).**
+- **Position is subscribed from topic /auv{i}/pose_gt and a desired pose is published in topic /auv{i}/cmd_pose (in planning: a desired position and a fixed orientation).**
 
-- When the vehicle is not positioned at a waypoint and planning is required, a waypoint with the current position of the vehicle is created. From this waypoint, the vehicle can move to the surface (wp0) or to the closer waypoint in the plan_wp yaml file.
+- When the vehicle is not positioned at a waypoint and planning is required, a waypoint with the current position of the vehicle is created. 
 
 - The plan is a sequence of actions with maximum time for completion. If an action exceeds the time allocated for it (in the domain.pddl file), the action will fail. 
 
+- The threadsholds that we consider a vehicle is at a waypoint and is at the surface can be manually changed within file scripts/interface.py.
 
-- Action **move** return success if vehicle has reached the waypoint within the time described in common/domain.pddl. Plan fails otherwise.
-
-- Actions **get_data** and **transmit_data** are simulated, vehicle just wait in position for some time (as defined in common/domain.pddl) and the action always returns as successfull.
-
-- The distances that we consider a vehicle is at a waypoint and is at the surface can be manually changed within file scripts/interface.py.
-
-### 3rd terminal (Optional):
+### 4rd terminal (Optional):
 To follow the execution of the plan graphically, one can run in a sourced terminal:
 ```sh
 rqt
 ```
-and select plugins > ROSPlan > ROSPlan esterel plan viewer.
-
-<p align="center">
-  <img width="300" height="400" src="https://user-images.githubusercontent.com/92797165/192385121-7833e3c9-0568-4d8e-815c-033d6a51d753.png">
-</p>
-
+and select plugins > ROSPlan > ROSPlan esterel plan viewer. Also set the vehicle namespace for the respective vehicle.
 Green are the completed actions. Yellow the dispatched actions. In white, the next planned actions.
 
-## External Actions
-
-To facilitate tests, three external buttons have been created in the gui. Those are not automated planning actions. 
-
-- Button "Send Vehicle To Surface" will publish to /auv/cmd_vel the current vehicle X and Y. Z will be changed to a value close to zero, as defined in scripts/interface.py.  
-
-- Button "Send Vehicle To Origin" will publish to /auv/cmd_vel the position read from /params/origin.yaml with a fixed orientation.
-
-- Button Localize Markers will rotate the vehicle 30 degrees in the yaw axis for each side. This is intended to be used in case the vehicle has trouble localizing the markers.
-
-
-## GUI Checkbox Options
-
-### Replanning
-
-- If planning or an action fail and replanning is active, the program will keep trying to replan until it is manually halted or it is completed successfully. For each new plan, a user confirmation is needed to dispatch the plan (for safety reasons).
-
-- With replanning active, one should clear the mission before beginning a new one.
-
-### Allow Moving Back Through WPs (For Localizing With Markers)
-
-- This modifies the problem file to allow the vehicle to move backwards between waypoints. This is intended to be used to ease the vehicle localization when it is based on the markers.
-
-### Verify Localization Errors
-
-- This will activate a mode in which an action is only considered as completed if the localization error is not too big (for safety reasons). 
-TODO: remap mock localization topic to the real one.
-
-
+### 5rd terminal (Optional):
+To follow the trajectories of vehicles graphically, one can run in a sourced terminal:
+```sh
+roslaunch demeter_planning visualise.launch
+```
 
 ## Demo
 
-A demonstration of a data retrieval mission (data in WP6). The video is accelerated 3 times.
+A demonstration
 
-<p align="center">
-  <img width="900" height="500" src="https://user-images.githubusercontent.com/92797165/192372867-8df159a4-4557-40fe-ba30-0094fe7a9c2a.gif">
-</p>
+The video is accelerated 11 times. Top right shows the trajectories of two vehicles. Bottom right shows parts of the planning for each vehicle.
+
+https://user-images.githubusercontent.com/92797165/232446333-e61e62b5-6f55-4282-9d90-302a4433ec61.mp4
+
