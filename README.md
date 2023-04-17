@@ -57,15 +57,18 @@ roslaunch auv_autonomy position_demo.launch
 ```
 This package launches gazebo, the vehicles and the environment. The vehicles can be set in /auv_autonomy/launch/position_demo.launch and auv_descriptions/launch/multiple_auvs.launch. They have to be set manually for now. This package is able to receive poses through /auv{i}/cmd_pose and guide the vehicle to the received pose.
 
-### 2nd terminal (If pickle grpah is not saved):
+### 2nd terminal (If pickle graph is not saved):
+
 Run build_graph.launch
 ```sh
 roslaunch demeter_planning roadmap.launch
+```
 
 ### 3nd terminal:
 ```sh
 roslaunch demeter_planning multi.launch
 ```
+
 This package launches the allocation of goal to vehicles, the planning system (planning_ns.launch) for each vehicle, the battery emulator, executes and monitor the plans persistently.
 
 #### Comments:
@@ -84,7 +87,7 @@ To follow the execution of the plan graphically, one can run in a sourced termin
 ```sh
 rqt
 ```
-and select plugins > ROSPlan > ROSPlan esterel plan viewer.
+and select plugins > ROSPlan > ROSPlan esterel plan viewer. Also set the vehicle namespace for the respective vehicle.
 Green are the completed actions. Yellow the dispatched actions. In white, the next planned actions.
 
 ### 5rd terminal (Optional):
