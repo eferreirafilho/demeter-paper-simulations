@@ -76,7 +76,7 @@
         )
     )
     
-    (:durative-action submerge-mission
+    (:durative-action inspect-turbine
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
         :duration(= ?duration 200)
         :condition (and 
@@ -123,7 +123,7 @@
     )
     )
 
-    (:durative-action transmit-data
+    (:durative-action upload-data-histograms
         :parameters (?v - vehicle ?d - data)
         :duration (= ?duration 2)
         :condition (and 
@@ -163,7 +163,7 @@
             (at start (decrease (battery-level ?v) 5))
         )
     )
-    (:durative-action wait-to-recharge
+    (:durative-action harvest-energy
         :parameters (?v - vehicle)
         :duration 
             (= ?duration

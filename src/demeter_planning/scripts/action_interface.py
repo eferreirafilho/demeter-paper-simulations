@@ -101,8 +101,8 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION
         return response
     
-    def do_submerge_mission(self, turbine, duration=rospy.Duration()):
-        rospy.logdebug('Interface: \'Submerge Mission\' Action')
+    def do_inspect_turbine(self, turbine, duration=rospy.Duration()):
+        rospy.logdebug('Interface: \'Inspect Turbine\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position
@@ -117,7 +117,7 @@ class DemeterActionInterface(object):
                 pos.x, pos.y, pos.z = wp_x, wp_y, wp_z
                 while self.squared_distance(self.odom_pose.pose.pose.position, pos) > self.EPS_DISTANCE**2:
                     self.publish_position_fixed_orientation(pos)
-                    completion_percentage = 'Submerge mission: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                    completion_percentage = 'Inspecting turbine: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
                     rospy.loginfo_throttle(1,completion_percentage)
             
             while self.squared_distance(self.odom_pose.pose.pose.position, start_pos) > self.EPS_DISTANCE**2:
@@ -131,15 +131,15 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
-    def do_transmit_data(self, duration=rospy.Duration()):
-        rospy.logdebug('Interface: Mock \'Transmit\' Action')
+    def do_upload_data_histograms(self, duration=rospy.Duration()):
+        rospy.logdebug('Interface: Mock \'Upload Data Histograms\' Action')
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             self._rate.sleep()
-            completion_percentage = 'Transmitting data: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            completion_percentage = 'Uploading Data Histograms: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             rospy.loginfo_throttle(1,completion_percentage)
         response = self.ACTION_SUCCESS #MOCK SUCCESS     
-        rospy.loginfo('Data transmitted!')
+        rospy.loginfo('Histograms uploaded!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
@@ -158,12 +158,12 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
-    def do_wait_to_recharge(self, duration=rospy.Duration()):
-        rospy.logdebug('Interface: Mock \'wait-to-recharge \' Action') # Actual action is handled in BatteryController class
+    def do_harvest_energy(self, duration=rospy.Duration()):
+        rospy.logdebug('Interface: Mock \'harvest-energy (recharging) \' Action') # Actual action is handled in BatteryController class
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
                 self._rate.sleep()
-                completion_percentage = 'Waiting to Recharge ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                completion_percentage = 'Harvesting energy (recharging) ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
                 rospy.loginfo_throttle(1,completion_percentage)
         response = self.ACTION_SUCCESS     
         rospy.loginfo('Recharged!')

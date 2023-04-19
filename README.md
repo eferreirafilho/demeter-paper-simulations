@@ -22,31 +22,29 @@ A visibility graph is created and saved in scaled_visibility_G_with_turbines.pic
 
 Vehicles can only move between allowed waypoints (as will be created in /auv{i}/common/problem.pddl). Robots share the same domain.pddl, bbut each one has its own problem.pddl and plan.pddl. Problem and Plan files update dynamically.
 
-There is only one possible mission: "submerge-mission". A mission called "measure-vortex" will also be implemented.
+There is only one possible mission: "inspect-turbine". A mission called "measure-vortex" will also be implemented.
 
 
 ## Actions
 
-Possible PDDl actions: move, submerge-mission, transmit-data, wait-to-recharge, localize-cable, surface.
+Possible PDDl actions: move, inspect-turbine, upload-data-histograms, harvest-energy, localize-cable, surface.
 
 - Action **move** return success if vehicle has reached the waypoint within the time described in common/auv{i}/domain.pddl. Plan fails otherwise.
 
-- Actions **transmit-data** is simulated, vehicle just wait in position for some time (as defined in common/auv{i}/domain.pddl) and the action always returns as successfull.
+- Actions **upload-data-histograms** is simulated, vehicle just wait in position for some time (as defined in common/auv{i}/domain.pddl) and the action always returns as successfull.
 
-- Action **submerge-mission** is sucessfull if last way point in plan_wp was reached, simulating data-retrieval from sensor. 
+- Action **inspect-turbine** is sucessfull if last way point in plan_wp was reached, simulating data-retrieval from sensor. 
 
-- Action **wait-to-recharge** recharge the Vehicle (when in surface) and block most of other actions. Note that is possible to set the vehicle to also recharge while executing other surface actions (RECHARGE_RATE == 0 in battery.py).  
+- Action **harvest-energy** recharge the Vehicle (when in surface) and block most of other actions. Note that is possible to set the vehicle to also recharge while executing other surface actions (RECHARGE_RATE == 0 in battery.py).  
 
 ## Parameters
 
 original_windfarm_coodinates.yaml: The original position of turbines and corners of Robin Rigg wind farm 
 get_data_allocation.yaml: number of vehicles and turbines that have sensors
-plan_wp.yaml: waypoints related to submerge-mission action. Relative to the turbines positions, define at least two points.
+plan_wp.yaml: waypoints related to inspect-turbine action. Relative to the turbines positions, define at least two points.
 scaled_turbines_xy.yaml: turbines that are considered scaled to Gazebo size
 
 Inside folder /params, a YAML file define the waypoints. 
-
-The first waypoint defined in this file will be defined as a "surface waypoint". The vehicle can move from any waypoint to the "surface waypoint". Data can only be transmitted from this waypoint.
 
 ## To run:
 

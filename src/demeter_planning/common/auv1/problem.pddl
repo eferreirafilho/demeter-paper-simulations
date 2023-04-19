@@ -31,13 +31,13 @@
 
 
 
-    (= (battery-level vehicle1) 97.2081)
+    (= (battery-level vehicle1) 100)
 
     (= (recharge-rate vehicle1) 0.01)
 
     (= (recharge-rate-dedicated vehicle1) 10)
 
-    (= (traverse-cost wp_init_auv1 waypoint32) 2.095)
+    (= (traverse-cost wp_init_auv1 waypoint32) 0.605)
 
     (= (total-missions-completed vehicle1) 0)
 

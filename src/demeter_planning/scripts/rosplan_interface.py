@@ -87,12 +87,12 @@ class DemeterInterface(object):
         # Parse action message
         if msg.name == 'move':
             self._action_threaded(msg, self.move, [msg.parameters, duration])
-        if msg.name == 'submerge-mission':
-            self._action_threaded(msg, self.submerge_mission, [msg.parameters, duration])
-        if msg.name == 'transmit-data':
-            self._action_threaded(msg, self.transmit_data, [duration])
-        if msg.name == 'wait-to-recharge':
-            self._action_threaded(msg, self.wait_to_recharge, [duration])
+        if msg.name == 'inspect-turbine':
+            self._action_threaded(msg, self.inspect_turbine, [msg.parameters, duration])
+        if msg.name == 'upload-data-histograms':
+            self._action_threaded(msg, self.upload_data_histograms, [duration])
+        if msg.name == 'harvest-energy':
+            self._action_threaded(msg, self.harvest_energy, [duration])
         if msg.name == 'localize-cable':
             self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
         if msg.name == 'surface':
@@ -212,21 +212,21 @@ class DemeterInterface(object):
         response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
 
-    def submerge_mission(self, dispatch_params, duration=rospy.Duration(60, 0)):
+    def inspect_turbine(self, dispatch_params, duration=rospy.Duration(60, 0)):
         data_location = -1
         for param in dispatch_params:
             if param.key == 'd': # from Data d
                 data_location = int(param.value[4:])
                 break
-        response = self.demeter.do_submerge_mission(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
+        response = self.demeter.do_inspect_turbine(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
         return response
     
-    def transmit_data(self, duration=rospy.Duration(60, 0)):
-        response = self.demeter.do_transmit_data(duration)
+    def upload_data_histograms(self, duration=rospy.Duration(60, 0)):
+        response = self.demeter.do_upload_data_histograms(duration)
         return response
     
-    def wait_to_recharge(self, duration=rospy.Duration(60, 0)):
-        response = self.demeter.do_wait_to_recharge(duration)
+    def harvest_energy(self, duration=rospy.Duration(60, 0)):
+        response = self.demeter.do_harvest_energy(duration)
         return response
     
     def localize_cable(self, dispatch_params, duration=rospy.Duration(60, 0)):

@@ -1,3 +1,8 @@
+#Consider that N autonomous vehicles have to execute missions in M wind turbines. Each mission takes a time S to be executed. There are two possible missions: measure-vortex and get-data. 
+#There is a directed roadmap connecting each wind turbine to each other.
+#Vehicles have to execute the maximum amount of missions inside a time window. Missions that were executed long time ago shoulb have priority. Use Python and Pulp to formulate and solve this problem.
+
+
 import pulp
 import matplotlib.pyplot as plt
 import random
@@ -8,6 +13,14 @@ def distance(coord1, coord2):
 def mtsp(cities, salesmen, depot):
     problem = pulp.LpProblem("Multiple Traveling Salesmen Problem", pulp.LpMinimize)
 
+    print('cities')
+    print(cities)
+    print('salesmen')
+    print(salesmen)
+    print('depot')
+    print(depot)
+    
+    
     # x is a binary variable that indicates whether a salesman travels directly between two cities
     x = pulp.LpVariable.dicts("x", ((i, j) for i in cities for j in cities if i != j), cat="Binary")
     # u is an integer variable that assigns a sequential number to each city in a given tour.
@@ -17,22 +30,25 @@ def mtsp(cities, salesmen, depot):
     problem += pulp.lpSum(x[i, j] for i in cities for j in cities if i != j)
 
     # Constraints
-    # These constraints ensure that each city is visited exactly once by exactly one salesman. Specifically, for each city that is not the depot, we create two constraints: one that requires that exactly one outgoing edge from city is selected (i.e., one salesman visits city), and one that requires that exactly one incoming edge to city is selected (i.e., city is visited by exactly one salesman).
-    # for city in cities:
-    #     if city != depot:
-    #         problem += pulp.lpSum(x[city, j] for j in cities if city != j) <= 1
-    #         problem += pulp.lpSum(x[j, city] for j in cities if city != j) <= 1
+    # These constraints ensure that each city is visited exactly once by exactly one salesman. Specifically, for each city that is not the depot, 
+    # we create two constraints: one that requires that exactly one outgoing edge from city is selected (i.e., one salesman visits city),
+    # and one that requires that exactly one incoming edge to city is selected (i.e., city is visited by exactly one salesman).
+    for city in cities:
+        if city != depot:
+            problem += pulp.lpSum(x[city, j] for j in cities if city != j) <= 1
+            problem += pulp.lpSum(x[j, city] for j in cities if city != j) <= 1
 
     # The triangular inequality is satisfied:
-    for i, j in x:
-        if i != depot and j != depot:
-            problem += u[i] - u[j] + (len(cities) - 1) * x[i, j] <= len(cities) - 2
+    # for i, j in x:
+    #     if i != depot and j != depot:
+    #         problem += u[i] - u[j] + (len(cities) - 1) * x[i, j] <= len(cities) - 2
 
     # Each salesman starts and ends their tour at the depot:
-    problem += pulp.lpSum(x[depot, j] for j in cities if depot != j) == salesmen
+    # problem += pulp.lpSum(x[depot, j] for j in cities if depot != j) == salesmen
     # problem += pulp.lpSum(x[i, depot] for i in cities if depot != i) == salesmen
     
-    time_limit = 5000
+    
+    time_limit = 3000
     print('Time limit: ' + str(time_limit))
     problem += pulp.lpSum(distance(cities[i], cities[j]) * x[i, j] for i in cities for j in cities if i != j) <= time_limit
 
@@ -62,9 +78,9 @@ def mtsp(cities, salesmen, depot):
 
 # Example usage
 random.seed(42)
-n_cities = 12
-n_salesmen = 4
-depot = 0
+n_cities = 5
+n_salesmen = 2
+depot = 1
 cities = {i: (random.randint(0, 100), random.randint(0, 100)) for i in range(n_cities)}
 
 tours, total_distance = mtsp(cities, n_salesmen, depot)
