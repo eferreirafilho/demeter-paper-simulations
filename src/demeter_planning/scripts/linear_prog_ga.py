@@ -1,7 +1,3 @@
-#Consider that N autonomous vehicles have to execute missions in M wind turbines. Each mission takes a time S to be executed. There are two possible missions: measure-vortex and get-data. 
-#There is a directed roadmap connecting each wind turbine to each other.
-#Vehicles have to execute the maximum amount of missions inside a time window. Missions that were executed long time ago shoulb have priority. Use Python and Pulp to formulate and solve this problem.
-
 import random
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -44,14 +40,13 @@ def plot_graph(G, nodes):
     nx.draw(G, pos = pos_dict, with_labels = True)
     plt.show()
     
-# vehicles = [[5, 6], [-10, 4]]
-# turbines = [[0, 1], [4, 2], [1, 7]]
 def mtsp(turbines, vehicles):
 
     print(turbines)    
-    time_window = 120
-    t_exec = 2
+    time_window = 50
+    t_exec = 32
     G_mtsp = create_turbine_graph(turbines)
+    solver_time_limit = 30 #seconds
         
     # Initialize closer_node list
     closer_node = [None] * len(vehicles)
@@ -84,6 +79,9 @@ def mtsp(turbines, vehicles):
     set_of_all_turbines = range(len(turbines))
     set_of_all_nodes = range(len(G_mtsp.nodes()))
     set_of_all_starting_nodes = [x for x in set_of_all_nodes if x not in set_of_all_turbines]
+    # time_of_turbines_last_inspection = [random.uniform(1, 100) for _ in range(len(turbines))]
+    time_of_turbines_last_inspection = range(len(turbines)) # How long ago a turbine was inspected
+    print(time_of_turbines_last_inspection)
     
     problem = pulp.LpProblem("GoalAllocation", pulp.LpMaximize)
     
@@ -99,10 +97,19 @@ def mtsp(turbines, vehicles):
     # w - track whether a vehicle has already left from its starting node or not.
     w = pulp.LpVariable.dicts("w", ((i, k) for i in set_of_all_starting_nodes for k in set_of_all_vehicles), cat="Binary")
 
-    # objective function
+    # multi objective function
     # maximize number of missions assigned to vehicles
-    problem += pulp.lpSum([y[i,k] for i in set_of_all_turbines for k in set_of_all_vehicles])
-   
+    number_of_missions = pulp.lpSum([y[i,k] for i in set_of_all_turbines for k in set_of_all_vehicles])
+    # minimize timespan of each turbine visited
+    alpha = 0.0001 # Higher alpha -> more focused on last visited turbines
+    last_visited = alpha*pulp.lpSum([y[i,k]*time_of_turbines_last_inspection[i] for i in set_of_all_turbines for k in set_of_all_vehicles])
+    beta = 0.1 # Higher beta -> avoid longer travels (reduce total travelling time)
+    avoid_longer_travels=0
+    for k in set_of_all_vehicles:       
+        avoid_longer_travels += pulp.lpSum([x[i,j,k] * G_mtsp[i][j]['weight'] for i in set_of_all_nodes for j in set_of_all_nodes if i != j if G_mtsp.has_edge(i , j) if j != set_of_all_starting_nodes[k]])
+
+    problem += number_of_missions + alpha*last_visited - beta*avoid_longer_travels
+
     # To ensure that each mission is allocated to at most one vehicle
     for i in set_of_all_turbines:
         problem += pulp.lpSum([y[i,k] for k in set_of_all_vehicles]) <= 1
@@ -127,8 +134,6 @@ def mtsp(turbines, vehicles):
                     problem += u[i] - u[j] + n * x[i,j,k] <= n - 1
                     
     # Each vehicle k can leave its starting node at most once
-    # for k in set_of_all_vehicles:
-        # problem += pulp.lpSum(x[set_of_all_starting_nodes[k],j,k] for j in set_of_all_turbines) == w[set_of_all_starting_nodes[k],k]
     for k in set_of_all_vehicles:
         problem += pulp.lpSum(x[set_of_all_starting_nodes[k], j, k] for j in set_of_all_turbines) <= w[set_of_all_starting_nodes[k], k]
 
@@ -137,38 +142,20 @@ def mtsp(turbines, vehicles):
         for i in set_of_all_nodes:
             problem += pulp.lpSum(x[i, j, k] for j in set_of_all_nodes if i != j) == pulp.lpSum(x[j, i, k] for j in set_of_all_nodes if i != j)
 
-    # Each vehicle k cannot leave its starting node if it has already left
-    # for i in set_of_all_starting_nodes:
-    #     for k in set_of_all_vehicles:
-    #         problem += pulp.lpSum(x[i,j,k] for j in set_of_all_turbines) <= w[i,k]
-
     # This constraint ensures that if the starting node i is not the starting node of vehicle k, vehicle k cannot leave from node i.
     for i in set_of_all_starting_nodes:
         for k in set_of_all_vehicles:
             if i != set_of_all_starting_nodes[k]: # Exclude the starting node of the vehicle k
                 problem += pulp.lpSum(x[i, j, k] for j in set_of_all_nodes if j != i) == 0
 
-    # # If a vehicle enters a turbine, it must leave from the same turbine.
-    # for k in set_of_all_vehicles:
-    #     for j in set_of_all_turbines:
-    #         problem += pulp.lpSum(x[i, j, k] for i in set_of_all_turbines if i != j) == pulp.lpSum(x[j, i, k] for i in set_of_all_turbines if i != j)
 
-    # # Do not go back to the starting nodes
-    # for k in set_of_all_vehicles:
-        # problem += pulp.lpSum(x[i, j, k] for i in set_of_all_turbines for j in set_of_all_starting_nodes) == 0
-                            
-    # Create a solver object
-    
-    
     solver_list = pulp.listSolvers(onlyAvailable=True)
     print(solver_list)
-    # solver = pulp.getSolver('GLPK_CMD', timeLimit=10)
-    # solver = pulp.getSolver('GLPK_CMD', timeLimit=10)
-    solver = pulp.getSolver('COIN_CMD', timeLimit=5)
+    solver = pulp.getSolver('GLPK_CMD', timeLimit=solver_time_limit)
+    # solver = pulp.getSolver('COIN_CMD', timeLimit=solver_time_limit)
 
     # Solve the problem with the specified time limit
     problem.solve(solver)
-          
 
     # display the status of the solution
     print("Status:", pulp.LpStatus[problem.status])
@@ -187,7 +174,9 @@ def mtsp(turbines, vehicles):
         print("Vehicle {} starts in position {}".format(i,vehicles[i]))
 
     pattern = r'\d+'
+    allocation=[[] for _ in range(len(set_of_all_vehicles))]
     # add edges to the graph
+    color_list = ['red', 'blue', 'gray', 'orange', 'purple', 'brown', 'pink', 'green', 'olive', 'cyan']
     for v in problem.variables():
         if v.varValue == 1:
             extract_num = re.findall(pattern, v.name)
@@ -201,38 +190,41 @@ def mtsp(turbines, vehicles):
                 i = int(extract_num[0])
                 j = int(extract_num[1])
                 print("Vehicle {} was allocated to turbine {}".format(j,i))
+                allocation[j].append(i)
             if v.name[0] == 'z':
                 i = int(extract_num[0])
                 j = int(extract_num[1])
                 print("Vehicle {} travelled {}".format(j,i))
 
+    print('Allocation: ' + str(allocation))
     # plot the graph
     pos = turbines + vehicles
-    # create a dictionary of colors for each vehicle
-    vehicle_colors = {}
-    vehicle_styles = {}
-    color_list = ['red', 'blue', 'gray', 'orange', 'purple', 'brown', 'pink', 'green', 'olive', 'cyan']
-    style_list = ['dashdot', 'dashed', 'dotted', 'dashdot', 'solid', 'dashed', 'dotted']
-    vehicle_count = 0
-    for edge_label in nx.get_edge_attributes(solution_G, 'label').values():
-        if edge_label not in vehicle_styles:
-            vehicle_styles[edge_label] = {'color': color_list[vehicle_count % len(color_list)], 'style': style_list[vehicle_count // len(color_list)]}
-            vehicle_count += 1
+
+    # create a dictionary to map vehicle numbers to colors
+    vehicle_colors = {k: v for k, v in zip(range(len(set_of_all_vehicles)), color_list)}
+
+    # create a list of edge colors based on the vehicle that travels on each edge
+    edge_colors = [vehicle_colors[int(re.findall(pattern, label)[0])] for _, _, label in solution_G.edges(data='label')]
 
     # plot the graph with edge colors and line styles
-    edge_colors = [vehicle_styles[label]['color'] for label in nx.get_edge_attributes(solution_G, 'label').values()]
-    edge_styles = [vehicle_styles[label]['style'] for label in nx.get_edge_attributes(solution_G, 'label').values()]
-    nx.draw_networkx_nodes(solution_G, pos, node_color='lightblue', node_size=1000)
-    nx.draw_networkx_labels(solution_G, pos, font_size=12, font_color='black')
-    nx.draw_networkx_edges(solution_G, pos, width=1, alpha=0.8, edge_color=edge_colors, style=edge_styles)
-    nx.draw_networkx_edge_labels(solution_G, pos, edge_labels=nx.get_edge_attributes(solution_G, 'label'), font_size=10)
+
+
+    # plot the graph with edge colors and line styles
+    nx.draw_networkx_nodes(solution_G, pos, node_color='lightblue', node_size=100)
+    nx.draw_networkx_labels(solution_G, pos, font_size=9, font_color='black')
+    nx.draw_networkx_edges(solution_G, pos, width=1, alpha=0.8, edge_color=edge_colors)
+    # nx.draw_networkx_edges(solution_G, pos, width=1, alpha=0.8)
+    nx.draw_networkx_edge_labels(solution_G, pos, edge_labels=nx.get_edge_attributes(solution_G, 'label'), font_size=8)
+
     plt.axis('off')
     plt.show()
+
 
 if __name__ == '__main__':
     package_path = roslib.packages.get_pkg_dir("demeter_planning")
     G = load_graph()
     turbines = get_turbine_positions(G)
-    vehicles = [[50, 60], [-30, 40], [9, 0]]
+    # vehicles = [[50, 60], [-30, 40]]
+    vehicles = [[50, 60], [-30, 40], [20, -30]]
     # vehicles = [[50, 60]]
     mtsp(turbines, vehicles)
