@@ -18,7 +18,7 @@ class BuildRoadmaps(object):
         self._rate = rospy.Rate(10)
         self.NUMBER_OF_COUNTOUR_POINTS = 5
         self.DISTANCE_TO_TURBINE = 0.15
-        self.NUMBER_OF_TURBINES_CONSIDERED = 60
+        self.NUMBER_OF_TURBINES_CONSIDERED = 7
         self.VISIBILITY_RADIUS = 1
         self.BOUNDS_MAP = 25
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
@@ -96,7 +96,8 @@ class BuildRoadmaps(object):
 
                     # If line between p1 and p2 is not obstructed, add an edge between them in visibility graph
                     if not obstructed:
-                        visibility_G.add_edge(node1, node2)
+                        visibility_G.add_edge(node1, node2, weight = dist)
+                        
                         
         return visibility_G, obstacles
 
