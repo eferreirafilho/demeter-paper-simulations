@@ -5,7 +5,7 @@ from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Float32MultiArray
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 from build_roadmaps import BuildRoadmaps
 
@@ -46,7 +46,7 @@ class DemeterActionInterface(object):
         rospy.loginfo('Connecting ROS and Vehicle ...')
         # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10) # REAL ROBOT
         rospy.Subscriber(str(self.namespace)+'pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
-        # Publisher
+        # Publishers
         # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) # REAL ROBOT
         self.cmd_pose_pub=rospy.Publisher(str(self.namespace)+'cmd_pose',PoseStamped, queue_size=10)
         init_position = self.get_position()
@@ -83,6 +83,18 @@ class DemeterActionInterface(object):
                 closer_wp=i
         return closer_wp
 
+    def set_inspected_times(self, turbine):
+        '''Publish the time in which turbine was inspected'''
+        time_turbine_inspected = rospy.Time.now()        
+        turbines_inspected = rospy.get_param('/goal_allocation/turbine_inspected')
+        rospy.logwarn(turbines_inspected)
+        
+        turbines_inspected[turbine] = time_turbine_inspected.to_sec()
+        rospy.set_param('/goal_allocation/turbine_inspected', turbines_inspected)
+        rospy.logwarn(turbines_inspected)
+        
+        self._rate.sleep()
+    
     # Actions
     def do_move(self, waypoint, duration=rospy.Duration()):
         self.wp_reached = -1
@@ -97,6 +109,7 @@ class DemeterActionInterface(object):
                 rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
             self._rate.sleep()
         response = int(waypoint == self.wp_reached)
+
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
         return response
@@ -119,12 +132,14 @@ class DemeterActionInterface(object):
                     self.publish_position_fixed_orientation(pos)
                     completion_percentage = 'Inspecting turbine: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
                     rospy.loginfo_throttle(1,completion_percentage)
+                self.set_inspected_times(turbine)               
             
             while self.squared_distance(self.odom_pose.pose.pose.position, start_pos) > self.EPS_DISTANCE**2:
                 self.publish_position_fixed_orientation(start_pos)
                 completion_percentage = 'Returning to submerge point: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
                 rospy.loginfo_throttle(1,completion_percentage)
-                response = self.ACTION_SUCCESS     
+                response = self.ACTION_SUCCESS   
+                
             rospy.loginfo('Data acquired!')
                 
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:

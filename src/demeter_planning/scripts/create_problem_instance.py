@@ -25,9 +25,9 @@ class PopulateKB(object):
     def __init__(self):
         rospy.logwarn('Create Problem - Populating KB with robots initial position and goals')
         self.SCALE_TRAVERSE_COSTS = 0.5
-        self.SPEED = 100 # Scale speed 
+        self.SPEED = 0.3 # Scale speed 
         self.FULL_BATTERY = 20 # TODO: keep track of battery
-        self.RECHARGE_RATE = 0.01 # While doing other tasks #TODO: Change here and in battery controller at the same time
+        self.RECHARGE_RATE = 0.05 # While doing other tasks #TODO: Change here and in battery controller at the same time
         self.RECHARGE_RATE_DEDICATED = 10 #TODO: Change here and in battery controller at the same time
 
         sleep(1)
@@ -63,7 +63,6 @@ class PopulateKB(object):
         self.add_object('currenttide', 'tide')
         self.add_fact('is-surfaced', 'vehicle'+str(self.vehicle_id))
         self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
-        self.add_fact('tide-low', 'currenttide')
         self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
         self.update_functions('battery-level', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.battery_level, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('recharge-rate', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
@@ -71,6 +70,16 @@ class PopulateKB(object):
         self.update_functions('total-missions-completed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], 0, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('speed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.SPEED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
     
+        TIDE_PERIOD = 400
+        TIDE_START_LOW = True
+        PERSISTENT_HORIZON = 100
+        
+        self.add_fact('tide-low', 'currenttide')
+        # tide = TIDE_START_LOW
+        # for i in range(PERSISTENT_HORIZON):
+        #     self.add_timed_initial_literals(TIDE_PERIOD*i, tide, 'tide-low', 'currenttide')
+        #     tide = not tide
+            
     def add_goal_mission(self, target_turbine):   
         self.add_object('data'+str(target_turbine),'data')
         self.add_fact('is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
@@ -211,7 +220,7 @@ class PopulateKB(object):
         except rospy.ServiceException:
             rospy.loginfo("Service call failed")    
         self.mutex.release()
-
+        
     def add_fact(self,*fact):
         self.mutex.acquire()
         rospy.wait_for_service('rosplan_knowledge_base/update')
@@ -224,6 +233,24 @@ class PopulateKB(object):
             if len(fact)==3:
                 knowledge.values.append(diagnostic_msgs.msg.KeyValue("w", fact[2]))     
             rospy.loginfo('Add '+ str(fact) +' Fact')
+            resp = update_client(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE, knowledge)
+        except rospy.ServiceException:
+            rospy.loginfo("Service call failed") 
+        self.mutex.release()
+
+    def add_timed_initial_literals(self, seconds, bool_fact, *fact):
+        self.mutex.acquire()
+        rospy.wait_for_service('rosplan_knowledge_base/update')
+        try:
+            update_client = rospy.ServiceProxy('rosplan_knowledge_base/update', KnowledgeUpdateService)     
+            knowledge = KnowledgeItem()
+            knowledge.knowledge_type=KnowledgeItem.FACT # Add Fact
+            timed_ros = rospy.get_rostime() + rospy.Duration.from_sec(seconds)
+            knowledge.initial_time=timed_ros
+            knowledge.is_negative=not bool_fact
+            knowledge.attribute_name=fact[0] 
+            knowledge.values.append(diagnostic_msgs.msg.KeyValue("v", fact[1]))
+            rospy.loginfo('Add '+ str(fact) +' Timed-initial-literal ' + str(seconds) + ' | ' + str(bool_fact))
             resp = update_client(KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE, knowledge)
         except rospy.ServiceException:
             rospy.loginfo("Service call failed") 
@@ -285,7 +312,7 @@ class PopulateKB(object):
 
     def battery_level_subscribers(self):
         self.battery_level = [0]
-        sub_topic = self.namespace + "/battery_level_emulated"
+        sub_topic = self.namespace + "battery_level_emulated"
         # rospy.Subscriber(sub_topic, Float32, self.battery_level_callback)
         msg = rospy.wait_for_message(sub_topic, Float32)
         self.battery_level = msg.data

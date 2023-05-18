@@ -28,7 +28,7 @@ class PlotVehicles:
         return rospy.get_param('/goal_allocation/scaled_turbines_xy')
 
     def plot_positions(self):
-        AXIS_LIMITS = 130
+        AXIS_LIMITS = 180
         colors = ['r', 'b', 'c', 'g', 'm', 'y']  # list of colors
         plt.clf()  # clear the previous plot
 
@@ -41,8 +41,10 @@ class PlotVehicles:
             plt.plot(x_vals[:min_len], y_vals[:min_len], colors[vehicle], alpha=0.5)
             plt.plot(x_vals[-1], y_vals[-1], colors[vehicle]+'o', markersize=marker_size)
 
-        for x, y in self.get_scaled_turbine_coordinates():
+        for i, (x, y) in enumerate(self.get_scaled_turbine_coordinates()):
             plt.plot(x, y, 'kd')
+            plt.text(x+2, y+2, str(i), fontsize=8, color='black')
+
 
         plt.axis([-AXIS_LIMITS, AXIS_LIMITS, -AXIS_LIMITS, AXIS_LIMITS])  # set axis limits
         plt.pause(0.001)

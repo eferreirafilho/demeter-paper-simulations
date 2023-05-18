@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
 import rospy
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -17,10 +17,11 @@ class BuildRoadmaps(object):
         rospy.logwarn('Build Roadmaps')
         self._rate = rospy.Rate(10)
         self.NUMBER_OF_COUNTOUR_POINTS = 5
-        self.DISTANCE_TO_TURBINE = 0.15
-        self.NUMBER_OF_TURBINES_CONSIDERED = 7
-        self.VISIBILITY_RADIUS = 1
-        self.BOUNDS_MAP = 25
+        self.DISTANCE_TO_TURBINE = 0.1
+        self.NUMBER_OF_TURBINES_CONSIDERED = 8
+        self.VISIBILITY_RADIUS = 1.2
+        # self.BOUNDS_MAP = 25
+        self.BOUNDS_MAP = 50
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
             
     def load_turbines_xy(self):
@@ -153,18 +154,26 @@ class BuildRoadmaps(object):
             obs_x.append(obs[0][0])
             obs_y.append(obs[0][1])
 
-            plt.fill(obs_x, obs_y, 'gray', alpha=0.4)
-            plt.plot(obs_x, obs_y, color='black', linewidth=1.0)
+            plt.fill(obs_x, obs_y, 'gray', alpha=0.4, label = 'Safe Regions')
+            plt.plot(obs_x, obs_y, color='red', linewidth = 1.0)
             # Plot obstacle number
             obs_center_x = sum(obs_x[:-1]) / len(obs_x[:-1])
             obs_center_y = sum(obs_y[:-1]) / len(obs_y[:-1])
-            plt.text(obs_center_x, obs_center_y, str(i), fontsize=12, color='red')
+            # plt.text(0.9998*obs_center_x, 0.9998*obs_center_y, str(i), fontsize=12, color='black')
         
 
+        # Remove the text from axis
+        plt.gca().set_xticklabels([])
+        plt.gca().set_yticklabels([])
         ax.set_aspect('equal', adjustable='box')
         plt.xlabel("X")
         plt.ylabel("Y")
-        plt.title("Visibility Graph with Safe Regions")
+        plt.title("Visibility Graph based Roadmap")
+
+        # Manually set the legend
+        vis_safe_roads = plt.Line2D([], [], color='blue', linewidth=0.5, label='Safe roads')
+        vis_countor_points = plt.Line2D([], [], color='red', marker='o', markersize=5, label='Turbine countor points')
+        plt.legend(handles=[vis_safe_roads, vis_countor_points], loc='best')
         plt.show()
         
     def remove_disconected_nodes(self, graph):
@@ -183,11 +192,7 @@ class BuildRoadmaps(object):
         return graph, scaled_turbines_xy
         
     def add_turbines_to_graph(self, graph, turbines_xy):
-        
-        print(graph)
-        print(graph.nodes())
-        print(type(graph))
-        
+               
         for turbine in range(len(turbines_xy[0])):
             graph.add_node(max(graph.nodes)+1, pos = np.array([turbines_xy[0][turbine], turbines_xy[1][turbine]]), description = 'turbine', related_to = turbine)  
         return graph
@@ -329,10 +334,11 @@ class BuildRoadmaps(object):
         filename = str(name) + ".pickle"
         yaml_path = os.path.join(self.package_path, "params", filename)
         with open(yaml_path, 'wb') as pickle_file:
-            pickle.dump(graph, pickle_file)
+            pickle.dump(graph, pickle_file, protocol=2)
    
     def draw_graph(self, graph):
         nx.draw(graph, nx.get_node_attributes(graph, 'pos'), node_size=10, with_labels=False)
+        
         plt.show()
         
     def get_scaled_nodes_xy(self, G):

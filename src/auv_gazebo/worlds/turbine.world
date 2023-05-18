@@ -15,37 +15,42 @@
   <include>
     <name>turbine0</name>
     <uri> model://turbine_rotor</uri>
-    <pose>39.2232403715 40.0435923825 0 0 0 0</pose>
+    <pose>56.887507061376446 30.62760098365149 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine1</name>
     <uri> model://turbine_rotor</uri>
-    <pose>28.5017031967 19.183560921 0 0 0 0</pose>
+    <pose>34.901341285435066 -2.318956417710318 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine2</name>
     <uri> model://turbine_rotor</uri>
-    <pose>23.4230803244 66.069433522 0 0 0 0</pose>
+    <pose>24.48684170735635 71.73309359053903 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine3</name>
     <uri> model://turbine_rotor</uri>
-    <pose>12.8144014357 47.7677078058 0 0 0 0</pose>
+    <pose>2.7321092553710464 42.82715171953332 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine4</name>
     <uri> model://turbine_rotor</uri>
-    <pose>1.41571454453 27.4980545932 0 0 0 0</pose>
+    <pose>-20.642656464313923 10.813044055946408 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine5</name>
     <uri> model://turbine_rotor</uri>
-    <pose>-8.51581462795 8.70434700287 0 0 0 0</pose>
+    <pose>-41.008788972555635 -18.869939263205353 0 0 0 0</pose>
   </include>
   <include>
     <name>turbine6</name>
     <uri> model://turbine_rotor</uri>
-    <pose>-22.2845255261 -9.25299140148 0 0 0 0</pose>
+    <pose>-69.24365449534496 -47.23195212050919 0 0 0 0</pose>
+  </include>
+  <include>
+    <name>turbine7</name>
+    <uri> model://turbine_rotor</uri>
+    <pose>-2.127990547731521 115.79134370037892 0 0 0 0</pose>
   </include>
     <plugin name="underwater_current_plugin" filename="libuuv_underwater_current_ros_plugin.so">
       <namespace>hydrodynamics</namespace>

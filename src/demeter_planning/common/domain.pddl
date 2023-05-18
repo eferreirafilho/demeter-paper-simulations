@@ -37,7 +37,7 @@
     ;define actions here
     (:durative-action move
         :parameters (?v - vehicle ?y ?z - waypoint)
-        :duration(= ?duration (* (traverse-cost ?y ?z) (speed ?v)))
+        :duration(= ?duration (/ (traverse-cost ?y ?z) (speed ?v)))
         :condition (and 
             (over all (can-move ?y ?z)) 
             (at start (at ?v ?y))
