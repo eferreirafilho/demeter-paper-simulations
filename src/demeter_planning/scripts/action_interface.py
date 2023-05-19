@@ -87,6 +87,7 @@ class DemeterActionInterface(object):
         '''Publish the time in which turbine was inspected'''
         time_turbine_inspected = rospy.Time.now()        
         turbines_inspected = rospy.get_param('/goal_allocation/turbine_inspected')
+
         rospy.logwarn(turbines_inspected)
         
         turbines_inspected[turbine] = time_turbine_inspected.to_sec()

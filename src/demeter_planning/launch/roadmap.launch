@@ -4,6 +4,7 @@
 	<!-- Build Roadmap -->
 	<node pkg="demeter_planning" type="build_roadmaps.py" name="build_roadmaps" output="screen"> 
 		<rosparam file="$(find demeter_planning)/params/original_windfarm_coordinates.yaml" command="load"/>
+		<!-- <rosparam file="$(find demeter_planning)/params/turbine_inspected.yaml" command="load"/> -->
 	</node>
 
 </launch>

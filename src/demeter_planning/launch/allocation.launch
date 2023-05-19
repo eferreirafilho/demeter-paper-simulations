@@ -12,8 +12,9 @@
 	<node pkg="demeter_planning" type="goal_allocation_milp.py" name="goal_allocation" output="screen"> 
 		<rosparam file="$(find demeter_planning)/params/get_data_allocation.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/scaled_turbines_xy.yaml" command="load"/>
-		<rosparam file="$(find demeter_planning)/params/turbine_inspected.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/waypoints.yaml" command="load"/>
+		<!-- <rosparam file="$(find demeter_planning)/params/turbine_inspected.yaml" command="load"/> -->
+
 	</node>
 
 

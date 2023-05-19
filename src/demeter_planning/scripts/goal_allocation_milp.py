@@ -13,9 +13,9 @@ import gurobipy
 
 
 random.seed(15)
-TIME_WINDOW = 10 # Time limit (Hours) - Next high waves
+TIME_WINDOW = 20 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
-SOLVER_LIMIT_TIME = 20 # Seconds
+SOLVER_LIMIT_TIME = 2 # Seconds
 RELATIVE_GAP_TOLERANCE = 0.001 # percentage of tolerance to optimal solution
 # SOLVER_NAME = 'GLPK_CMD'
 SOLVER_NAME = 'GUROBI'
@@ -30,18 +30,33 @@ class Allocation(object):
 
         G_visibility = self.load_graph()
         self.turbines, self.turbines_idx = self.get_turbine_positions(G_visibility)
-        number_of_vehicles = self.get_number_of_vehicles()
+        rospy.logwarn(len(self.turbines))
+        
+        current_time = rospy.get_rostime().to_sec()
+        try:
+            param_time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
+        except KeyError:
+            param_time_of_turbines_last_inspection = [0] * len(self.turbines)
+            rospy.set_param('/goal_allocation/turbine_inspected', param_time_of_turbines_last_inspection) # Set times to zero if first time allocating
+
+        param_time_of_turbines_last_inspection = param_time_of_turbines_last_inspection[0:len(self.turbines)] # get only parameters from turbines being used
+        rospy.logwarn(param_time_of_turbines_last_inspection)
+        self.time_of_turbines_last_inspection = [current_time - x for x in param_time_of_turbines_last_inspection]
+        rospy.logwarn(self.time_of_turbines_last_inspection) # How long ago a turbine was inspected
+        
+        self.number_of_vehicles = self.get_number_of_vehicles()
+        self.turbines, self.turbines_idx = self.remove_turbines_visited_lately()
+        
         self.gazebo_positions = {}
         
-        for vehicle in range(number_of_vehicles):
+        for vehicle in range(self.number_of_vehicles):
             rospy.Subscriber("/auv" + str(vehicle) + "/pose_gt", Odometry, self.pose_callback, vehicle)
-        self._wait(3)
+        self._wait(2)
         self.vehicles = []
         for vehicle in self.gazebo_positions:
             self.vehicles.append(self.gazebo_positions[vehicle])
         self._wait(1)
-        
-        
+
         # vehicles = [[50, 60], [-30, 40]]
         # self.vehicles = [[50, 60], [-30, 40], [20, -30]]
         # vehicles = [[50, 60]]
@@ -53,9 +68,6 @@ class Allocation(object):
         self.set_of_all_turbines = range(len(self.turbines))
         self.set_of_all_nodes = range(len(self.G_milp.nodes()))
         self.set_of_all_starting_nodes = [x for x in self.set_of_all_nodes if x not in self.set_of_all_turbines]
-        # self.time_of_turbines_last_inspection = [random.uniform(1, 100) for _ in range(len(turbines))]
-        #TODO: get real last time values:
-        self.time_of_turbines_last_inspection = range(len(self.turbines)) # How long ago a turbine was inspected
 
     def load_graph(self):
         '''Load precomputed Roadmaps based on visibility graphs'''
@@ -73,7 +85,30 @@ class Allocation(object):
     def _wait(self, n_rate):
         for _ in range(n_rate):
             self._rate.sleep()
-
+            
+    def remove_turbines_visited_lately(self):
+        for turbine in self.time_of_turbines_last_inspection:
+            print(turbine)       
+        for turbine in self.turbines:
+            print(turbine)
+        for turbine in self.turbines_idx:
+            print(turbine)
+            
+        TURBINE_PERCENTAGE = 0.5
+        threshold = int(len(self.time_of_turbines_last_inspection) * TURBINE_PERCENTAGE) # Number of turbines to keep
+        if threshold < self.number_of_vehicles:
+            threshold = self.number_of_vehicles
+        items = list(zip(self.turbines_idx, self.time_of_turbines_last_inspection))
+        sorted_items = sorted(items, key=lambda x: x[1])
+        lowest_items = sorted_items[:threshold]
+        lowest_indexes, lowest_values = map(list, zip(*lowest_items))
+        print("Indexes:", lowest_indexes)
+        print("Values:", lowest_values)
+        print("Values:", type(lowest_values))
+        filtered_turbines = [self.turbines[i] for i in lowest_indexes]
+        filtered_indexes = [self.turbines_idx[i] for i in lowest_indexes]
+        return filtered_turbines, filtered_indexes
+                
     def get_turbine_positions(self, G_visibility):
         '''Get the nodes that are turbines (there is also countor-point nodes and corners nodes)'''
         turbines = []
@@ -175,8 +210,9 @@ class Allocation(object):
             total_time_all_vehicles += travelling_time + execution_time
 
         ALPHA = 0.001 # Higher ALPHA -> more focused on last visited turbines
-        BETA = 0.01 # Higher BETA -> More fcused on reducing travlling distances
+        BETA = 0.01 # Higher BETA -> More focused on reducing travelling distances
         # problem += number_of_missions + ALPHA*last_visited - BETA*total_time_all_vehicles
+        # problem += number_of_missions - BETA*total_time_all_vehicles
         problem += number_of_missions + ALPHA*last_visited
         # problem += number_of_missions - BETA * pulp.lpSum([v[i, j, k] * self.time_of_turbines_last_inspection[i] for i in self.set_of_all_turbines for j in self.set_of_all_turbines for k in self.set_of_all_vehicles if i != j])
         # problem += number_of_missions
@@ -222,7 +258,7 @@ class Allocation(object):
       
         gap_tolerance = RELATIVE_GAP_TOLERANCE
         # while pulp.LpStatus[problem.status] != 'Optimal':
-        solver = pulp.GUROBI(timeLimit=3, gapRel=gap_tolerance)
+        solver = pulp.GUROBI(timeLimit=SOLVER_LIMIT_TIME, gapRel=gap_tolerance)
         # Solve the problem with the specified time limit
         problem.solve(solver)
         # display the optimal objective value

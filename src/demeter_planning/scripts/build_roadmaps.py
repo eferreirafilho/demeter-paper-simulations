@@ -18,7 +18,7 @@ class BuildRoadmaps(object):
         self._rate = rospy.Rate(10)
         self.NUMBER_OF_COUNTOUR_POINTS = 5
         self.DISTANCE_TO_TURBINE = 0.1
-        self.NUMBER_OF_TURBINES_CONSIDERED = 8
+        self.NUMBER_OF_TURBINES_CONSIDERED = 20
         self.VISIBILITY_RADIUS = 1.2
         # self.BOUNDS_MAP = 25
         self.BOUNDS_MAP = 50
