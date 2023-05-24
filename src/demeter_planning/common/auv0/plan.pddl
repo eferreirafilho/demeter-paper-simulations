@@ -1,4 +1,4 @@
-Number of literals: 12
+Number of literals: 11
 Constructing lookup tables:
 Post filtering unreachable actions: 
 No semaphore facts found, returning
@@ -7,59 +7,56 @@ No semaphore facts found, returning
 - Duration of (harvest-energy vehicle0) is not constant-bounded
 Non-constant-bounded duration-dependent effect ((battery-level vehicle0) +=10.000*?duration) makes effects on 0 be order-dependent
 None of the ground temporal actions in this problem have been recognised as compression-safe
-Initial heuristic = 12.000, admissible cost estimate 0.000
-b (11.000 | 134.233)b (10.000 | 134.233)b (9.000 | 150.117)b (8.000 | 150.117)b (6.000 | 155.893)b (5.000 | 165.894)b (4.000 | 165.895)b (2.000 | 380.373)(G)
+Initial heuristic = 10.000, admissible cost estimate 0.000
+b (9.000 | 17.733)b (8.000 | 17.733)b (6.000 | 86.643)b (5.000 | 96.645)b (4.000 | 96.645)b (2.000 | 311.123)(G)
 ; No metric specified - using makespan
 
-; Plan found with metric 382.374
-; States evaluated so far: 25
+; Plan found with metric 313.124
+; States evaluated so far: 20
 ; States pruned based on pre-heuristic cost lower bound: 0
 ; Time 0.02
-0.000: (move vehicle0 wp_init_auv0 waypoint28)  [6.916]
-6.917: (move vehicle0 waypoint28 waypoint11)  [127.316]
-134.234: (move vehicle0 waypoint11 waypoint7)  [15.883]
-150.118: (harvest-energy vehicle0)  [5.775]
-155.894: (localize-cable vehicle0 waypoint7 turbine1)  [5.000]
-160.895: (surface vehicle0)  [5.000]
-165.896: (inspect-turbine vehicle0 data1 waypoint7 currenttide turbine1)  [200.000]
-365.897: (surface vehicle0)  [5.000]
-370.898: (harvest-energy vehicle0)  [9.475]
-380.374: (upload-data-histograms vehicle0 data1)  [2.000]
+0.000: (move vehicle0 wp_init_auv0 waypoint47)  [17.733]
+17.734: (move vehicle0 waypoint47 waypoint77)  [66.433]
+84.168: (harvest-energy vehicle0)  [2.475]
+86.644: (localize-cable vehicle0 waypoint77 turbine15)  [5.000]
+91.645: (surface vehicle0)  [5.000]
+96.646: (inspect-turbine vehicle0 data15 waypoint77 currenttide turbine15)  [200.000]
+296.647: (surface vehicle0)  [5.000]
+301.648: (harvest-energy vehicle0)  [9.475]
+311.124: (upload-data-histograms vehicle0 data15)  [2.000]
 
- * All goal deadlines now no later than 382.374
+ * All goal deadlines now no later than 313.124
 
 Resorting to best-first search
 Running WA* with W = 5.000, not restarting with goal states
-b (11.000 | 134.233)b (10.000 | 134.233)b (9.000 | 150.117)b (8.000 | 150.117)b (6.000 | 155.893)b (5.000 | 165.894)b (4.000 | 165.895)b (2.000 | 374.872)(G)
+b (9.000 | 17.733)b (8.000 | 17.733)b (6.000 | 86.643)b (5.000 | 96.645)b (4.000 | 96.645)b (2.000 | 305.622)(G)
 ; No metric specified - using makespan
 
-; Plan found with metric 376.873
-; States evaluated so far: 65
+; Plan found with metric 307.623
+; States evaluated so far: 57
 ; States pruned based on pre-heuristic cost lower bound: 0
-; Time 0.06
-0.000: (move vehicle0 wp_init_auv0 waypoint28)  [6.916]
-6.917: (move vehicle0 waypoint28 waypoint11)  [127.316]
-134.234: (move vehicle0 waypoint11 waypoint7)  [15.883]
-150.118: (harvest-energy vehicle0)  [5.775]
-155.894: (localize-cable vehicle0 waypoint7 turbine1)  [5.000]
-160.895: (inspect-turbine vehicle0 data1 waypoint7 currenttide turbine1)  [200.000]
-360.896: (surface vehicle0)  [5.000]
-365.897: (harvest-energy vehicle0)  [8.975]
-374.873: (upload-data-histograms vehicle0 data1)  [2.000]
+; Time 0.05
+0.000: (move vehicle0 wp_init_auv0 waypoint47)  [17.733]
+17.734: (move vehicle0 waypoint47 waypoint77)  [66.433]
+84.168: (harvest-energy vehicle0)  [2.475]
+86.644: (localize-cable vehicle0 waypoint77 turbine15)  [5.000]
+91.645: (inspect-turbine vehicle0 data15 waypoint77 currenttide turbine15)  [200.000]
+291.646: (surface vehicle0)  [5.000]
+296.647: (harvest-energy vehicle0)  [8.975]
+305.623: (upload-data-histograms vehicle0 data15)  [2.000]
 
- * All goal deadlines now no later than 376.873
-b (0.000 | 376.873)(G)b (0.000 | 376.873)
+ * All goal deadlines now no later than 307.623
+b (0.000 | 307.623)
 Problem Unsolvable
 ;;;; Solution Found
-; States evaluated: 290
-; Cost: 376.873
-; Time 0.32
-0.000: (move vehicle0 wp_init_auv0 waypoint28)  [6.916]
-6.917: (move vehicle0 waypoint28 waypoint11)  [127.316]
-134.234: (move vehicle0 waypoint11 waypoint7)  [15.883]
-150.118: (harvest-energy vehicle0)  [5.775]
-155.894: (localize-cable vehicle0 waypoint7 turbine1)  [5.000]
-160.895: (inspect-turbine vehicle0 data1 waypoint7 currenttide turbine1)  [200.000]
-360.896: (surface vehicle0)  [5.000]
-365.897: (harvest-energy vehicle0)  [8.975]
-374.873: (upload-data-histograms vehicle0 data1)  [2.000]
+; States evaluated: 167
+; Cost: 307.623
+; Time 0.14
+0.000: (move vehicle0 wp_init_auv0 waypoint47)  [17.733]
+17.734: (move vehicle0 waypoint47 waypoint77)  [66.433]
+84.168: (harvest-energy vehicle0)  [2.475]
+86.644: (localize-cable vehicle0 waypoint77 turbine15)  [5.000]
+91.645: (inspect-turbine vehicle0 data15 waypoint77 currenttide turbine15)  [200.000]
+291.646: (surface vehicle0)  [5.000]
+296.647: (harvest-energy vehicle0)  [8.975]
+305.623: (upload-data-histograms vehicle0 data15)  [2.000]

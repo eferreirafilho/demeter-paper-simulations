@@ -18,7 +18,7 @@ class BuildRoadmaps(object):
         self._rate = rospy.Rate(10)
         self.NUMBER_OF_COUNTOUR_POINTS = 5
         self.DISTANCE_TO_TURBINE = 0.1
-        self.NUMBER_OF_TURBINES_CONSIDERED = 20
+        self.NUMBER_OF_TURBINES_CONSIDERED = 18
         self.VISIBILITY_RADIUS = 1.2
         # self.BOUNDS_MAP = 25
         self.BOUNDS_MAP = 50
@@ -159,7 +159,7 @@ class BuildRoadmaps(object):
             # Plot obstacle number
             obs_center_x = sum(obs_x[:-1]) / len(obs_x[:-1])
             obs_center_y = sum(obs_y[:-1]) / len(obs_y[:-1])
-            # plt.text(0.9998*obs_center_x, 0.9998*obs_center_y, str(i), fontsize=12, color='black')
+            plt.text(0.9998*obs_center_x, 0.9998*obs_center_y, str(i), fontsize=12, color='black')
         
 
         # Remove the text from axis
@@ -337,7 +337,7 @@ class BuildRoadmaps(object):
             pickle.dump(graph, pickle_file, protocol=2)
    
     def draw_graph(self, graph):
-        nx.draw(graph, nx.get_node_attributes(graph, 'pos'), node_size=10, with_labels=False)
+        nx.draw(graph, nx.get_node_attributes(graph, 'pos'), node_size=10, with_labels=True)
         
         plt.show()
         
