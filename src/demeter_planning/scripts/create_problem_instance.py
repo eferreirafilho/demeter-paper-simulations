@@ -48,6 +48,7 @@ class PopulateKB(object):
         
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
         rospy.logwarn('self.distance_to_closer_wp: ' + str(self.distance_to_closer_wp))
+        sleep(1)
         self.allocated_goals = self.load_allocation()
                        
         self.add_goal_mission(self.allocated_goals[0])

@@ -22,16 +22,12 @@ MAX_MISSION_DIFFERENCE = 1 # Number of unbalance allowed
 BETA = 10000 # Focus on more allocations
         
 class Allocation(object):
-    def __init__(self):
+    def __init__(self, turbines_to_be_allocated, robots_positions):
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self._rate = rospy.Rate(10)
 
         self.G_with_only_turbines = self.load_graph_with_only_turbines()
         self.turbines, self.turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
-        print('self.G_with_only_turbines')
-        print(self.G_with_only_turbines)
-        print(type(self.G_with_only_turbines))
-        print(self.G_with_only_turbines.nodes())
 
         rospy.logwarn('self.turbines')
         rospy.logwarn(self.turbines)
@@ -63,8 +59,10 @@ class Allocation(object):
             rospy.Subscriber("/auv" + str(vehicle) + "/pose_gt", Odometry, self.pose_callback, vehicle)
         self._wait(2)
         self.vehicles = []
-        rospy.logwarn('GAZEBO POS:')
-        print(self.gazebo_positions)
+        while len(self.gazebo_positions) != self.number_of_vehicles:
+            self._wait(2) # Wait for all robots positions to be acquired
+            
+        rospy.logwarn('GAZEBO POS: ' + str(self.gazebo_positions))
         self.vehicles = [self.gazebo_positions[key] for key in sorted(self.gazebo_positions.keys())]
         # for vehicle in self.gazebo_positions:
             # self.vehicles.append(self.gazebo_positions[vehicle])
@@ -73,8 +71,7 @@ class Allocation(object):
         # vehicles = [[50, 60], [-30, 40]]
         # self.vehicles = [[50, 60], [-30, 40], [20, -30]]
         # vehicles = [[50, 60]]
-        rospy.logwarn('VEHICLES:')
-        print(self.vehicles)
+        rospy.logwarn('VEHICLES: ' + str(self.vehicles))
     
     def load_graph_with_only_turbines(self):
         '''Load precomputed Roadmap based on visibility graphs with only turbines'''
@@ -179,18 +176,15 @@ class Allocation(object):
     
     def check_if_first_allocation(self):
         if rospy.has_param('/goals_allocated/allocation'):
-            pass
-            # rospy.logwarn('NOT FIRST ALLOCATION')
+            rospy.logwarn('NOT FIRST ALLOCATION')
+            return True
         else:
-            pass
-            # rospy.logwarn('FIRST ALLOCATION')
+            rospy.logwarn('FIRST ALLOCATION')
+            return False
     
     def random_allocation(self):
         '''Each turbine is randonly allocated for one random robot or not allocated''' 
         allocation = [[] for _ in range(len(self.vehicles))]  # Initialize an empty allocation for each robot
-        
-        self.check_if_first_allocation()
-        #TODO: Two different cases
         
         for turbine in self.turbines_idx:
             if random.choice([True, False]):  # Randomly decide whether to allocate the turbine or not
@@ -237,8 +231,11 @@ class Allocation(object):
         balanced = self.calculate_balance_score(solution)
         # print('Solution: ' + str(solution) + ' balance score: ' + str(balanced))
 
-        ALPHA = 0 
-        GAMMA = 1000 # Focused on balanced robots
+        ALPHA = 0.1 
+        GAMMA = 100 # Focused on balanced robots
+        
+        # print('total ditance: ' + str(total_distance) + ' balance score: ' + str(balanced) + ' total allocations: ' + str(total_allocations))
+        
         
         return -ALPHA*total_distance + BETA*total_allocations + GAMMA*balanced
 
@@ -355,6 +352,7 @@ class Allocation(object):
     def set_solution_to_ros_param(self, allocation):
         for idx, vehicle in enumerate(self.vehicles):
             # for turbine in allocation[vehicle]:
+            rospy.logwarn('Set to param: auv' + str(idx) + '/goals_allocated' + str(allocation[idx]))
             rospy.set_param('auv' + str(idx) + '/goals_allocated', allocation[idx])
         rospy.set_param('/goals_allocated/allocation', allocation)
     
@@ -365,7 +363,6 @@ if __name__ == '__main__':
     goal_allocation = Allocation()
 
     best_solution, best_cost = goal_allocation.simulated_annealing()
-
 
     # milp = goal_allocation.create_milp
     # allocation, solution_G = goal_allocation.solve_milp(milp)
