@@ -5,7 +5,6 @@ from exec_demeter import ExecDemeter
 from create_problem_instance import PopulateKB
 from time import sleep
 
-
 def shift_allocation_param():
     param_name = str(rospy.get_namespace() + "goals_allocated")
     # get the current list from the parameter server
@@ -26,19 +25,21 @@ if __name__ == '__main__':
     mission_counter=0
     while mission_counter < NUMBER_OF_MISSIONS:
         demeter = ExecDemeter()
+        sleep(1)
+        
         demeter.clear_KB()
         populate = PopulateKB()  
         #while not demeter.mission_success:
         while not demeter.mission_completed():
             demeter.execute_plan()
-            sleep(2)
+            sleep(1)
         demeter.clear_KB()
-        sleep(2)
+        sleep(1)
         demeter = None
         populate = None
         sleep(1)
         shift_allocation_param()        
-        sleep(2)
+        sleep(1)
         rospy.logwarn('Persistent Goal: ' + str(mission_counter) + ' Successfull!!!')
         mission_counter+=1
     rospy.spin()

@@ -29,10 +29,7 @@ class DemeterInterface(object):
             self.demeter = DemeterActionInterface()
         self.demeter = demeter
         self.namespace = self.demeter.namespace
-        self.demeter_arrived = False
         self.demeter_wp = -1
-        self.query = []
-        self.verify_localization_errors = []
         
         # Service proxies (KB: update, predicate and operator details)
         rospy.loginfo('Waiting for service'+ str(self.namespace) +'rosplan_knowledge_base/update ...')
@@ -123,7 +120,6 @@ class DemeterInterface(object):
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
             rospy.logwarn('Action Failed - Timeout, action_id: ' + str(action_dispatch.action_id) + ' action_name: ' + str(action_dispatch.name) + ' action_dispatch.parameters: ' + str(action_dispatch.parameters))
             self.cancel_plan()
-
 
     def cancel_plan(self):
         _cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'/rosplan_plan_dispatcher/cancel_dispatch', Empty)
@@ -240,6 +236,3 @@ class DemeterInterface(object):
     def surface(self, duration=rospy.Duration(60, 0)):
         response = self.demeter.do_surface(duration)
         return response
-    
-    
-    

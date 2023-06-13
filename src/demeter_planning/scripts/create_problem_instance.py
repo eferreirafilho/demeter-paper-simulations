@@ -30,7 +30,6 @@ class PopulateKB(object):
         self.RECHARGE_RATE = 0.05 # While doing other tasks #TODO: Change here and in battery controller at the same time
         self.RECHARGE_RATE_DEDICATED = 10 #TODO: Change here and in battery controller at the same time
 
-        sleep(1)
         self.namespace = rospy.get_namespace()
         sleep(1)
         self.battery_level_subscribers()
@@ -53,6 +52,8 @@ class PopulateKB(object):
                        
         self.add_goal_mission(self.allocated_goals[0])
         self.populate_KB()
+        
+        rospy.set_param(self.namespace + '/mission_in_turbine', self.allocated_goals[0])
         
     def populate_KB(self):
         self.init_position_to_KB()

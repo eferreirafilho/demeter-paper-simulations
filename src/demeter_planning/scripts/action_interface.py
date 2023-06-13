@@ -31,7 +31,6 @@ class DemeterActionInterface(object):
         self.waypoints_position = ['']
         self.previous_mode = ''
         self.current_mode = ''
-        self.external_intervened = False
         self.waypoints = list()
         self._current_wp = -1
         self.target_wp = -1
