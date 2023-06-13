@@ -56,7 +56,11 @@ class PopulateKB(object):
         
     def populate_KB(self):
         self.init_position_to_KB()
-        target = self.get_sensor_countor_points(self.allocated_goals[0])
+        rospy.logwarn(self.allocated_goals)
+        
+        target = self.get_sensor_contour_points(self.allocated_goals[0])
+        rospy.logwarn(self.closer_wp)
+        rospy.logwarn(target)
         reduced_waypoints = self.get_shortest_path_subgraph(int(self.closer_wp), 'general_waypoint', int(target))
         self.add_reduced_can_move(reduced_waypoints)
         self.add_object('vehicle'+str(self.vehicle_id), 'vehicle')
@@ -86,10 +90,10 @@ class PopulateKB(object):
         self.add_goal('data-sent', 'data'+str(target_turbine))
         rospy.logwarn('target_turbine')
         rospy.logwarn(target_turbine)
-        sensor_countor_point = self.get_sensor_countor_points(target_turbine)
-        rospy.logwarn('sensor_countor_point')
-        rospy.logwarn(sensor_countor_point)
-        self.add_fact('is-turbine-wp','waypoint'+str(sensor_countor_point),'turbine'+str(target_turbine))      
+        sensor_contour_point = self.get_sensor_contour_points(target_turbine)
+        rospy.logwarn('sensor_contour_point')
+        rospy.logwarn(sensor_contour_point)
+        self.add_fact('is-turbine-wp','waypoint'+str(sensor_contour_point),'turbine'+str(target_turbine))      
         
     def init_position_to_KB(self):
             self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
@@ -105,7 +109,7 @@ class PopulateKB(object):
             self.update_functions('traverse-cost', [KeyValue('w', 'wp_init_auv'+str(self.vehicle_id)), KeyValue('w', 'waypoint'+str(self.closer_wp))], self.SCALE_TRAVERSE_COSTS*dist, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
 
     def load_graph(self):
-        with open(self.package_path + "/params/scaled_visibility_G_with_turbines.pickle", "rb") as f:
+        with open(self.package_path + "/params/scaled_visibility_G_with_contour_points.pickle", "rb") as f:
             self.scaled_G = pickle.load(f)
 
     def remove_turbines_from_graph(self):
@@ -127,13 +131,13 @@ class PopulateKB(object):
             self.scaled_G.edges[u, v]['weight'] = dist
             self.scaled_G.edges[v, u]['weight'] = dist
             
-    def get_countor_points_list(self):
-        countor_points = []
-        # find all nodes with description 'countor_point'
+    def get_contour_points_list(self):
+        contour_points = []
+        # find all nodes with description 'contour_point'
         for node, data in self.scaled_G.nodes(data=True):
-            if data['description'] == 'countor_point':
-                countor_points.append(node)
-        return countor_points
+            if data['description'] == 'contour_point':
+                contour_points.append(node)
+        return contour_points
     
     def get_shortest_path_subgraph(self, source, source_type, target):
         # Build a new graph using only the relevant POIs  
@@ -152,18 +156,20 @@ class PopulateKB(object):
                 min_distance = distance
         return shortest_path        
       
-    def get_sensor_countor_points(self, target_turbine):
-        countor_points = self.get_countor_points_list()
-        sensor_countor_point = None
+    def get_sensor_contour_points(self, target_turbine):
+        # Get all contour points realted to turbine target_turbine
+        contour_points = self.get_contour_points_list()
+        sensor_contour_point = None
         max_x = float('-inf')
-        for countor_point in countor_points:
-            if self.scaled_G.nodes[countor_point]['related_to'] == target_turbine:
-                x_value = self.scaled_G.nodes[countor_point]['pos'][0]
+        for contour_point in contour_points:
+            if self.scaled_G.nodes[contour_point]['related_to'] == target_turbine:
+                x_value = self.scaled_G.nodes[contour_point]['pos'][0]
                 if float(x_value) > float(max_x):
                     max_x = x_value
-                    sensor_countor_point = countor_point
-
-        return sensor_countor_point
+                    sensor_contour_point = contour_point
+        rospy.logwarn('sensor ccontour points')
+        rospy.logwarn(sensor_contour_point)
+        return sensor_contour_point
     
     def add_reduced_can_move(self, reduced_waypoints):
         # Add can-move and traverse-cost only of relevant waypoints

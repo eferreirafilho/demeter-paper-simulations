@@ -388,7 +388,7 @@ class BuildRoadmaps(object):
     def build_and_save_roadmap_with_contour_points(self):
         '''Build roadmap with contour points and save graph as a pickle file
         Also save scaled turbines and waypoints as ROS parameters '''
-        NUMBER_OF_CONTOUR_POINTS = 3
+        NUMBER_OF_CONTOUR_POINTS = 4
         self.set_number_of_contour_points(NUMBER_OF_CONTOUR_POINTS)
         
         visibility_G = self.build_roadmaps()

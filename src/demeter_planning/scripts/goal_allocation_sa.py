@@ -177,10 +177,21 @@ class Allocation(object):
 
         return distance_vehicle_to_graph, closer_node 
     
+    def check_if_first_allocation(self):
+        if rospy.has_param('/goals_allocated/allocation'):
+            pass
+            # rospy.logwarn('NOT FIRST ALLOCATION')
+        else:
+            pass
+            # rospy.logwarn('FIRST ALLOCATION')
+    
     def random_allocation(self):
         '''Each turbine is randonly allocated for one random robot or not allocated''' 
         allocation = [[] for _ in range(len(self.vehicles))]  # Initialize an empty allocation for each robot
-
+        
+        self.check_if_first_allocation()
+        #TODO: Two different cases
+        
         for turbine in self.turbines_idx:
             if random.choice([True, False]):  # Randomly decide whether to allocate the turbine or not
                 robot_index = random.randint(0, len(self.vehicles) - 1)  # Choose a random robot index
@@ -224,13 +235,12 @@ class Allocation(object):
                 
         total_allocations = sum(len(sublist) for sublist in solution)
         balanced = self.calculate_balance_score(solution)
-        print('Solution: ' + str(solution) + ' balance score: ' + str(balanced))
+        # print('Solution: ' + str(solution) + ' balance score: ' + str(balanced))
 
         ALPHA = 0 
         GAMMA = 1000 # Focused on balanced robots
         
-        return -ALPHA*total_distance + 0*BETA*total_allocations + GAMMA*balanced
-    
+        return -ALPHA*total_distance + BETA*total_allocations + GAMMA*balanced
 
     def add_element_to_sublist(self, main_list, sublist_list):
         all_elements_in_sublists = [item for sublist in sublist_list for item in sublist]
@@ -290,7 +300,9 @@ class Allocation(object):
         rospy.logwarn(f'solution: {current_solution} cost: {current_cost}')
 
         temperature = INITIAL_TEMPERATURE
-        for iteration in range(MAX_ITERATIONS):
+        # for iteration in range(MAX_ITERATIONS):
+        iteration = 1 
+        while True:
             # Create a neighboring solution by randonly adding or remove an vehicle-> turbine allocation or perturb the system with a new random solution
             new_solution = random.choice([self.get_neighbour_solution(current_solution), self.random_allocation()])
             # new_solution = self.get_neighbour_solution(current_solution)
@@ -300,13 +312,17 @@ class Allocation(object):
                 current_solution = new_solution
                 current_cost = new_cost
 
-            rospy.logwarn(f'Iter: {iteration} New solution: {new_solution} New cost: {new_cost}')
+            # rospy.logwarn(f'Iter: {iteration} New solution: {new_solution} New cost: {new_cost}')
             if new_cost > best_cost:
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
+                goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
+                rospy.logwarn(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')
             
             temperature *= COOLING_RATE
-            rospy.logwarn(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')
+            
+            iteration+=1
+            
             # print("Best solution:", best_solution)
             # print("Best cost:", best_cost)
             # print("temp:", temperature)
@@ -340,6 +356,7 @@ class Allocation(object):
         for idx, vehicle in enumerate(self.vehicles):
             # for turbine in allocation[vehicle]:
             rospy.set_param('auv' + str(idx) + '/goals_allocated', allocation[idx])
+        rospy.set_param('/goals_allocated/allocation', allocation)
     
 if __name__ == '__main__':
       
@@ -347,14 +364,14 @@ if __name__ == '__main__':
     rospy.spin
     goal_allocation = Allocation()
 
-    goal_allocation.simulated_annealing()
+    best_solution, best_cost = goal_allocation.simulated_annealing()
 
 
     # milp = goal_allocation.create_milp
     # allocation, solution_G = goal_allocation.solve_milp(milp)
     
-    
     # print(allocation)
-    # goal_allocation.set_solution_to_ros_param(allocation)
+    # goal_allocation.set_solution_to_ros_param(best_solution)
     # goal_allocation.plot_allocation(solution_G, allocation)
+    rospy.spin()    
     
