@@ -2,7 +2,6 @@
 import random
 import copy
 import math
-import statistics
 import networkx as nx
 import matplotlib.pyplot as plt
 import pickle
@@ -13,43 +12,49 @@ import rospy
 from nav_msgs.msg import Odometry
 
 # random.seed(15)
-TIME_WINDOW =  100 # Time limit (Hours) - Next high waves
+TIME_WINDOW =  40 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
 # START_TIME = 0 # Hours (0-12 - inside the rule of twelves)
 # SAFE_SUBMERGE_WINDOW = 4 # Hours (amount of safe hours inside a 12 hour windows - rule of twelves)
 MAX_MISSION_DIFFERENCE = 1 # Number of unbalance allowed
-# Weighted sum
+TURBINE_PERCENTAGE = 100 # in percentage % of turbines to keep
+# Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
+ALPHA = 0.1  # Focus on travelling less distances
+GAMMA = 100 # Focused on balanced robots
         
 class Allocation(object):
-    def __init__(self, turbines_to_be_allocated, robots_positions):
+    def __init__(self, turbines_to_be_allocated):
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self._rate = rospy.Rate(10)
 
         self.G_with_only_turbines = self.load_graph_with_only_turbines()
-        self.turbines, self.turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
+        all_turbines, all_turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
 
-        rospy.logwarn('self.turbines')
-        rospy.logwarn(self.turbines)
-        rospy.logwarn(len(self.turbines))
+        rospy.logwarn('all_turbines: ' + str(all_turbines_idx))
+
+        all_turbines_to_be_allocated = [all_turbines[i] for i in turbines_to_be_allocated]
+        all_turbines_to_be_allocated_idx = [all_turbines_idx[i] for i in turbines_to_be_allocated]
         
+        rospy.logwarn('Turbines to be allocated: ' + str(all_turbines_to_be_allocated))
         current_time = rospy.get_rostime().to_sec()
         try:
             param_time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
         except KeyError:
             # param_time_of_turbines_last_inspection = [0] * len(self.turbines)
-            param_time_of_turbines_last_inspection = [random.randint(0, 20) for _ in range(len(self.turbines))]
+            #TODO check ('/goal_allocation/turbine_inspected parameter
+            param_time_of_turbines_last_inspection = [random.randint(0, 20) for _ in range(len(all_turbines_idx))]
             rospy.set_param('/goal_allocation/turbine_inspected', param_time_of_turbines_last_inspection) # Set times to zero if first time allocating
 
-        param_time_of_turbines_last_inspection = param_time_of_turbines_last_inspection[0:len(self.turbines)] # get only parameters from turbines being used
-        rospy.logwarn(param_time_of_turbines_last_inspection)
+        param_time_of_turbines_last_inspection = param_time_of_turbines_last_inspection[0:len(all_turbines_to_be_allocated)] # get only parameters from turbines being used
+        rospy.logwarn('param_time_of_turbines_last_inspection: ' + str(param_time_of_turbines_last_inspection))
         self.time_of_turbines_last_inspection = [current_time - x for x in param_time_of_turbines_last_inspection]
-        rospy.logwarn(self.time_of_turbines_last_inspection) # How long ago a turbine was inspected
+        rospy.logwarn('How long ago a turbine was inspected: ' + str(self.time_of_turbines_last_inspection)) # How long ago a turbine was inspected
         
         self.number_of_vehicles = self.get_number_of_vehicles()
-        self.original_turbines = self.turbines
-        self.turbines, self.turbines_idx = self.remove_turbines_visited_lately()
-        rospy.logwarn('after remove: ')
+        self.original_turbines = all_turbines_to_be_allocated
+        self.turbines, self.turbines_idx = self.remove_turbines_visited_lately(all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx)
+        rospy.logwarn('after removing turbines: ')
         rospy.logwarn(self.turbines)
         rospy.logwarn(self.turbines_idx)
         
@@ -64,8 +69,6 @@ class Allocation(object):
             
         rospy.logwarn('GAZEBO POS: ' + str(self.gazebo_positions))
         self.vehicles = [self.gazebo_positions[key] for key in sorted(self.gazebo_positions.keys())]
-        # for vehicle in self.gazebo_positions:
-            # self.vehicles.append(self.gazebo_positions[vehicle])
         self._wait(1)
 
         # vehicles = [[50, 60], [-30, 40]]
@@ -90,24 +93,24 @@ class Allocation(object):
         for _ in range(n_rate):
             self._rate.sleep()
             
-    def remove_turbines_visited_lately(self):
-        TURBINE_PERCENTAGE = 1
-        threshold = int(len(self.time_of_turbines_last_inspection) * TURBINE_PERCENTAGE) # Number of turbines to keep
-        if threshold < self.number_of_vehicles:
-            threshold = self.number_of_vehicles
-        items = list(zip(self.turbines_idx, self.time_of_turbines_last_inspection))
+    def remove_turbines_visited_lately(self, all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx):
+    
+        threshold = int(len(self.time_of_turbines_last_inspection) * TURBINE_PERCENTAGE/100) # Number of turbines to keep
+        threshold = max(threshold, self.number_of_vehicles)
+        items = list(zip(all_turbines_to_be_allocated_idx, self.time_of_turbines_last_inspection))
+        
         sorted_items = sorted(items, key=lambda x: x[1])
         lowest_items = sorted_items[:threshold]
+        
         lowest_indexes, lowest_values = map(list, zip(*lowest_items))
-        print("Indexes:", lowest_indexes)
-        print("Values:", lowest_values)
-        print("Values:", type(lowest_values))
-        filtered_turbines = [self.turbines[i] for i in lowest_indexes]
-        filtered_indexes = [self.turbines_idx[i] for i in lowest_indexes]
+        
+        filtered_turbines = [all_turbines_to_be_allocated[all_turbines_to_be_allocated_idx.index(i)] for i in lowest_indexes]
+        filtered_indexes = [all_turbines_to_be_allocated_idx[all_turbines_to_be_allocated_idx.index(i)] for i in lowest_indexes]
+
         return filtered_turbines, filtered_indexes
                 
     def get_turbine_positions(self, G_visibility):
-        '''Get the nodes that are turbines (there is also and corners nodes)'''
+        '''Get the nodes that are turbines (there are also and corners nodes in the graph)'''
         turbines = []
         turbines_idx = []
         for i in range(G_visibility.number_of_nodes()):
@@ -130,22 +133,15 @@ class Allocation(object):
         return total_distance
 
     def create_turbine_graph(self, G_visibility):
-        '''Create graph with only turbines and distances based on shortest paths'''
+        '''Create graph with only turbines and distances based on shortest paths between turbines'''
         G_turbines = nx.Graph()
         for turbine_i in self.turbines_idx:
             for turbine_j in self.turbines_idx:
                 if turbine_i != turbine_j:
                     dist = self.graph_distance(G_visibility, turbine_i, turbine_j)
                     G_turbines.add_edge(turbine_i, turbine_j, weight = dist)
-                    G_turbines.add_edge(turbine_j, turbine_i, weight = dist)                
+                    G_turbines.add_edge(turbine_j, turbine_i, weight = dist)     
 
-        # Plot the graph
-        pos = nx.spring_layout(G_turbines)  # Define layout for the graph nodes
-        nx.draw(G_turbines, pos, with_labels=True, node_size=500, node_color='lightblue', font_size=10)  # Draw the nodes and labels
-        edge_labels = nx.get_edge_attributes(G_turbines, 'weight')  # Get the edge weights as labels
-        nx.draw_networkx_edge_labels(G_turbines, pos, edge_labels=edge_labels)  # Draw edge labels
-
-        plt.show()  # Show the plot
         return G_turbines
 
     def plot_graph(self, G, nodes):
@@ -153,34 +149,60 @@ class Allocation(object):
         nx.draw(G, pos = pos_dict, with_labels = True)
         plt.show()
         
-    def distance_vehicles_to_graph(self, graph):
+    
+    def distance_vehicles_to_graph_nodes(self, graph):
+        '''Compute the minimum distance from each vehicle to any node in the graph, along with the index of the closest node'''
         distance_vehicle_to_graph = []
         closer_node = []
-
-        for vehicle_idx, vehicle in enumerate(self.vehicles):
-            min_dist = float('inf')
-            closest_node = None
-
-            for n_idx, node in enumerate(graph.nodes()):
-                node_pos = graph.nodes[node]['pos']
-                dist = self.euclidean_distance(vehicle, node_pos)
-                
-                if dist < min_dist:
-                    min_dist = dist
-                    closest_node = n_idx
-
+        for vehicle in self.vehicles:
+            distances = [(self.euclidean_distance(vehicle, graph.nodes[node]['pos']), node) for node in graph.nodes()]
+            min_dist, closest_node = min(distances, key=lambda x: x[0])
             distance_vehicle_to_graph.append(min_dist)
             closer_node.append(closest_node)
+        return distance_vehicle_to_graph, closer_node
+    
+    def distance_point_to_segment(self, p, a, b):
+        '''Compute the Euclidean distance from point p to the line segment from a to b'''
+        # vector from a to b
+        ab = [b[i] - a[i] for i in range(len(a))]
+        # vector from a to p
+        ap = [p[i] - a[i] for i in range(len(a))]
 
-        return distance_vehicle_to_graph, closer_node 
+        # scalar of ab that's closest to p
+        t = sum(i*j for i, j in zip(ap, ab)) / sum(i*i for i in ab)
+
+        if t <= 0:
+            # closer to a
+            return self.euclidean_distance(p, a)
+        elif t >= 1:
+            # closer to b
+            return self.euclidean_distance(p, b)
+
+        # projection point falls within the line segment
+        projection = [a[i] + t*ab[i] for i in range(len(a))]
+        return self.euclidean_distance(p, projection)
+
+
+    def distance_vehicles_to_graph(self, graph):
+        '''Compute the minimum distance from each vehicle to any edge in the graph, along with the index of the closest edge'''
+        distance_vehicle_to_graph = []
+        closer_edge = []
+
+        for vehicle in self.vehicles:
+            distances = [(self.distance_point_to_segment(vehicle, graph.nodes[edge[0]]['pos'], graph.nodes[edge[1]]['pos']), edge) for edge in graph.edges()]
+            min_dist, closest_edge = min(distances, key=lambda x: x[0])
+            distance_vehicle_to_graph.append(min_dist)
+            closer_edge.append(closest_edge)
+
+        return distance_vehicle_to_graph, closer_edge
+
     
     def check_if_first_allocation(self):
+        first_allocation = True
         if rospy.has_param('/goals_allocated/allocation'):
             rospy.logwarn('NOT FIRST ALLOCATION')
-            return True
-        else:
-            rospy.logwarn('FIRST ALLOCATION')
-            return False
+            first_allocation = False
+        return first_allocation
     
     def random_allocation(self):
         '''Each turbine is randonly allocated for one random robot or not allocated''' 
@@ -197,47 +219,49 @@ class Allocation(object):
         '''Compute the maximum difference between allocations'''
         # Find the number of elements in each list in the allocation
         alloc_size = [len(alloc) for alloc in allocation]
-
-        # Calculate the maximum and minimum sizes
         max_size = max(alloc_size)
         min_size = min(alloc_size)
 
         # Calculate the balance score
-        balance_score = 1/(0.1+(max_size - min_size))
+        balance_score = 1/(0.1+(max_size - min_size)) #0.1 to shift values and not divide by zero in edge cases
 
         return balance_score
 
     def objective_function(self, solution):
-        '''For each allocated turbines, consider the cost of trabelling to that turbine plus the time it takes to inspect that turbine
+        '''For each allocated turbines, consider the cost of travelling to that turbine plus the time it takes to inspect that turbine
         Also penalizes unbalanced allocations and forbid solutions that passes the allowed time window'''
 
-        distance_vehicle_to_graph, closer_node = self.distance_vehicles_to_graph(self.G_with_only_turbines)
+        max_time = 0  # Maximum time a vehicle takes
+        
+        distance_vehicle_to_graph, closer_node = self.distance_vehicles_to_graph_nodes(self.G_with_only_turbines)
         total_distance = 0
         for vehicle_idx, vehicle in enumerate(solution):
+            time = 0 
             distance = 0
-            for turbine_idx, turbine in enumerate(vehicle):
-                if turbine_idx == 0:
+            for turbine_order_individual_vehicle, turbine in enumerate(vehicle):
+                if turbine_order_individual_vehicle == 0:
                     distance = distance_vehicle_to_graph[vehicle_idx]
-                    # print('vehicle: ' + str(vehicle_idx) + ' add distance '+ str(distance) + ' between initial and closer node: '+ str(closer_node[vehicle_idx]))
                     distance += self.graph_distance(self.G_with_only_turbines, closer_node[vehicle_idx], turbine)
-                    # print('vehicle: ' + str(vehicle_idx) + ' add distance: '+ str(self.graph_distance(self.G_with_only_turbines, closer_node[vehicle_idx], turbine)) +' between ' + str(closer_node[vehicle_idx]) + ' and ' + str(turbine))
+                    time += distance # Assume that the time it takes to travel equals the distance
                 else:
-                    distance += self.graph_distance(self.G_with_only_turbines, previous_turbine, turbine)
-                    # print('vehicle: ' + str(vehicle_idx) + ' add distance ' + str(self.graph_distance(self.G_with_only_turbines, previous_turbine, turbine)) + 'between ' + str(previous_turbine) + ' and ' + str(turbine))
+                    travel_time = self.graph_distance(self.G_with_only_turbines, previous_turbine, turbine)
+                    distance += travel_time
+                    time += travel_time + EXECUTE_TIME  # Add inspection time
                 previous_turbine = turbine
                 total_distance += distance
-                
+            if time > max_time:  # Only update max_time if the current vehicle took longer
+                max_time = time
         total_allocations = sum(len(sublist) for sublist in solution)
         balanced = self.calculate_balance_score(solution)
-        # print('Solution: ' + str(solution) + ' balance score: ' + str(balanced))
 
-        ALPHA = 0.1 
-        GAMMA = 100 # Focused on balanced robots
+        DELTA = 10000 if max_time > TIME_WINDOW else 0  # Penalty if total time exceeds the limit 
+               
+        cost = -ALPHA*total_distance + BETA*total_allocations + GAMMA*balanced - DELTA*max_time 
         
-        # print('total ditance: ' + str(total_distance) + ' balance score: ' + str(balanced) + ' total allocations: ' + str(total_allocations))
+        # rospy.loginfo_throttle(10, 'total distance: %s balance score: %s total allocations: %s max time: %s best cost: %s', 
+                    #    str(total_distance), str(balanced), str(total_allocations), str(max_time), str(cost))
         
-        
-        return -ALPHA*total_distance + BETA*total_allocations + GAMMA*balanced
+        return cost
 
     def add_element_to_sublist(self, main_list, sublist_list):
         all_elements_in_sublists = [item for sublist in sublist_list for item in sublist]
@@ -309,7 +333,8 @@ class Allocation(object):
                 current_solution = new_solution
                 current_cost = new_cost
 
-            # rospy.logwarn(f'Iter: {iteration} New solution: {new_solution} New cost: {new_cost}')
+            rospy.logwarn_throttle(5, f'Iter: {iteration} New solution: {new_solution} New cost: {new_cost}')
+
             if new_cost > best_cost:
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
@@ -360,7 +385,12 @@ if __name__ == '__main__':
       
     rospy.init_node('goal_allocation', anonymous=True)
     rospy.spin
-    goal_allocation = Allocation()
+    
+    
+    turbines_to_be_allocated = [0, 1, 2, 3, 4, 5, 8, 10, 14]
+    
+    goal_allocation = Allocation(turbines_to_be_allocated)
+
 
     best_solution, best_cost = goal_allocation.simulated_annealing()
 

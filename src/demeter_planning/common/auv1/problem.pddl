@@ -2,17 +2,17 @@
 (:domain demeter-domain-with-weather)
 (:objects
     vehicle1 - vehicle
-    wp_init_auv1 waypoint42 waypoint5 waypoint2 - waypoint
-    data0 - data
+    wp_init_auv1 waypoint34 waypoint14 waypoint6 - waypoint
+    data1 - data
     currenttide - tide
-    turbine0 - turbine
+    turbine1 - turbine
 )
 (:init
-    (can-move wp_init_auv1 waypoint42)
-    (can-move waypoint42 waypoint5)
-    (can-move waypoint5 waypoint2)
+    (can-move wp_init_auv1 waypoint34)
+    (can-move waypoint34 waypoint14)
+    (can-move waypoint14 waypoint6)
 
-    (is-in data0 turbine0)
+    (is-in data1 turbine1)
 
 
 
@@ -27,21 +27,21 @@
     (tide-low currenttide)
 
 
-    (is-turbine-wp waypoint2 turbine0)
+    (is-turbine-wp waypoint6 turbine1)
 
     (not-recharging vehicle1)
 
 
 
-    (= (battery-level vehicle1) 97.7775)
+    (= (battery-level vehicle1) 100)
 
     (= (recharge-rate vehicle1) 0.05)
 
     (= (recharge-rate-dedicated vehicle1) 10)
 
-    (= (traverse-cost wp_init_auv1 waypoint42) 5.31)
-    (= (traverse-cost waypoint42 waypoint5) 45.27)
-    (= (traverse-cost waypoint5 waypoint2) 5.16)
+    (= (traverse-cost wp_init_auv1 waypoint34) 1.05)
+    (= (traverse-cost waypoint34 waypoint14) 19.885)
+    (= (traverse-cost waypoint14 waypoint6) 22.285)
 
     (= (total-missions-completed vehicle1) 0)
 
@@ -49,6 +49,6 @@
 
 )
 (:goal (and
-    (data-sent data0)
+    (data-sent data1)
 ))
 )

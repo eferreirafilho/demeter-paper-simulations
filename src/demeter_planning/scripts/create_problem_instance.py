@@ -23,7 +23,6 @@ class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
-        rospy.logwarn('Create Problem - Populating KB with robots initial position and goals')
         self.SCALE_TRAVERSE_COSTS = 0.5
         self.SPEED = 0.3 # Scale speed 
         self.FULL_BATTERY = 20 # TODO: keep track of battery
@@ -35,6 +34,7 @@ class PopulateKB(object):
         self.battery_level_subscribers()
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self.vehicle_id = self.extract_number_from_string(self.namespace)
+        rospy.logwarn('Create Problem - Populating auv ' + str(self.vehicle_id) + ' KB with robots initial position and goals')
         action_interface_object = DemeterActionInterface(self.namespace)
         self.position = action_interface_object.get_position()
         action_interface_object.set_init_position_param(self.position)  

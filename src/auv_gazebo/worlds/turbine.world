@@ -13,7 +13,7 @@
           <!-- <contact_surface_layer>0.0001</contact_surface_layer> -->
         <!-- </constraints> -->
       </bullet>
-      <max_step_size>0.005</max_step_size>
+      <max_step_size>0.003</max_step_size>
     </physics>
 
 
