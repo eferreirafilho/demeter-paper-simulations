@@ -27,7 +27,7 @@ There is only one possible mission: "submerge-mission". A mission called "measur
 
 ## Actions
 
-Possible PDDl actions: move, submerge-mission, transmit-data, wait-to-recharge, localize-cable, surface.
+Possible PDDL actions: move, submerge-mission, transmit-data, wait-to-recharge, localize-cable, surface.
 
 - Action **move** return success if vehicle has reached the waypoint within the time described in common/auv{i}/domain.pddl. Plan fails otherwise.
 
