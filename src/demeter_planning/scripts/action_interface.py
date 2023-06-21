@@ -119,7 +119,7 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION
         return response
     
-    def do_inspect_turbine(self, turbine, duration=rospy.Duration()):
+    def do_retrieve_data(self, turbine, duration=rospy.Duration()):
         rospy.logdebug('Interface: \'Inspect Turbine\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()

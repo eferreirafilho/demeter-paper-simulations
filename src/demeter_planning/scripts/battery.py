@@ -84,7 +84,7 @@ class BatteryController(object):
         if msg.name == 'harvest-energy':
             self.recharging_dedicated[arg] = 1
             rospy.logwarn('Harvesting energy (dedicated recharge)')
-        if msg.name == 'move' or msg.name == 'localize-cable' or msg.name == 'inspect-turbine': # Actions that stop harvest-energy action
+        if msg.name == 'move' or msg.name == 'localize-cable' or msg.name == 'retrieve-data': # Actions that stop harvest-energy action
             self.recharging_dedicated[arg] = 0
         if msg.name == 'move' or msg.name == 'upload-data-histograms': # Actions on the surface
             self.recharging[arg] = 1

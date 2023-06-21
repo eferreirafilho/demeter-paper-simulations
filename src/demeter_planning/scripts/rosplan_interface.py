@@ -84,8 +84,8 @@ class DemeterInterface(object):
         # Parse action message
         if msg.name == 'move':
             self._action_threaded(msg, self.move, [msg.parameters, duration])
-        if msg.name == 'inspect-turbine':
-            self._action_threaded(msg, self.inspect_turbine, [msg.parameters, duration])
+        if msg.name == 'retrieve-data':
+            self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration])
         if msg.name == 'upload-data-histograms':
             self._action_threaded(msg, self.upload_data_histograms, [duration])
         if msg.name == 'harvest-energy':
@@ -208,13 +208,13 @@ class DemeterInterface(object):
         response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
 
-    def inspect_turbine(self, dispatch_params, duration=rospy.Duration(60, 0)):
+    def retrieve_data(self, dispatch_params, duration=rospy.Duration(60, 0)):
         data_location = -1
         for param in dispatch_params:
             if param.key == 'd': # from Data d
                 data_location = int(param.value[4:])
                 break
-        response = self.demeter.do_inspect_turbine(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
+        response = self.demeter.do_retrieve_data(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
         return response
     
     def upload_data_histograms(self, duration=rospy.Duration(60, 0)):

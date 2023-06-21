@@ -52,6 +52,8 @@ class PlotVehicles:
 
             # Display the vehicle name and action
             action = self.latest_actions[vehicle]
+            if action=='cancel_action':
+                action = 'planning'
             plt.text(x_vals[-1], y_vals[-1], 'auv{} ({})'.format(vehicle, action), fontsize=8, color=colors[vehicle])
 
         for i, (x, y) in enumerate(self.get_scaled_turbine_coordinates()):

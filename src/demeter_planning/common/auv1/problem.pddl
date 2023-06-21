@@ -39,11 +39,9 @@
 
     (= (recharge-rate-dedicated vehicle1) 10)
 
-    (= (traverse-cost wp_init_auv1 waypoint34) 1.05)
+    (= (traverse-cost wp_init_auv1 waypoint34) 1.015)
     (= (traverse-cost waypoint34 waypoint14) 19.885)
     (= (traverse-cost waypoint14 waypoint6) 22.285)
-
-    (= (total-missions-completed vehicle1) 0)
 
     (= (speed vehicle1) 0.3)
 
