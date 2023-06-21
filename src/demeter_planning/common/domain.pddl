@@ -12,7 +12,7 @@
         (recharge-rate ?v - vehicle)
         (recharge-rate-dedicated ?v - vehicle)
         (traverse-cost ?f - waypoint ?t - waypoint )
-        (total-missions-completed ?v - vehicle)
+        ; (total-missions-completed ?v - vehicle)
         (speed ?v - vehicle)
     )
 
@@ -117,7 +117,7 @@
             (at start (is-submerged ?v))
             (at end (not (is-submerged ?v)))
             (at end (vortex-data-measured ?vx))
-            (at end (increase (total-missions-completed ?v) 1))
+            ; (at end (increase (total-missions-completed ?v) 1))
             (at start (not (idle ?v)))
             (at end (idle ?v))
     )
@@ -137,7 +137,7 @@
             (at end (empty ?v))     
             (at start (decrease (battery-level ?v) 50))
             (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
-            (at end (increase (total-missions-completed ?v) 100))
+            ; (at end (increase (total-missions-completed ?v) 100))
 
             ;not idle and idle effects commented allows for other actions to run in pararell with this
             ; (at start (not (idle ?v)))

@@ -43,7 +43,7 @@
     (= (traverse-cost waypoint18 waypoint14) 15.93)
     (= (traverse-cost waypoint14 waypoint10) 14.525)
 
-    (= (total-missions-completed vehicle0) 0)
+    ; (= (total-missions-completed vehicle0) 0)
 
     (= (speed vehicle0) 0.3)
 

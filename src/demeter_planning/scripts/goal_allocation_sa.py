@@ -254,7 +254,7 @@ class Allocation(object):
         total_allocations = sum(len(sublist) for sublist in solution)
         balanced = self.calculate_balance_score(solution)
 
-        DELTA = 10000 if max_time > TIME_WINDOW else 0  # Penalty if total time exceeds the limit 
+        DELTA = float('Inf') if max_time > TIME_WINDOW else 0  # Penalty if total time exceeds the limit 
                
         cost = -ALPHA*total_distance + BETA*total_allocations + GAMMA*balanced - DELTA*max_time 
         
