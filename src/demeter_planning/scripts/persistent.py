@@ -25,15 +25,20 @@ if __name__ == '__main__':
     mission_counter=0
     while mission_counter < NUMBER_OF_MISSIONS:
         demeter = ExecDemeter()
-        sleep(1)
-        
         demeter.clear_KB()
+        sleep(1)
         populate = PopulateKB()  
         #while not demeter.mission_success:
         while not demeter.mission_completed():
-            demeter.execute_plan()
             sleep(1)
-        demeter.clear_KB()
+            
+            demeter.execute_plan()
+            rospy.logwarn('Vehicle: ' + str(rospy.get_namespace()) + 'execute plan')
+            sleep(1)
+            demeter.clear_KB()
+            populate = PopulateKB()  
+            
+        # demeter.clear_KB()
         sleep(1)
         demeter = None
         populate = None

@@ -5,6 +5,7 @@
 
 
 	<node pkg="demeter_planning" type="battery.py" name="battery_controller" output="screen"/>
+	<node pkg="demeter_planning" type="tides.py" name="tides_controller" output="screen"/>
 
   <!-- Launch planning_ns.launch with namespace=auv0 -->
   <include file="$(find demeter_planning)/launch/planning_ns.launch">

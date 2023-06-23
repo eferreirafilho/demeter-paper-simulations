@@ -16,7 +16,7 @@ from create_problem_instance import PopulateKB
 class ExecDemeter(object):
     def __init__(self, update_frequency=4.):
         self._rate = rospy.Rate(update_frequency)
-        rospy.sleep(10) # Wait for allocation
+        rospy.sleep(5) # Wait for allocation
         self.namespace = self.get_namespace()
         self.demeter_rosplan_interface = DemeterInterface(demeter=DemeterActionInterface(namespace=self.namespace))
         self.mission_success = False
