@@ -14,7 +14,9 @@ class PlotVehicles:
     LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
     def __init__(self):
         rospy.init_node('robot_plotter', anonymous=True)
-        self.previous_tide_state = None
+        
+        self.current_state_x = 0
+        self.low_tides = (2*(self.LOW_TIDES_THREDSHOLD/self.PERIOD_OF_TIDES))-1
 
         number_of_vehicles = self.number_of_vehicles()
         self.positions = [([], [], []) for _ in range(number_of_vehicles)]
@@ -41,7 +43,7 @@ class PlotVehicles:
     def get_tide_state(self):
         time = rospy.get_rostime().to_sec()
         time_in_tide_cycle = time % self.PERIOD_OF_TIDES  # get the current ROS time in seconds and use the remainder after dividing by P to simulate repeating cycle
-        tide_state = np.sin(2 * np.pi * time_in_tide_cycle / self.PERIOD_OF_TIDES)  # compute tide state as a sine wave
+        tide_state = np.cos(2*np.pi/3 + 2 * np.pi * time_in_tide_cycle / self.PERIOD_OF_TIDES)  # compute tide state as a sine wave
         return tide_state
 
     def get_scaled_turbine_coordinates(self):
@@ -71,6 +73,9 @@ class PlotVehicles:
             action = self.latest_actions[vehicle]
             if action=='cancel_action':
                 action = 'planning'
+            elif action=='retrieve-data' and self.current_state_x > self.low_tides:
+                print(action)
+                action = 'retrieve-data (wait for low tide)'
             main_ax.text(x_vals[-1], y_vals[-1], 'auv{} ({})'.format(vehicle, action), fontsize=8, color=colors[vehicle])
 
         for i, (x, y) in enumerate(self.get_scaled_turbine_coordinates()):
@@ -90,26 +95,28 @@ class PlotVehicles:
 
         # Generate a sine wave to represent the tide cycle
         x = np.linspace(0, 2*np.pi, self.PERIOD_OF_TIDES*100)
-        y = np.sin(x)
+        y = np.cos(x+2*np.pi/3)
 
         # Plot the reference sine wave
         ax_tides.plot(x, y, 'b--')  # Plot it as a dashed line
 
-        low_tides = (2*(self.LOW_TIDES_THREDSHOLD/self.PERIOD_OF_TIDES))-1
 
         # Draw a horizontal line to indicate the lower third of the sine wave
-        ax_tides.axhline(y=low_tides, color='k', linestyle='-')
-        ax_tides.text(0.1, low_tides+0.1, 'Low tide threshold', fontsize=8, color='black')
+        ax_tides.axhline(y=self.low_tides, color='k', linestyle='-')
+        ax_tides.text(0.3, self.low_tides+0.1, 'Low tide threshold', fontsize=8, color='black')
 
         # Mark the current tide state on the sine wave
-        current_state_x = 2 * np.pi * (rospy.get_rostime().to_sec() % self.PERIOD_OF_TIDES) / self.PERIOD_OF_TIDES
+        self.current_state_x = 2 * np.pi * (rospy.get_rostime().to_sec() % self.PERIOD_OF_TIDES) / self.PERIOD_OF_TIDES
+        
+        # print('current_state: ' + str(current_state_x))
+        # print(rospy.get_rostime().to_sec())
         current_state_y = self.get_tide_state()
-        if current_state_y < low_tides:
-            ax_tides.plot(current_state_x, current_state_y, 'bo')
-            ax_tides.text(current_state_x+0.1, current_state_y+0.1, 'Low tide', fontsize=8, color='blue')
+        if current_state_y < self.low_tides:
+            ax_tides.plot(self.current_state_x, current_state_y, 'bo')
+            ax_tides.text(self.current_state_x+0.1, current_state_y+0.1, 'Low tide', fontsize=8, color='blue')
         else:
-            ax_tides.plot(current_state_x, current_state_y, 'ro')
-            ax_tides.text(current_state_x+0.1, current_state_y+0.1, 'Tide not low', fontsize=8, color='red')
+            ax_tides.plot(self.current_state_x, current_state_y, 'ro')
+            ax_tides.text(self.current_state_x+0.1, current_state_y+0.1, 'Tide not low', fontsize=8, color='red')
             
         # Restrict the view to one full tide cycle
         ax_tides.set_xlim(0, 2*np.pi)   

@@ -119,8 +119,20 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION
         return response
     
-    def do_retrieve_data(self, turbine, duration=rospy.Duration()):
-        rospy.logdebug('Interface: \'Inspect Turbine\' Action')
+    def do_retrieve_data(self, turbine, duration=rospy.Duration(), start_time=0):
+        # rospy.logwarn('Dispatch time: ' + str(start_time))
+        
+        # current_time = rospy.Time.now()
+        # current_time_secs = current_time.secs
+        # while current_time_secs <= start_time: # Do not dispatch actions that should be executed in the future
+        #     rospy.logwarn_throttle_identical(5, 'Dispatch time: ' + str(start_time))
+        #     rospy.logwarn_throttle_identical(5,'Current time: ' + str(current_time_secs))
+        #     current_time = rospy.Time.now()
+        #     current_time_secs = current_time.secs
+        #     self._rate.sleep()
+            
+        # rospy.logwarn('DIVE!!!: ' + str(current_time_secs))
+        # rospy.logdebug('Interface: \'Inspect Turbine\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position

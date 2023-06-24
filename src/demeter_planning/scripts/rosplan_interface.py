@@ -81,19 +81,27 @@ class DemeterInterface(object):
 
     def _dispatch_cb(self, msg):
         duration = rospy.Duration(msg.duration)
+        start_time = rospy.Time(msg.dispatch_time)
+        start_time_secs = start_time.secs
+        current_time = rospy.Time.now().secs
         # Parse action message
         if msg.name == 'move':
             self._action_threaded(msg, self.move, [msg.parameters, duration])
-        if msg.name == 'retrieve-data':
-            self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration])
-        if msg.name == 'upload-data-histograms':
+        elif msg.name == 'retrieve-data':
+            delay = start_time_secs - current_time
+            if delay > 0:  # Only delay if dispatch_time is in the future
+                rospy.Timer(rospy.Duration(delay), lambda _: self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration, start_time_secs]), oneshot=True)
+            else:
+                self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration, start_time_secs])
+        elif msg.name == 'upload-data-histograms':
             self._action_threaded(msg, self.upload_data_histograms, [duration])
-        if msg.name == 'harvest-energy':
+        elif msg.name == 'harvest-energy':
             self._action_threaded(msg, self.harvest_energy, [duration])
-        if msg.name == 'localize-cable':
+        elif msg.name == 'localize-cable':
             self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
-        if msg.name == 'surface':
+        elif msg.name == 'surface':
             self._action_threaded(msg, self.surface, [duration])
+
 
     def _action_threaded(self, action_dispatch, action_func, action_params=list()):
         # Create a new thread for the action function
@@ -102,7 +110,6 @@ class DemeterInterface(object):
 
     def _action(self, action_dispatch, action_func, action_params=list()):
         self.current_action_id=action_dispatch.action_id
-        print(self.current_action_id)
         self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_ENABLED)
         start_time = rospy.Time(action_dispatch.dispatch_time)
         duration = rospy.Duration(action_dispatch.duration)
@@ -208,13 +215,13 @@ class DemeterInterface(object):
         response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
 
-    def retrieve_data(self, dispatch_params, duration=rospy.Duration(60, 0)):
+    def retrieve_data(self, dispatch_params, duration=rospy.Duration(60, 0), start_time=0):
         data_location = -1
         for param in dispatch_params:
             if param.key == 'd': # from Data d
                 data_location = int(param.value[4:])
                 break
-        response = self.demeter.do_retrieve_data(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
+        response = self.demeter.do_retrieve_data(data_location, duration, start_time) if data_location != -1 else self.demeter.ACTION_FAIL
         return response
     
     def upload_data_histograms(self, duration=rospy.Duration(60, 0)):

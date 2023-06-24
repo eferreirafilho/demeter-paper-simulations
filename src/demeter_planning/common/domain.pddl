@@ -75,10 +75,11 @@
             (at end (not (is-surfaced ?v)))
         )
     )
+
     
     (:durative-action retrieve-data
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
-        :duration(= ?duration 200)
+        :duration(= ?duration 20)
         :condition (and 
             (over all (cable-localized ?tu))
             (over all (is-turbine-wp ?w ?tu))
