@@ -95,6 +95,9 @@ class PlotVehicles:
                 fontsize=7, horizontalalignment='right', verticalalignment='top', transform=main_ax.transAxes)
 
 
+        main_ax.text(0.98, 0.98, 'ROS Time: {:.0f} sec'.format(rospy.get_rostime().to_sec()), 
+                fontsize=7, horizontalalignment='right', verticalalignment='top', transform=main_ax.transAxes)
+
         main_ax.axis([-AXIS_LIMITS, AXIS_LIMITS, -AXIS_LIMITS, AXIS_LIMITS])  # set axis limits
 
         # call plot_tides function to plot tides on a separate subplot
