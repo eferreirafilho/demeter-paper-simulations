@@ -12,7 +12,7 @@ import rospy
 from nav_msgs.msg import Odometry
 
 # random.seed(15)
-TIME_WINDOW =  40 # Time limit (Hours) - Next high waves
+TIME_WINDOW =  20 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
 # START_TIME = 0 # Hours (0-12 - inside the rule of twelves)
 # SAFE_SUBMERGE_WINDOW = 4 # Hours (amount of safe hours inside a 12 hour windows - rule of twelves)

@@ -11,8 +11,7 @@
     (can-move wp_init_auv0 waypoint20)
     (can-move waypoint20 waypoint22)
 
-
-    (at 4596.45 (is-in data5 turbine5))
+    (is-in data5 turbine5)
 
 
 
@@ -26,32 +25,29 @@
 
     (not (tide-low currenttide))
 
-    (at 4598.35 (tide-low currenttide))
-    (at 4629.3 (not (tide-low currenttide)))
-    (at 4696.02 (tide-low currenttide))
-    (at 4729.38 (not (tide-low currenttide)))
-    (at 4796.08 (tide-low currenttide))
-    (at 4829.46 (not (tide-low currenttide)))
-    (at 4896.15 (tide-low currenttide))
-    (at 4929.51 (not (tide-low currenttide)))
-    (at 4996.2 (tide-low currenttide))
-    (at 5029.56 (not (tide-low currenttide)))
+    (at 21993.8 (tide-low currenttide))
+    (at 22027.2 (not (tide-low currenttide)))
+    (at 22093.9 (tide-low currenttide))
+    (at 22127.2 (not (tide-low currenttide)))
+    (at 22193.9 (tide-low currenttide))
+    (at 22227.3 (not (tide-low currenttide)))
+    (at 22294 (tide-low currenttide))
+    (at 22327.3 (not (tide-low currenttide)))
 
 
-
-    (at 4596.52 (is-turbine-wp waypoint22 turbine5))
+    (is-turbine-wp waypoint22 turbine5)
 
     (not-recharging vehicle0)
 
 
 
-    (= (battery-level vehicle0) 71.1084)
+    (= (battery-level vehicle0) 0)
 
     (= (recharge-rate vehicle0) 0.05)
 
     (= (recharge-rate-dedicated vehicle0) 10)
 
-    (= (traverse-cost wp_init_auv0 waypoint20) 2.595)
+    (= (traverse-cost wp_init_auv0 waypoint20) 2.94)
     (= (traverse-cost waypoint20 waypoint22) 12.265)
 
     (= (speed vehicle0) 0.3)

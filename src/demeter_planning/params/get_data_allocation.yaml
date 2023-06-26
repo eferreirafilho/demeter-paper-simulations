@@ -1,3 +1,4 @@
 # Allocation of robots and data they are responsible for getting
+vehicle_idx: [0]
 # vehicle_idx: [0, 1]
-vehicle_idx: [0, 1, 2]
+# vehicle_idx: [0, 1, 2]

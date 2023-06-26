@@ -74,13 +74,15 @@ class PlotVehicles:
             if action=='cancel_action':
                 action = 'planning'
             elif action=='retrieve-data' and self.current_state_x > self.low_tides:
-                print(action)
                 action = 'retrieve-data (wait for low tide)'
             main_ax.text(x_vals[-1], y_vals[-1], 'auv{} ({})'.format(vehicle, action), fontsize=8, color=colors[vehicle])
 
         for i, (x, y) in enumerate(self.get_scaled_turbine_coordinates()):
             main_ax.plot(x, y, 'kd')
             main_ax.text(x+2, y+2, str(i), fontsize=8, color='black')
+
+        main_ax.text(0.98, 0.98, 'ROS Time: {:.0f} sec'.format(rospy.get_rostime().to_sec()), 
+                fontsize=7, horizontalalignment='right', verticalalignment='top', transform=main_ax.transAxes)
 
         main_ax.axis([-AXIS_LIMITS, AXIS_LIMITS, -AXIS_LIMITS, AXIS_LIMITS])  # set axis limits
 
@@ -118,10 +120,14 @@ class PlotVehicles:
             ax_tides.plot(self.current_state_x, current_state_y, 'ro')
             ax_tides.text(self.current_state_x+0.1, current_state_y+0.1, 'Tide not low', fontsize=8, color='red')
             
+      
+
+        
+            
         # Restrict the view to one full tide cycle
         ax_tides.set_xlim(0, 2*np.pi)   
         ax_tides.set_ylim(-1, 1)
-
+        
 if __name__ == '__main__':
     plotter = PlotVehicles()
     while not rospy.is_shutdown():
