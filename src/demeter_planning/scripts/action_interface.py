@@ -5,9 +5,8 @@ from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
-from std_msgs.msg import Float32, Float32MultiArray
+from std_msgs.msg import Bool
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
-from build_roadmaps import BuildRoadmaps
 
 class DemeterActionInterface(object):
 
@@ -47,9 +46,12 @@ class DemeterActionInterface(object):
         rospy.loginfo('Connecting ROS and Vehicle ...')
         # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10) # REAL ROBOT
         rospy.Subscriber(str(self.namespace)+'pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
+
         # Publishers
         # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) # REAL ROBOT
-        self.cmd_pose_pub=rospy.Publisher(str(self.namespace)+'cmd_pose',PoseStamped, queue_size=10)
+        self.cmd_pose_pub=rospy.Publisher(str(self.namespace)+'cmd_pose', PoseStamped, queue_size=10)
+        self.recharging_dedicated_pub = rospy.Publisher(str(self.namespace) + 'recharging_dedicated', Bool , queue_size=10)
+        self.recharging_dedicated_pub.publish(False) # Not recharging dedicated by default
         init_position = self.get_position()
         self.set_init_position_param(init_position)
         self._wait(2) 
@@ -191,15 +193,19 @@ class DemeterActionInterface(object):
         return response
     
     def do_harvest_energy(self, duration=rospy.Duration()):
-        rospy.logdebug('Interface: Mock \'harvest-energy (recharging) \' Action') # Actual action is handled in BatteryController class
+        rospy.logdebug('Interface: \'harvest-energy (recharging) \' Action') # Actual action is handled in BatteryController class
         start = rospy.Time.now()
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
                 self._rate.sleep()
-                completion_percentage = 'Harvesting energy (recharging) ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                self.recharging_dedicated_pub.publish(True) # Recharge
+
+                completion_percentage = 'MOCK Harvesting energy (recharging) ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
                 # rospy.loginfo_throttle(1,completion_percentage)
+        self.recharging_dedicated_pub.publish(False) # Stop Recharging
         response = self.ACTION_SUCCESS     
         # rospy.loginfo('Recharged!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
+            self.recharging_dedicated_pub.publish(False) # Stop Recharging
             response = self.OUT_OF_DURATION        
         return response
     
@@ -314,6 +320,7 @@ class DemeterActionInterface(object):
             rospy.logwarn(float(self.odom_pose.pose.pose.position.z))
             rospy.logwarn(float(self.SUBMERGED_Z))
             rospy.logwarn('submerged!!')
+            
             return True
         else:
             rospy.logwarn('surfaced!!')

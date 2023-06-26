@@ -32,7 +32,7 @@ class PopulateKB(object):
         self.RECHARGE_RATE_DEDICATED = 10 #TODO: Change here and in battery controller at the same time
 
         self.namespace = rospy.get_namespace()
-        sleep(1)
+        # sleep(1)
         self.battery_level_subscribers()
         # self.tides_subscribers()
         
@@ -54,7 +54,7 @@ class PopulateKB(object):
         
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
         # rospy.logwarn('self.distance_to_closer_wp: ' + str(self.distance_to_closer_wp))
-        sleep(1)
+        # sleep(1)
         self.allocated_goals = self.load_allocation()
                        
         self.add_goal_mission(self.allocated_goals[0])
@@ -75,6 +75,7 @@ class PopulateKB(object):
         self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
         # self.add_timed_initial_literals(current_time, True, 'empty', 'vehicle'+str(self.vehicle_id))
         self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
+        self.add_fact('idle', 'vehicle'+str(self.vehicle_id))
         # self.add_timed_initial_literals(current_time, True, 'not-recharging', 'vehicle'+str(self.vehicle_id))
         self.update_functions('battery-level', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.battery_level, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         rospy.logwarn('Battery: ' + str(self.battery_level))

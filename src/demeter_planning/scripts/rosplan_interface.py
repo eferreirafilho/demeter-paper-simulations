@@ -88,11 +88,7 @@ class DemeterInterface(object):
         if msg.name == 'move':
             self._action_threaded(msg, self.move, [msg.parameters, duration])
         elif msg.name == 'retrieve-data':
-            delay = start_time_secs - current_time
-            if delay > 0:  # Only delay if dispatch_time is in the future
-                rospy.Timer(rospy.Duration(delay), lambda _: self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration, start_time_secs]), oneshot=True)
-            else:
-                self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration, start_time_secs])
+            self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration, start_time_secs])
         elif msg.name == 'upload-data-histograms':
             self._action_threaded(msg, self.upload_data_histograms, [duration])
         elif msg.name == 'harvest-energy':
@@ -101,7 +97,6 @@ class DemeterInterface(object):
             self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
         elif msg.name == 'surface':
             self._action_threaded(msg, self.surface, [duration])
-
 
     def _action_threaded(self, action_dispatch, action_func, action_params=list()):
         # Create a new thread for the action function
@@ -113,7 +108,7 @@ class DemeterInterface(object):
         self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_ENABLED)
         start_time = rospy.Time(action_dispatch.dispatch_time)
         duration = rospy.Duration(action_dispatch.duration)
-        self._rate.sleep()
+        # self._rate.sleep()
         rospy.loginfo('Dispatching %s action at %s with duration %s ...' %(action_dispatch.name, str(start_time.secs), str(duration.to_sec())))   
             
         if action_func(*action_params) == self.demeter.ACTION_SUCCESS:

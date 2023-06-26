@@ -151,7 +151,6 @@
             (= ?duration 5)
         :condition (and 
             (at start  (is-submerged ?v))
-            (at start (> (battery-level ?v) 5))
             (over all (idle ?v))
         )
         :effect (and
@@ -161,7 +160,6 @@
             ; (at end (not-recharging ?v))
             (at start (not (idle ?v)))
             (at end (idle ?v))
-            (at start (decrease (battery-level ?v) 5))
         )
     )
     (:durative-action harvest-energy

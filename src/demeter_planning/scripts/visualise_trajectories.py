@@ -4,6 +4,7 @@ import rospy
 from nav_msgs.msg import Odometry
 from rosplan_dispatch_msgs.msg import ActionDispatch # Import the message type for action dispatch
 import numpy as np
+from std_msgs.msg import Float32  # import the Float32 message type for battery level
 
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -21,11 +22,13 @@ class PlotVehicles:
         number_of_vehicles = self.number_of_vehicles()
         self.positions = [([], [], []) for _ in range(number_of_vehicles)]
         self.latest_actions = [None for _ in range(number_of_vehicles)] # Store the latest action for each vehicle
-
+        self.battery_levels = [100 for _ in range(number_of_vehicles)]  # Store the battery levels for each vehicle
+        
         for vehicle in range(number_of_vehicles):
             rospy.Subscriber('/auv' + str(vehicle) + '/pose_gt', Odometry, self.update_position, vehicle)
             # Subscribe to the action topic for each vehicle
             rospy.Subscriber('/auv' + str(vehicle) + '/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self.update_action, vehicle)
+            rospy.Subscriber('/auv' + str(vehicle) + '/battery_level_emulated', Float32, self.update_battery, vehicle)
 
     def number_of_vehicles(self):
         return len(rospy.get_param("/goal_allocation/vehicle_idx"))
@@ -39,6 +42,10 @@ class PlotVehicles:
     def update_action(self, data, vehicle):
         # Store the latest action for the vehicle
         self.latest_actions[vehicle] = data.name
+        
+    def update_battery(self, data, vehicle):
+        # Store the latest battery level for the vehicle
+        self.battery_levels[vehicle] = data.data
         
     def get_tide_state(self):
         time = rospy.get_rostime().to_sec()
@@ -69,20 +76,24 @@ class PlotVehicles:
             main_ax.plot(x_vals[:min_len], y_vals[:min_len], colors[vehicle], alpha=0.5)
             main_ax.plot(x_vals[-1], y_vals[-1], colors[vehicle]+'o', markersize=marker_size)
 
-            # Display the vehicle name and action
+            # Display the vehicle name, action, and battery level
             action = self.latest_actions[vehicle]
             if action=='cancel_action':
                 action = 'planning'
             elif action=='retrieve-data' and self.current_state_x > self.low_tides:
                 action = 'retrieve-data (wait for low tide)'
-            main_ax.text(x_vals[-1], y_vals[-1], 'auv{} ({})'.format(vehicle, action), fontsize=8, color=colors[vehicle])
+            battery_level = self.battery_levels[vehicle]
+            main_ax.text(x_vals[-1], y_vals[-1], 'auv{} ({}): {}%'.format(vehicle, action, int(battery_level)), fontsize=8, color=colors[vehicle])
+
 
         for i, (x, y) in enumerate(self.get_scaled_turbine_coordinates()):
             main_ax.plot(x, y, 'kd')
             main_ax.text(x+2, y+2, str(i), fontsize=8, color='black')
 
+        # Add ROS time
         main_ax.text(0.98, 0.98, 'ROS Time: {:.0f} sec'.format(rospy.get_rostime().to_sec()), 
                 fontsize=7, horizontalalignment='right', verticalalignment='top', transform=main_ax.transAxes)
+
 
         main_ax.axis([-AXIS_LIMITS, AXIS_LIMITS, -AXIS_LIMITS, AXIS_LIMITS])  # set axis limits
 
