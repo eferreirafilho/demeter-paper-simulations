@@ -39,6 +39,7 @@ class ExecDemeter(object):
         self._cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch', Empty)
         rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
         self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
+
         try:
             rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
         except rospy.ServiceException as e:

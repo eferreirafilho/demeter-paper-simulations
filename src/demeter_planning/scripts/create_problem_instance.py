@@ -89,16 +89,16 @@ class PopulateKB(object):
         current_time = rospy.Time.now().to_sec()
         self.add_object('data'+str(target_turbine),'data')
         
-        # self.add_fact('is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
-        self.add_timed_initial_literals(current_time, True, 'is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
+        self.add_fact('is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
+        # self.add_timed_initial_literals(current_time, True, 'is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
         self.add_goal('data-sent', 'data'+str(target_turbine))
         # rospy.logwarn('target_turbine')
         # rospy.logwarn(target_turbine)
         sensor_contour_point = self.get_sensor_contour_points(target_turbine)
         # rospy.logwarn('sensor_contour_point')
         # rospy.logwarn(sensor_contour_point)
-        # self.add_fact('is-turbine-wp','waypoint'+str(sensor_contour_point),'turbine'+str(target_turbine))      
-        self.add_timed_initial_literals(current_time, True, 'is-turbine-wp','waypoint'+str(sensor_contour_point),'turbine'+str(target_turbine))      
+        self.add_fact('is-turbine-wp','waypoint'+str(sensor_contour_point),'turbine'+str(target_turbine))      
+        # self.add_timed_initial_literals(current_time, True, 'is-turbine-wp','waypoint'+str(sensor_contour_point),'turbine'+str(target_turbine))      
         
         
     def init_position_to_KB(self):

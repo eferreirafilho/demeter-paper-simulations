@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from uuv_gazebo_ros_plugins_msgs.msg import FloatStamped
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32, Bool
 from rosplan_dispatch_msgs.msg import ActionDispatch
 from threading import Lock
 
@@ -16,10 +16,12 @@ class BatteryController(object):
     def __init__(self):
         self.vehicle_idx = rospy.get_param("/goal_allocation/vehicle_idx")
         rospy.logwarn(self.vehicle_idx)
+        # Initialize is_submerged status for each AUV
+        self.is_submerged = [True] * len(self.vehicle_idx)
         self.vehicle_thruster_list = []
         self.mean_thruster_usage  = [0]*len(self.vehicle_idx)
-        self.recharging  = [1]*len(self.vehicle_idx)
-        self.recharging_dedicated  = [0]*len(self.vehicle_idx)
+        self.recharging  = [True]*len(self.vehicle_idx)
+        self.recharging_dedicated  = [False]*len(self.vehicle_idx)
         rospy.logwarn(self.mean_thruster_usage)
         self.battery_level = [INIT_BATTERY_LEVEL] * len(self.vehicle_idx)
         self.battery_pub = []
@@ -29,9 +31,10 @@ class BatteryController(object):
             thruster_list = [0] *NUMBER_OF_THRUSTERS
             self.vehicle_thruster_list.append(thruster_list)
             rospy.Subscriber("/auv"+ str(idx)+ "/battery_level_emulated", Float32, self.battery_level_callback, callback_args=idx)
+            rospy.Subscriber("/auv" + str(idx) + "/is_submerged", Bool, self.is_submerged_callback, callback_args=idx)
             battery_pub = rospy.Publisher("/auv" + str(idx) + "/battery_level_emulated", Float32, queue_size=1)
             self.battery_pub.append(battery_pub)
-
+            
         self.define_thrusters_subscribers()
         self.rate.sleep()
         
@@ -79,17 +82,36 @@ class BatteryController(object):
         self.vehicle_thruster_list[vehicle_idx][thruster_idx] = thruster_msg.data
         self.mean_thruster_usage = self.get_mean_thruster()
         
-    def action_dispatch_callback(self, msg, arg):
+    def action_dispatch_callback(self, msg, vehicle_idx):
         rospy.logwarn(msg.name)
         if msg.name == 'harvest-energy':
-            self.recharging_dedicated[arg] = 1
+            self.recharging_dedicated[vehicle_idx] = True
             rospy.logwarn('Harvesting energy (dedicated recharge)')
-        if msg.name == 'move' or msg.name == 'localize-cable' or msg.name == 'retrieve-data': # Actions that stop harvest-energy action
-            self.recharging_dedicated[arg] = 0
-        if msg.name == 'move' or msg.name == 'upload-data-histograms': # Actions on the surface
-            self.recharging[arg] = 1
         else:
-            self.recharging[arg] = 0
+            self.recharging_dedicated[vehicle_idx] = False
+        self.publish_battery_level()
+        
+            
+        # elif msg.name == 'move' or msg.name == 'localize-cable' or msg.name == 'retrieve-data': # Actions that stop harvest-energy action
+        #     self.recharging_dedicated[vehicle_idx] = False
+        # elif msg.name == 'move' or msg.name == 'upload-data-histograms': # Actions on the surface
+        #     self.recharging[vehicle_idx] = True
+        # elif self.is_submerged[vehicle_idx] == False:
+        #     self.recharging[vehicle_idx] = True
+        # else:
+        #     self.recharging[vehicle_idx] = False
+            
+    def is_submerged_callback(self, msg, vehicle_idx):
+        # Update is_submerged status for the AUV
+        self.is_submerged[vehicle_idx] = msg.data
+        if self.is_submerged[vehicle_idx] == False:
+            rospy.logwarn_throttle(4,'Rechargind normal')
+            self.recharging[vehicle_idx] = True
+        else:
+            rospy.logwarn_throttle(4,'NOT Rechargind normal')
+            
+            self.recharging[vehicle_idx] = False
+        self.publish_battery_level()
             
     def battery_level_callback(self, msg, vehicle_idx):
         self.battery_level[vehicle_idx] = msg.data
@@ -98,4 +120,4 @@ if __name__ == '__main__':
     rospy.loginfo('emulated_battery_monitor')
     rospy.init_node('emulated_battery_monitor')
     battery = BatteryController()
-    battery.publish_battery_level()
+    # battery.publish_battery_level()
