@@ -30,6 +30,7 @@ class PlotVehicles:
             rospy.Subscriber('/auv' + str(vehicle) + '/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self.update_action, vehicle)
             rospy.Subscriber('/auv' + str(vehicle) + '/battery_level_emulated', Float32, self.update_battery, vehicle)
 
+
     def number_of_vehicles(self):
         return len(rospy.get_param("/goal_allocation/vehicle_idx"))
 
@@ -51,11 +52,11 @@ class PlotVehicles:
         time = rospy.get_rostime().to_sec()
         time_in_tide_cycle = time % self.PERIOD_OF_TIDES  # get the current ROS time in seconds and use the remainder after dividing by P to simulate repeating cycle
         tide_state = np.cos(2*np.pi/3 + 2 * np.pi * time_in_tide_cycle / self.PERIOD_OF_TIDES)  # compute tide state as a sine wave
+        
         return tide_state
 
     def get_scaled_turbine_coordinates(self):
         return rospy.get_param('/goal_allocation/scaled_turbines_xy')
-
 
     def plot_positions(self):
         AXIS_LIMITS = 130
@@ -94,10 +95,6 @@ class PlotVehicles:
         main_ax.text(0.98, 0.98, 'ROS Time: {:.0f} sec'.format(rospy.get_rostime().to_sec()), 
                 fontsize=7, horizontalalignment='right', verticalalignment='top', transform=main_ax.transAxes)
 
-
-        main_ax.text(0.98, 0.98, 'ROS Time: {:.0f} sec'.format(rospy.get_rostime().to_sec()), 
-                fontsize=7, horizontalalignment='right', verticalalignment='top', transform=main_ax.transAxes)
-
         main_ax.axis([-AXIS_LIMITS, AXIS_LIMITS, -AXIS_LIMITS, AXIS_LIMITS])  # set axis limits
 
         # call plot_tides function to plot tides on a separate subplot
@@ -116,7 +113,6 @@ class PlotVehicles:
         # Plot the reference sine wave
         ax_tides.plot(x, y, 'b--')  # Plot it as a dashed line
 
-
         # Draw a horizontal line to indicate the lower third of the sine wave
         ax_tides.axhline(y=self.low_tides, color='k', linestyle='-')
         ax_tides.text(0.3, self.low_tides+0.1, 'Low tide threshold', fontsize=8, color='black')
@@ -124,8 +120,6 @@ class PlotVehicles:
         # Mark the current tide state on the sine wave
         self.current_state_x = 2 * np.pi * (rospy.get_rostime().to_sec() % self.PERIOD_OF_TIDES) / self.PERIOD_OF_TIDES
         
-        # print('current_state: ' + str(current_state_x))
-        # print(rospy.get_rostime().to_sec())
         current_state_y = self.get_tide_state()
         if current_state_y < self.low_tides:
             ax_tides.plot(self.current_state_x, current_state_y, 'bo')
@@ -133,11 +127,7 @@ class PlotVehicles:
         else:
             ax_tides.plot(self.current_state_x, current_state_y, 'ro')
             ax_tides.text(self.current_state_x+0.1, current_state_y+0.1, 'Tide not low', fontsize=8, color='red')
-            
       
-
-        
-            
         # Restrict the view to one full tide cycle
         ax_tides.set_xlim(0, 2*np.pi)   
         ax_tides.set_ylim(-1, 1)

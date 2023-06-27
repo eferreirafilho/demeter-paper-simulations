@@ -34,7 +34,6 @@ class PopulateKB(object):
         self.namespace = rospy.get_namespace()
         # sleep(1)
         self.battery_level_subscribers()
-        # self.tides_subscribers()
         
         self.rate = rospy.Rate(1)  # 1Hz
         self.start_time = rospy.get_time()        
@@ -355,11 +354,9 @@ class PopulateKB(object):
         
         self.add_timed_initial_literals(0, False, 'tide-low', 'currenttide') # Past tides
         
-        
         if time_integer*PERIOD_OF_TIDES < time < time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD: 
             self.add_timed_initial_literals(time, True, 'tide-low', 'currenttide') # Add tide low if it is low now
             self.add_timed_initial_literals(time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD, False, 'tide-low', 'currenttide') # If its low now add next not low
-            
         
         TIDES_SIMULATION_CYCLES = 5
         for i in range(TIDES_SIMULATION_CYCLES):
@@ -367,7 +364,6 @@ class PopulateKB(object):
                 self.add_timed_initial_literals(time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES*i, True, 'tide-low', 'currenttide')
             if time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES*i > time: # Only add future literals
                 self.add_timed_initial_literals(time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES*i + LOW_TIDES_THREDSHOLD, False, 'tide-low', 'currenttide')
-
 
 if __name__ == '__main__':
     rospy.logwarn('Populate KB for one vehicle, using its position')

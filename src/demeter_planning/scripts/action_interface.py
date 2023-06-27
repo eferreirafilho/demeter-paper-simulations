@@ -5,7 +5,7 @@ from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
 
 class DemeterActionInterface(object):
@@ -25,6 +25,8 @@ class DemeterActionInterface(object):
         """
         rospy.logwarn(namespace)
         self.namespace=namespace
+                
+
         self.wp_reached = -1
         self.init_position = []
         self.waypoints_position = ['']
@@ -37,6 +39,8 @@ class DemeterActionInterface(object):
         self._rate = rospy.Rate(update_frequency)
         wp_array = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
         self.number_of_turbines = self.get_number_of_turbines()
+        self.received_battery_level = False
+        self.battery_level = 0
         
         X = [wp[0] for wp in wp_array]
         Y = [wp[1] for wp in wp_array]
@@ -46,6 +50,7 @@ class DemeterActionInterface(object):
         rospy.loginfo('Connecting ROS and Vehicle ...')
         # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10) # REAL ROBOT
         rospy.Subscriber(str(self.namespace)+'pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
+        rospy.Subscriber(str(self.namespace)+'battery_level_emulated', Float32, self._battery_level_callback, queue_size=10)
 
         # Publishers
         # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) # REAL ROBOT
@@ -53,6 +58,7 @@ class DemeterActionInterface(object):
         self.recharging_dedicated_pub = rospy.Publisher(str(self.namespace) + 'recharging_dedicated', Bool , queue_size=10)
         self.recharging_dedicated_pub.publish(False) # Not recharging dedicated by default
         init_position = self.get_position()
+
         self.set_init_position_param(init_position)
         self._wait(2) 
             
@@ -62,6 +68,11 @@ class DemeterActionInterface(object):
         
     def _pose_gt_cb(self, msg):
         self.odom_pose = msg
+        
+    def _battery_level_callback(self, msg):
+        # Update battery level from callback
+        self.battery_level = msg.data
+        self.received_battery_level = True
 
     def load_submerge_wp_from_param(self):
         waypoints = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_z")]
@@ -88,18 +99,14 @@ class DemeterActionInterface(object):
 
     def set_inspected_times(self, turbine):
         '''Publish the time in which turbine was inspected'''
-
         time_turbine_inspected = rospy.Time.now()      
         turbines_inspected = [0]*self.number_of_turbines  
         # turbines_inspected = rospy.get_param('/goal_allocation/turbine_inspected')
-
         rospy.logwarn(turbines_inspected)
         #TODO check ('/goal_allocation/turbine_inspected parameter
-
         turbines_inspected[turbine] = time_turbine_inspected.to_sec()
         rospy.set_param('/goal_allocation/turbine_inspected', turbines_inspected)
         rospy.logwarn(turbines_inspected)
-        
         self._rate.sleep()
     
     # Actions
@@ -123,10 +130,23 @@ class DemeterActionInterface(object):
     
     def do_retrieve_data(self, turbine, duration=rospy.Duration(), start_time=0):
         # rospy.logwarn('Dispatch time: ' + str(start_time))
-        
-        # current_time = rospy.Time.now()
-        # current_time_secs = current_time.secs
-        # while current_time_secs <= start_time: # Do not dispatch actions that should be executed in the future
+        next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
+        action_finish_time = (rospy.Time.now().secs() + duration)
+        while not self.low_tide or action_finish_time >= next_shift_to_high_tide:
+            next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
+            action_finish_time = (rospy.Time.now().secs() + duration)
+            
+            rospy.logwarn_throttle_identical(5, 'Wait')
+            rospy.logwarn_throttle_identical(5, '(rospy.Time.now().secs() + duration): ' + str(action_finish_time))
+            rospy.logwarn_throttle_identical(5, 'next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
+            
+            if self.low_tide:
+                rospy.logwarn_throttle_identical(5, 'Tide: low')
+            else:
+                rospy.logwarn_throttle_identical(5, 'Tide: high')
+                
+            
+            
         #     rospy.logwarn_throttle_identical(5, 'Dispatch time: ' + str(start_time))
         #     rospy.logwarn_throttle_identical(5,'Current time: ' + str(current_time_secs))
         #     current_time = rospy.Time.now()
@@ -195,17 +215,14 @@ class DemeterActionInterface(object):
     def do_harvest_energy(self, duration=rospy.Duration()):
         rospy.logdebug('Interface: \'harvest-energy (recharging) \' Action') # Actual action is handled in BatteryController class
         start = rospy.Time.now()
-        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and not self.battery_level>=100:
                 self._rate.sleep()
-                self.recharging_dedicated_pub.publish(True) # Recharge
-
-                completion_percentage = 'MOCK Harvesting energy (recharging) ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-                # rospy.loginfo_throttle(1,completion_percentage)
-        self.recharging_dedicated_pub.publish(False) # Stop Recharging
+                self.recharging_dedicated_pub.publish(True) # Recharge dedicated
+        self.recharging_dedicated_pub.publish(False) # Stop Recharging dedicated
         response = self.ACTION_SUCCESS     
         # rospy.loginfo('Recharged!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
-            self.recharging_dedicated_pub.publish(False) # Stop Recharging
+            self.recharging_dedicated_pub.publish(False) # Stop Recharging dedicated
             response = self.OUT_OF_DURATION        
         return response
     
@@ -404,3 +421,24 @@ class DemeterActionInterface(object):
         orientation=self.get_orientation()
         # rospy.loginfo('Vehicle Halted! Position: ' + str(position))
         self.publish_cmd_pose(position,orientation)
+        
+    def compute_next_shift_to_high_tide_time(self):
+        if rospy.has_param('/period_of_tides'):   
+            PERIOD_OF_TIDES = rospy.get_param('/period_of_tides')
+        else:
+            rospy.logwarn("Parameter period_of_tides not set")
+        if rospy.has_param('/low_tides_thredshold'):   
+            LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+        else:
+            rospy.logwarn("Parameter low_tides_thredshold not set")
+        time = rospy.get_rostime().to_sec()
+        time_integer = time // PERIOD_OF_TIDES
+        if time < time_integer + LOW_TIDES_THREDSHOLD:
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently low tide -> high tide is in this cycle
+            self.low_tide = True
+        else:
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently high tide
+            self.low_tide = False
+
+        rospy.logwarn('next_shift_to_high_tide_time:' + str(next_shift_to_high_tide_time))
+        return next_shift_to_high_tide_time
