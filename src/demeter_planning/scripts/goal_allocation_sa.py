@@ -12,7 +12,7 @@ import rospy
 from nav_msgs.msg import Odometry
 
 # random.seed(15)
-TIME_WINDOW =  20 # Time limit (Hours) - Next high waves
+TIME_WINDOW =  100 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
 # START_TIME = 0 # Hours (0-12 - inside the rule of twelves)
 # SAFE_SUBMERGE_WINDOW = 4 # Hours (amount of safe hours inside a 12 hour windows - rule of twelves)
@@ -242,7 +242,7 @@ class Allocation(object):
                 if turbine_order_individual_vehicle == 0:
                     distance = distance_vehicle_to_graph[vehicle_idx]
                     distance += self.graph_distance(self.G_with_only_turbines, closer_node[vehicle_idx], turbine)
-                    time += distance # Assume that the time it takes to travel equals the distance
+                    time += distance + EXECUTE_TIME# Assume that the time it takes to travel equals the distance
                 else:
                     travel_time = self.graph_distance(self.G_with_only_turbines, previous_turbine, turbine)
                     distance += travel_time
@@ -252,13 +252,22 @@ class Allocation(object):
             if time > max_time:  # Only update max_time if the current vehicle took longer
                 max_time = time
         total_allocations = sum(len(sublist) for sublist in solution)
+        
         balanced = self.calculate_balance_score(solution)
 
         DELTA = float('Inf') if max_time > TIME_WINDOW else 0  # Penalty if total time exceeds the limit 
-               
+        # if max_time < TIME_WINDOW:
+        # rospy.logwarn('Max Time: ' + str(max_time))
+        # rospy.logwarn('Total distance: ' + str(total_distance))
+        # rospy.logwarn('Total allocations: ' + str(total_allocations))
+        # rospy.logwarn('Time: ' + str(time))
+        # # rospy.logwarn('Travel time: ' + str(travel_time))
+        # rospy.logwarn('Distance: ' + str(distance))
+        
+        
         cost = -ALPHA*total_distance + BETA*total_allocations + GAMMA*balanced - DELTA*max_time 
         
-        # rospy.loginfo_throttle(10, 'total distance: %s balance score: %s total allocations: %s max time: %s best cost: %s', 
+        # rospy.loginfo(10, 'total distance: %s balance score: %s total allocations: %s max time: %s best cost: %s', 
                     #    str(total_distance), str(balanced), str(total_allocations), str(max_time), str(cost))
         
         return cost

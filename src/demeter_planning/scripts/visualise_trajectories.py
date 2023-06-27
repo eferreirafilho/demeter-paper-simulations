@@ -81,8 +81,10 @@ class PlotVehicles:
             action = self.latest_actions[vehicle]
             if action=='cancel_action':
                 action = 'planning'
-            elif action=='retrieve-data' and self.current_state_x > self.low_tides:
+            if action=='retrieve-data' and self.current_state_y < self.low_tides:
                 action = 'retrieve-data (wait for low tide)'
+            if action=='retrieve-data' and self.current_state_y > self.low_tides:
+                action = 'retrieve-data'
             battery_level = self.battery_levels[vehicle]
             main_ax.text(x_vals[-1], y_vals[-1], 'auv{} ({}): {}%'.format(vehicle, action, int(battery_level)), fontsize=8, color=colors[vehicle])
 
@@ -120,13 +122,13 @@ class PlotVehicles:
         # Mark the current tide state on the sine wave
         self.current_state_x = 2 * np.pi * (rospy.get_rostime().to_sec() % self.PERIOD_OF_TIDES) / self.PERIOD_OF_TIDES
         
-        current_state_y = self.get_tide_state()
-        if current_state_y < self.low_tides:
-            ax_tides.plot(self.current_state_x, current_state_y, 'bo')
-            ax_tides.text(self.current_state_x+0.1, current_state_y+0.1, 'Low tide', fontsize=8, color='blue')
+        self.current_state_y = self.get_tide_state()
+        if self.current_state_y < self.low_tides:
+            ax_tides.plot(self.current_state_x, self.current_state_y, 'bo')
+            ax_tides.text(self.current_state_x+0.1, self.current_state_y+0.1, 'Low tide', fontsize=8, color='blue')
         else:
-            ax_tides.plot(self.current_state_x, current_state_y, 'ro')
-            ax_tides.text(self.current_state_x+0.1, current_state_y+0.1, 'Tide not low', fontsize=8, color='red')
+            ax_tides.plot(self.current_state_x, self.current_state_y, 'ro')
+            ax_tides.text(self.current_state_x+0.1, self.current_state_y+0.1, 'Tide not low', fontsize=8, color='red')
       
         # Restrict the view to one full tide cycle
         ax_tides.set_xlim(0, 2*np.pi)   

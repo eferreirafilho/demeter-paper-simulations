@@ -128,33 +128,30 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION
         return response
     
-    def do_retrieve_data(self, turbine, duration=rospy.Duration(), start_time=0):
+    def do_retrieve_data(self, turbine, duration=rospy.Duration()):
         # rospy.logwarn('Dispatch time: ' + str(start_time))
+        
+        rospy.logwarn_throttle(5, 'duration: ' + str(duration.to_sec()))
+
         next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-        action_finish_time = (rospy.Time.now().secs() + duration)
+        rospy.logwarn_throttle(5, 'next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
+        action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
+        rospy.logwarn_throttle(5, 'action_finish_time: ' + str(action_finish_time))
+        
         while not self.low_tide or action_finish_time >= next_shift_to_high_tide:
             next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-            action_finish_time = (rospy.Time.now().secs() + duration)
+            action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
             
-            rospy.logwarn_throttle_identical(5, 'Wait')
-            rospy.logwarn_throttle_identical(5, '(rospy.Time.now().secs() + duration): ' + str(action_finish_time))
-            rospy.logwarn_throttle_identical(5, 'next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
+            # rospy.logwarn_throttle(5, 'Wait')
+            rospy.logwarn_throttle(5, 'action_finish_time: ' + str(action_finish_time))
+            rospy.logwarn_throttle(5, 'next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
             
             if self.low_tide:
-                rospy.logwarn_throttle_identical(5, 'Tide: low')
+                rospy.logwarn_throttle(5, 'Tide: low')
             else:
-                rospy.logwarn_throttle_identical(5, 'Tide: high')
+                rospy.logwarn_throttle(5, 'Tide: high')
                 
-            
-            
-        #     rospy.logwarn_throttle_identical(5, 'Dispatch time: ' + str(start_time))
-        #     rospy.logwarn_throttle_identical(5,'Current time: ' + str(current_time_secs))
-        #     current_time = rospy.Time.now()
-        #     current_time_secs = current_time.secs
-        #     self._rate.sleep()
-            
-        # rospy.logwarn('DIVE!!!: ' + str(current_time_secs))
-        # rospy.logdebug('Interface: \'Inspect Turbine\' Action')
+        rospy.logwarn('Interface: \'Inspect Turbine\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position
@@ -170,13 +167,13 @@ class DemeterActionInterface(object):
                 while self.squared_distance(self.odom_pose.pose.pose.position, pos) > self.EPS_DISTANCE**2:
                     self.publish_position_fixed_orientation(pos)
                     completion_percentage = 'Inspecting turbine: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-                    # rospy.loginfo_throttle(1,completion_percentage)
+                    rospy.loginfo_throttle(1,completion_percentage)
                 self.set_inspected_times(turbine)               
             
             while self.squared_distance(self.odom_pose.pose.pose.position, start_pos) > self.EPS_DISTANCE**2:
                 self.publish_position_fixed_orientation(start_pos)
                 completion_percentage = 'Returning to submerge point: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-                # rospy.loginfo_throttle(1,completion_percentage)
+                rospy.loginfo_throttle(1,completion_percentage)
                 response = self.ACTION_SUCCESS   
                 
             # rospy.loginfo('Data acquired!')
@@ -433,12 +430,11 @@ class DemeterActionInterface(object):
             rospy.logwarn("Parameter low_tides_thredshold not set")
         time = rospy.get_rostime().to_sec()
         time_integer = time // PERIOD_OF_TIDES
-        if time < time_integer + LOW_TIDES_THREDSHOLD:
+        if time < (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD):
             next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently low tide -> high tide is in this cycle
             self.low_tide = True
         else:
             next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently high tide
             self.low_tide = False
-
-        rospy.logwarn('next_shift_to_high_tide_time:' + str(next_shift_to_high_tide_time))
+            
         return next_shift_to_high_tide_time
