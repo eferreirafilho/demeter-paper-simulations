@@ -3,49 +3,56 @@
 import rospy
 from exec_demeter import ExecDemeter 
 from create_problem_instance import PopulateKB
-from time import sleep
+from std_msgs.msg import Bool
 
-def shift_allocation_param():
-    param_name = str(rospy.get_namespace() + "goals_allocated")
-    # get the current list from the parameter server
-    current_list = rospy.get_param(param_name)
-    print(current_list)
-    # shift the list elements to the left by the given amount
-    shifted_list = current_list[1:] + current_list[:1]
-    # write the updated list back to the parameter server
-    rospy.set_param(param_name, shifted_list)
-    print(shifted_list)
+class ReallocationTrigger:
+    def __init__(self, topic, queue_size):
+        self.publisher = rospy.Publisher(topic, Bool, queue_size=queue_size)
+
+    def trigger(self):
+        rospy.logwarn('Trigger reallocation')
+        self.publisher.publish(True)
+
+class DemeterManager:
+    def __init__(self):
+        self.demeter = None
+
+    def mission_sequence(self):
+        self.demeter = ExecDemeter()
+        self.demeter.clear_KB()
+        PopulateKB()
+        while not self.demeter.mission_completed():
+            self.demeter.execute_plan()
+            rospy.logwarn('Vehicle: ' + str(rospy.get_namespace()) + 'execute plan')
+            self.demeter.clear_KB()
+            PopulateKB()  
+        self.demeter = None
+
+class PersistentPlanning:
+    def __init__(self, number_of_missions):
+        rospy.init_node('persistent_planning')
+        self.number_of_missions = number_of_missions
+        self.reallocation_trigger = ReallocationTrigger('/reallocation_trigger', 10)
+        self.demeter_manager = DemeterManager()
+        self.mission_counter = 0
+
+    def remove_first_allocated_goal(self):
+        param_name = str(rospy.get_namespace() + "goals_allocated")
+        current_list = rospy.get_param(param_name)
+        if current_list:
+            updated_goal_list = current_list[1:]
+            rospy.set_param(param_name, updated_goal_list)
+        else:
+            self.reallocation_trigger.trigger()
+            updated_goal_list = []
+
+    def run(self):
+        while self.mission_counter < self.number_of_missions:
+            self.demeter_manager.mission_sequence()
+            self.remove_first_allocated_goal()
+            self.mission_counter += 1
+        rospy.spin()
 
 if __name__ == '__main__':
-    print('Persistent Planning')
-    rospy.loginfo('Persistent Planning started')
-    rospy.init_node('persistent_planning')
-    NUMBER_OF_MISSIONS = 15 # For each vehicle
-    
-    mission_counter=0
-    while mission_counter < NUMBER_OF_MISSIONS:
-        demeter = ExecDemeter()
-        demeter.clear_KB()
-        # sleep(1)
-        populate = PopulateKB()  
-        #while not demeter.mission_success:
-        while not demeter.mission_completed():
-            # sleep(1)
-            
-            demeter.execute_plan()
-            rospy.logwarn('Vehicle: ' + str(rospy.get_namespace()) + 'execute plan')
-            # sleep(1)
-            demeter.clear_KB()
-            populate = PopulateKB()  
-            
-        # demeter.clear_KB()
-        # sleep(1)
-        demeter = None
-        populate = None
-        # sleep(1)
-        shift_allocation_param()        
-        # sleep(1)
-        rospy.logwarn('Persistent Goal: ' + str(mission_counter) + ' Successfull!!!')
-        mission_counter+=1
-    rospy.spin()
-    
+    persistent_planning = PersistentPlanning(15)
+    persistent_planning.run()

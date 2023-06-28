@@ -6,18 +6,18 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import pickle
 import roslib
-from rospkg import RosPack
 import re
 import rospy
 from nav_msgs.msg import Odometry
+from std_msgs.msg import Bool
+from time import sleep
 
 # random.seed(15)
-TIME_WINDOW =  100 # Time limit (Hours) - Next high waves
+TIME_WINDOW =  22 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
-# START_TIME = 0 # Hours (0-12 - inside the rule of twelves)
-# SAFE_SUBMERGE_WINDOW = 4 # Hours (amount of safe hours inside a 12 hour windows - rule of twelves)
 MAX_MISSION_DIFFERENCE = 1 # Number of unbalance allowed
 TURBINE_PERCENTAGE = 100 # in percentage % of turbines to keep
+
 # Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
 ALPHA = 0.1  # Focus on travelling less distances
@@ -26,7 +26,7 @@ GAMMA = 100 # Focused on balanced robots
 class Allocation(object):
     def __init__(self, turbines_to_be_allocated):
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
-        self._rate = rospy.Rate(10)
+        self._rate = rospy.Rate(1)
 
         self.G_with_only_turbines = self.load_graph_with_only_turbines()
         all_turbines, all_turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
@@ -41,7 +41,6 @@ class Allocation(object):
         try:
             param_time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
         except KeyError:
-            # param_time_of_turbines_last_inspection = [0] * len(self.turbines)
             #TODO check ('/goal_allocation/turbine_inspected parameter
             param_time_of_turbines_last_inspection = [random.randint(0, 20) for _ in range(len(all_turbines_idx))]
             rospy.set_param('/goal_allocation/turbine_inspected', param_time_of_turbines_last_inspection) # Set times to zero if first time allocating
@@ -58,10 +57,15 @@ class Allocation(object):
         rospy.logwarn(self.turbines)
         rospy.logwarn(self.turbines_idx)
         
+        self.reallocation_trigger = False
+        rospy.Subscriber("/reallocation_trigger", Bool, self._reallocation_trigger_callback)
+        self._update_vehicles_positions()
+        
+    def _update_vehicles_positions(self):
         self.gazebo_positions = {}
         
         for vehicle in range(self.number_of_vehicles):
-            rospy.Subscriber("/auv" + str(vehicle) + "/pose_gt", Odometry, self.pose_callback, vehicle)
+            rospy.Subscriber("/auv" + str(vehicle) + "/pose_gt", Odometry, self._pose_callback, vehicle)
         self._wait(2)
         self.vehicles = []
         while len(self.gazebo_positions) != self.number_of_vehicles:
@@ -71,11 +75,13 @@ class Allocation(object):
         self.vehicles = [self.gazebo_positions[key] for key in sorted(self.gazebo_positions.keys())]
         self._wait(1)
 
-        # vehicles = [[50, 60], [-30, 40]]
-        # self.vehicles = [[50, 60], [-30, 40], [20, -30]]
-        # vehicles = [[50, 60]]
         rospy.logwarn('VEHICLES: ' + str(self.vehicles))
-    
+        
+    def _reallocation_trigger_callback(self, msg):
+        self.reallocation_trigger = msg
+        rospy.logwarn('Realocation trigger inside goal allocation simulated annealing')
+        rospy.logwarn(self.reallocation_trigger)
+        
     def load_graph_with_only_turbines(self):
         '''Load precomputed Roadmap based on visibility graphs with only turbines'''
         with open(self.package_path + "/params/scaled_visibility_G_only_with_turbines.pickle", "rb") as f:
@@ -86,7 +92,7 @@ class Allocation(object):
         vehicles_idx = rospy.get_param("/goal_allocation/vehicle_idx")
         return len(vehicles_idx)
     
-    def pose_callback(self, msg, vehicle):
+    def _pose_callback(self, msg, vehicle):
         self.gazebo_positions[vehicle] = [msg.pose.pose.position.x, msg.pose.pose.position.y]
         
     def _wait(self, n_rate):
@@ -98,15 +104,11 @@ class Allocation(object):
         threshold = int(len(self.time_of_turbines_last_inspection) * TURBINE_PERCENTAGE/100) # Number of turbines to keep
         threshold = max(threshold, self.number_of_vehicles)
         items = list(zip(all_turbines_to_be_allocated_idx, self.time_of_turbines_last_inspection))
-        
         sorted_items = sorted(items, key=lambda x: x[1])
         lowest_items = sorted_items[:threshold]
-        
         lowest_indexes, lowest_values = map(list, zip(*lowest_items))
-        
         filtered_turbines = [all_turbines_to_be_allocated[all_turbines_to_be_allocated_idx.index(i)] for i in lowest_indexes]
         filtered_indexes = [all_turbines_to_be_allocated_idx[all_turbines_to_be_allocated_idx.index(i)] for i in lowest_indexes]
-
         return filtered_turbines, filtered_indexes
                 
     def get_turbine_positions(self, G_visibility):
@@ -149,7 +151,6 @@ class Allocation(object):
         nx.draw(G, pos = pos_dict, with_labels = True)
         plt.show()
         
-    
     def distance_vehicles_to_graph_nodes(self, graph):
         '''Compute the minimum distance from each vehicle to any node in the graph, along with the index of the closest node'''
         distance_vehicle_to_graph = []
@@ -163,25 +164,16 @@ class Allocation(object):
     
     def distance_point_to_segment(self, p, a, b):
         '''Compute the Euclidean distance from point p to the line segment from a to b'''
-        # vector from a to b
         ab = [b[i] - a[i] for i in range(len(a))]
-        # vector from a to p
         ap = [p[i] - a[i] for i in range(len(a))]
-
-        # scalar of ab that's closest to p
         t = sum(i*j for i, j in zip(ap, ab)) / sum(i*i for i in ab)
-
         if t <= 0:
-            # closer to a
             return self.euclidean_distance(p, a)
         elif t >= 1:
-            # closer to b
             return self.euclidean_distance(p, b)
-
         # projection point falls within the line segment
         projection = [a[i] + t*ab[i] for i in range(len(a))]
         return self.euclidean_distance(p, projection)
-
 
     def distance_vehicles_to_graph(self, graph):
         '''Compute the minimum distance from each vehicle to any edge in the graph, along with the index of the closest edge'''
@@ -195,7 +187,6 @@ class Allocation(object):
             closer_edge.append(closest_edge)
 
         return distance_vehicle_to_graph, closer_edge
-
     
     def check_if_first_allocation(self):
         first_allocation = True
@@ -221,16 +212,13 @@ class Allocation(object):
         alloc_size = [len(alloc) for alloc in allocation]
         max_size = max(alloc_size)
         min_size = min(alloc_size)
-
         # Calculate the balance score
         balance_score = 1/(0.1+(max_size - min_size)) #0.1 to shift values and not divide by zero in edge cases
-
         return balance_score
 
     def objective_function(self, solution):
         '''For each allocated turbines, consider the cost of travelling to that turbine plus the time it takes to inspect that turbine
         Also penalizes unbalanced allocations and forbid solutions that passes the allowed time window'''
-
         max_time = 0  # Maximum time a vehicle takes
         
         distance_vehicle_to_graph, closer_node = self.distance_vehicles_to_graph_nodes(self.G_with_only_turbines)
@@ -256,19 +244,8 @@ class Allocation(object):
         balanced = self.calculate_balance_score(solution)
 
         DELTA = float('Inf') if max_time > TIME_WINDOW else 0  # Penalty if total time exceeds the limit 
-        # if max_time < TIME_WINDOW:
-        # rospy.logwarn('Max Time: ' + str(max_time))
-        # rospy.logwarn('Total distance: ' + str(total_distance))
-        # rospy.logwarn('Total allocations: ' + str(total_allocations))
-        # rospy.logwarn('Time: ' + str(time))
-        # # rospy.logwarn('Travel time: ' + str(travel_time))
-        # rospy.logwarn('Distance: ' + str(distance))
-        
         
         cost = -ALPHA*total_distance + BETA*total_allocations + GAMMA*balanced - DELTA*max_time 
-        
-        # rospy.loginfo(10, 'total distance: %s balance score: %s total allocations: %s max time: %s best cost: %s', 
-                    #    str(total_distance), str(balanced), str(total_allocations), str(max_time), str(cost))
         
         return cost
 
@@ -292,18 +269,10 @@ class Allocation(object):
     
     def get_neighbour_solution(self, solution):
         '''Add or remove a allocation of a vehicle to a turbine'''
-        # solution = random.choice(self.remove_element_from_sublist(solution))
-        # rospy.logwarn('old solution')
-        # rospy.logwarn(solution)
         if random.random()>0.5:
             solution = self.add_element_to_sublist(self.turbines_idx, solution)
-            # rospy.logwarn('ADD')
         else:
             solution = self.remove_element_from_sublist(solution)
-            # rospy.logwarn('REMOVE')
-        # solution = random.choice([self.add_element_to_sublist(self.turbines_idx, solution), self.remove_element_from_sublist(solution)])
-        # rospy.logwarn('new solution')
-        # rospy.logwarn(solution)
         return solution
         
     def sigmoid(self, scaled_cost_diff, k=1):
@@ -332,7 +301,7 @@ class Allocation(object):
         temperature = INITIAL_TEMPERATURE
         # for iteration in range(MAX_ITERATIONS):
         iteration = 1 
-        while True:
+        while self.reallocation_trigger == False:
             # Create a neighboring solution by randonly adding or remove an vehicle-> turbine allocation or perturb the system with a new random solution
             new_solution = random.choice([self.get_neighbour_solution(current_solution), self.random_allocation()])
             # new_solution = self.get_neighbour_solution(current_solution)
@@ -342,24 +311,19 @@ class Allocation(object):
                 current_solution = new_solution
                 current_cost = new_cost
 
-            rospy.logwarn_throttle(5, f'Iter: {iteration} New solution: {new_solution} New cost: {new_cost}')
+            # rospy.logwarn_throttle(5, f'Iter: {iteration} New solution: {new_solution} New cost: {new_cost}')
 
             if new_cost > best_cost:
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
                 goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
-                rospy.logwarn(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')
+                rospy.logwarn(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
+            
+            if self.reallocation_trigger == True:
+                rospy.logwarn(f'Realocation triggered: {self.reallocation_trigger}')
             
             temperature *= COOLING_RATE
-            
             iteration+=1
-            
-            # print("Best solution:", best_solution)
-            # print("Best cost:", best_cost)
-            # print("temp:", temperature)
-           
-        print("Best solution:", best_solution)
-        print("Best cost:", best_cost)
         return best_solution, best_cost
 
     def plot_allocation(self, solution_G, allocation):
@@ -393,21 +357,12 @@ class Allocation(object):
 if __name__ == '__main__':
       
     rospy.init_node('goal_allocation', anonymous=True)
-    rospy.spin
-    
-    
-    turbines_to_be_allocated = [0, 1, 2, 3, 4, 5, 8, 10, 14]
-    
-    goal_allocation = Allocation(turbines_to_be_allocated)
-
-
-    best_solution, best_cost = goal_allocation.simulated_annealing()
-
-    # milp = goal_allocation.create_milp
-    # allocation, solution_G = goal_allocation.solve_milp(milp)
-    
-    # print(allocation)
-    # goal_allocation.set_solution_to_ros_param(best_solution)
-    # goal_allocation.plot_allocation(solution_G, allocation)
+    turbines_to_be_allocated = list(range(0, ))
+    while not rospy.is_shutdown():
+        goal_allocation = Allocation(turbines_to_be_allocated)
+        best_solution, best_cost = goal_allocation.simulated_annealing()
+        rospy.logwarn(f'Last Best solution: {best_solution} Best cost: {best_cost}')
+        goal_allocation = None
+        sleep(1)
     rospy.spin()    
-    
+        

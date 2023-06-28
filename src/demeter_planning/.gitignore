@@ -44,6 +44,5 @@
 *.DS_STORE
 *~
 
-# rope project
-.ropeproject/
-docs/
+# Demeter
+/src/ROSPlan
