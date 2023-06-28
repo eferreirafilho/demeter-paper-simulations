@@ -26,25 +26,25 @@ if __name__ == '__main__':
     while mission_counter < NUMBER_OF_MISSIONS:
         demeter = ExecDemeter()
         demeter.clear_KB()
-        sleep(1)
+        # sleep(1)
         populate = PopulateKB()  
         #while not demeter.mission_success:
         while not demeter.mission_completed():
-            sleep(1)
+            # sleep(1)
             
             demeter.execute_plan()
             rospy.logwarn('Vehicle: ' + str(rospy.get_namespace()) + 'execute plan')
-            sleep(1)
+            # sleep(1)
             demeter.clear_KB()
             populate = PopulateKB()  
             
         # demeter.clear_KB()
-        sleep(1)
+        # sleep(1)
         demeter = None
         populate = None
-        sleep(1)
+        # sleep(1)
         shift_allocation_param()        
-        sleep(1)
+        # sleep(1)
         rospy.logwarn('Persistent Goal: ' + str(mission_counter) + ' Successfull!!!')
         mission_counter+=1
     rospy.spin()

@@ -81,9 +81,10 @@ class PlotVehicles:
             action = self.latest_actions[vehicle]
             if action=='cancel_action':
                 action = 'planning'
-            if action=='retrieve-data' and self.current_state_y < self.low_tides:
+            if action=='retrieve-data' and self.get_tide_state() > self.low_tides:
                 action = 'retrieve-data (wait for low tide)'
-            if action=='retrieve-data' and self.current_state_y > self.low_tides:
+            if action=='retrieve-data' and self.get_tide_state() < self.low_tides:
+                
                 action = 'retrieve-data'
             battery_level = self.battery_levels[vehicle]
             main_ax.text(x_vals[-1], y_vals[-1], 'auv{} ({}): {}%'.format(vehicle, action, int(battery_level)), fontsize=8, color=colors[vehicle])

@@ -21,6 +21,8 @@ class DemeterInterface(object):
 
     mutex = Lock()
 
+    running_actions = {}
+    
     def __init__(self, demeter=None, update_frequency=10.):
         """
         A Class that interfaces ROSPlan and DEMETER for executing actions
@@ -82,23 +84,26 @@ class DemeterInterface(object):
     def _dispatch_cb(self, msg):
         duration = rospy.Duration(msg.duration)
         # Parse action message
-        if msg.name == 'move':
-            self._action_threaded(msg, self.move, [msg.parameters, duration])
-        elif msg.name == 'retrieve-data':
-            self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration])
-        elif msg.name == 'upload-data-histograms':
-            self._action_threaded(msg, self.upload_data_histograms, [duration])
-        elif msg.name == 'harvest-energy':
-            self._action_threaded(msg, self.harvest_energy, [duration])
-        elif msg.name == 'localize-cable':
-            self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
-        elif msg.name == 'surface':
-            self._action_threaded(msg, self.surface, [duration])
+        if msg.action_id not in self.running_actions:
+            if msg.name == 'move':
+                self._action_threaded(msg, self.move, [msg.parameters, duration])
+            elif msg.name == 'retrieve-data':
+                self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration])
+            elif msg.name == 'upload-data-histograms':
+                self._action_threaded(msg, self.upload_data_histograms, [duration])
+            elif msg.name == 'harvest-energy':
+                self._action_threaded(msg, self.harvest_energy, [duration])
+            elif msg.name == 'localize-cable':
+                self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
+            elif msg.name == 'surface':
+                self._action_threaded(msg, self.surface, [duration])
 
     def _action_threaded(self, action_dispatch, action_func, action_params=list()):
         # Create a new thread for the action function
         action_thread = threading.Thread(target=self._action, args=[action_dispatch, action_func, action_params])
         action_thread.start()
+        # Store the thread in the running actions
+        self.running_actions[action_dispatch.action_id] = action_thread
 
     def _action(self, action_dispatch, action_func, action_params=list()):
         self.current_action_id=action_dispatch.action_id
@@ -119,6 +124,8 @@ class DemeterInterface(object):
             self.publish_feedback(action_dispatch.action_id, ActionFeedback.ACTION_FAILED)
             rospy.logwarn('Action Failed - Timeout, action_id: ' + str(action_dispatch.action_id) + ' action_name: ' + str(action_dispatch.name) + ' action_dispatch.parameters: ' + str(action_dispatch.parameters))
             self.cancel_plan()
+        # At the end of the action, remove the thread from running actions
+        del self.running_actions[action_dispatch.action_id]
 
     def cancel_plan(self):
         _cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'/rosplan_plan_dispatcher/cancel_dispatch', Empty)

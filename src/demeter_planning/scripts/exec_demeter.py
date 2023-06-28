@@ -52,7 +52,7 @@ class ExecDemeter(object):
     
     def check_action_feedback(self,msg):
         if msg.status == ActionFeedback.ACTION_FAILED:
-            self._rate.sleep()
+            # self._rate.sleep()
             self.mission_success=False
             
     def resume_plan(self):
@@ -69,10 +69,10 @@ class ExecDemeter(object):
             rospy.logwarn('Planning attempt failed')
             self.mission_success=False
             return self.mission_success
-        self._rate.sleep()
+        # self._rate.sleep()
         rospy.loginfo('Execute mission plan ...')
         self._parser_proxy()
-        self._rate.sleep()
+        # self._rate.sleep()
         response = self._dispatch_proxy()
             
         if response.goal_achieved:
