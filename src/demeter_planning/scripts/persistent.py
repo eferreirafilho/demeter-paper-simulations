@@ -89,5 +89,5 @@ class PersistentPlanning:
         rospy.spin()
 
 if __name__ == '__main__':
-    persistent_planning = PersistentPlanning(1)
+    persistent_planning = PersistentPlanning(5)
     persistent_planning.run()

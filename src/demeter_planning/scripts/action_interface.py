@@ -72,7 +72,7 @@ class DemeterActionInterface(object):
         self.received_battery_level = True
 
     def load_submerge_wp_from_param(self):
-        waypoints = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_z")]
+        waypoints = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/underwater_waypoints_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/underwater_waypoints_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/underwater_waypoints_z")]
         return waypoints
 
     def load_origin_from_file(self):
