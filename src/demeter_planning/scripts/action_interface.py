@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 from cmath import pi, sqrt
-from random import randint
-from turtle import position
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
@@ -98,12 +96,10 @@ class DemeterActionInterface(object):
 
     def set_inspected_times(self, turbine):
         '''Publish the time in which turbine was inspected'''
-        time_turbine_inspected = rospy.Time.now()      
-        turbines_inspected = [0]*self.number_of_turbines  
-        # turbines_inspected = rospy.get_param('/goal_allocation/turbine_inspected')
+        time_turbine_inspected = rospy.Time.now().to_sec()
+        turbines_inspected = rospy.get_param('/goal_allocation/turbine_inspected')
         rospy.logwarn(turbines_inspected)
-        #TODO check ('/goal_allocation/turbine_inspected parameter
-        turbines_inspected[turbine] = time_turbine_inspected.to_sec()
+        turbines_inspected[turbine] = time_turbine_inspected
         rospy.set_param('/goal_allocation/turbine_inspected', turbines_inspected)
         rospy.logwarn(turbines_inspected)
         # self._rate.sleep()

@@ -13,10 +13,10 @@ from std_msgs.msg import Bool
 from time import sleep
 
 # random.seed(15)
-TIME_WINDOW =  22 # Time limit (Hours) - Next high waves
+TIME_WINDOW =  1000 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
 MAX_MISSION_DIFFERENCE = 1 # Number of unbalance allowed
-TURBINE_PERCENTAGE = 100 # in percentage % of turbines to keep
+TURBINE_PERCENTAGE = 50 # in percentage % of turbines to keep
 
 # Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
@@ -24,7 +24,7 @@ ALPHA = 0.1  # Focus on travelling less distances
 GAMMA = 100 # Focused on balanced robots
         
 class Allocation(object):
-    def __init__(self, turbines_to_be_allocated):
+    def __init__(self):
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self._rate = rospy.Rate(1)
 
@@ -33,29 +33,20 @@ class Allocation(object):
 
         rospy.logwarn('all_turbines: ' + str(all_turbines_idx))
 
-        all_turbines_to_be_allocated = [all_turbines[i] for i in turbines_to_be_allocated]
-        all_turbines_to_be_allocated_idx = [all_turbines_idx[i] for i in turbines_to_be_allocated]
-        
-        rospy.logwarn('Turbines to be allocated: ' + str(all_turbines_to_be_allocated))
-        current_time = rospy.get_rostime().to_sec()
-        try:
-            param_time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
-        except KeyError:
-            #TODO check ('/goal_allocation/turbine_inspected parameter
-            param_time_of_turbines_last_inspection = [random.randint(0, 20) for _ in range(len(all_turbines_idx))]
-            rospy.set_param('/goal_allocation/turbine_inspected', param_time_of_turbines_last_inspection) # Set times to zero if first time allocating
+        try: # Use memory of turbines inspected this ROS run
+            # param_time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
+            self.time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
+        except KeyError: # Turbines have not been inspected
+            rospy.set_param('/goal_allocation/turbine_inspected', [0]*len(all_turbines_idx)) # Set times to zero if first time allocating
 
-        param_time_of_turbines_last_inspection = param_time_of_turbines_last_inspection[0:len(all_turbines_to_be_allocated)] # get only parameters from turbines being used
-        rospy.logwarn('param_time_of_turbines_last_inspection: ' + str(param_time_of_turbines_last_inspection))
-        self.time_of_turbines_last_inspection = [current_time - x for x in param_time_of_turbines_last_inspection]
-        rospy.logwarn('How long ago a turbine was inspected: ' + str(self.time_of_turbines_last_inspection)) # How long ago a turbine was inspected
+        current_time = rospy.get_rostime().to_sec()
+        self.time_of_turbines_last_inspection = [current_time - x for x in [0]*len(all_turbines_idx)]
+        rospy.logwarn('How long ago turbines were inspected: ' + str(self.time_of_turbines_last_inspection)) # How long ago a turbine was inspected
         
         self.number_of_vehicles = self.get_number_of_vehicles()
-        self.original_turbines = all_turbines_to_be_allocated
-        self.turbines, self.turbines_idx = self.remove_turbines_visited_lately(all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx)
-        rospy.logwarn('after removing turbines: ')
-        rospy.logwarn(self.turbines)
-        rospy.logwarn(self.turbines_idx)
+        self.original_turbines = all_turbines
+        self.turbines, self.turbines_idx = self.remove_turbines_visited_lately(all_turbines, all_turbines_idx)
+        rospy.logwarn('after removing turbines: ' + str(self.turbines_idx))
         
         self.reallocation_trigger = False
         rospy.Subscriber("/reallocation_trigger", Bool, self._reallocation_trigger_callback)
@@ -357,9 +348,9 @@ class Allocation(object):
 if __name__ == '__main__':
       
     rospy.init_node('goal_allocation', anonymous=True)
-    turbines_to_be_allocated = list(range(0, ))
+    # number_of_turbines = (len(rospy.get_param('goal_allocation/scaled_turbines_xy')))
     while not rospy.is_shutdown():
-        goal_allocation = Allocation(turbines_to_be_allocated)
+        goal_allocation = Allocation()
         best_solution, best_cost = goal_allocation.simulated_annealing()
         rospy.logwarn(f'Last Best solution: {best_solution} Best cost: {best_cost}')
         goal_allocation = None

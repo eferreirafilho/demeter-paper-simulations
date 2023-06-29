@@ -110,31 +110,31 @@ class PlotVehicles:
         ax_tides = plt.subplot(gs[1])  # Place the tide plot in the second slot
 
         # Generate a sine wave to represent the tide cycle
-        x = np.linspace(0, 2*np.pi, self.PERIOD_OF_TIDES*100)
-        y = np.cos(x+2*np.pi/3)
+        x_rad = np.linspace(0, 2*np.pi, self.PERIOD_OF_TIDES*100)  # in radians
+        x_time = x_rad / (2 * np.pi) * self.PERIOD_OF_TIDES  # convert radians to time
+        y = np.cos(x_rad+2*np.pi/3)
 
         # Plot the reference sine wave
-        ax_tides.plot(x, y, 'b--')  # Plot it as a dashed line
+        ax_tides.plot(x_time, y, 'b--')  # Plot it as a dashed line
 
         # Draw a horizontal line to indicate the lower third of the sine wave
         ax_tides.axhline(y=self.low_tides, color='k', linestyle='-')
-        ax_tides.text(0.3, self.low_tides+0.1, 'Low tide threshold', fontsize=8, color='black')
+        ax_tides.text(0.1 * self.PERIOD_OF_TIDES, self.low_tides+0.1, 'Low tide threshold', fontsize=8, color='black')
 
         # Mark the current tide state on the sine wave
-        self.current_state_x = 2 * np.pi * (rospy.get_rostime().to_sec() % self.PERIOD_OF_TIDES) / self.PERIOD_OF_TIDES
-        
+        self.current_state_x = (rospy.get_rostime().to_sec() % self.PERIOD_OF_TIDES)
         self.current_state_y = self.get_tide_state()
         if self.current_state_y < self.low_tides:
             ax_tides.plot(self.current_state_x, self.current_state_y, 'bo')
-            ax_tides.text(self.current_state_x+0.1, self.current_state_y+0.1, 'Low tide', fontsize=8, color='blue')
+            ax_tides.text(self.current_state_x+0.2, self.current_state_y+0.2, 'Low tide', fontsize=8, color='blue')
         else:
             ax_tides.plot(self.current_state_x, self.current_state_y, 'ro')
-            ax_tides.text(self.current_state_x+0.1, self.current_state_y+0.1, 'Tide not low', fontsize=8, color='red')
-      
+            ax_tides.text(self.current_state_x+0.2, self.current_state_y+0.2, 'Tide not low', fontsize=8, color='red')
+
         # Restrict the view to one full tide cycle
-        ax_tides.set_xlim(0, 2*np.pi)   
+        ax_tides.set_xlim(0, self.PERIOD_OF_TIDES)
         ax_tides.set_ylim(-1, 1)
-        
+
 if __name__ == '__main__':
     plotter = PlotVehicles()
     while not rospy.is_shutdown():

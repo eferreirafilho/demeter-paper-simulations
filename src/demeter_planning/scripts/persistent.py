@@ -4,6 +4,10 @@ import rospy
 from exec_demeter import ExecDemeter 
 from create_problem_instance import PopulateKB
 from std_msgs.msg import Bool
+import pandas as pd
+import os
+from datetime import datetime
+
 
 class ReallocationTrigger:
     def __init__(self, topic, queue_size):
@@ -35,6 +39,27 @@ class PersistentPlanning:
         self.reallocation_trigger = ReallocationTrigger('/reallocation_trigger', 10)
         self.demeter_manager = DemeterManager()
         self.mission_counter = 0
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')  # Get current time in 'YYYYMMDDHHMMSS' format
+        rospy.logwarn(timestamp)
+        self.filename = 'missions_{}.csv'.format(timestamp)  # Create a filename with the timestamp
+        rospy.logwarn(self.filename)
+        self.missions_df = pd.DataFrame(columns=['vehicle_name', 'allocated_goal', 'time'])
+
+    def log_mission_data(self, vehicle_name, allocated_goal, time):
+        # Append new mission data to DataFrame
+        self.missions_df = self.missions_df.append({
+            'vehicle_name': vehicle_name,
+            'allocated_goal': allocated_goal,
+            'time': time
+        }, ignore_index=True)
+
+        # Save the updated DataFrame to the CSV file
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        rospy.logwarn(script_dir)
+        csv_path = os.path.join(script_dir, self.filename)
+        rospy.logwarn(csv_path)
+        rospy.logwarn(self.missions_df)
+        self.missions_df.to_csv(csv_path, sep=';', index=False)
 
     def remove_first_allocated_goal(self):
         param_name = str(rospy.get_namespace() + "goals_allocated")
@@ -45,14 +70,24 @@ class PersistentPlanning:
         else:
             self.reallocation_trigger.trigger()
             updated_goal_list = []
-
+            
     def run(self):
         while self.mission_counter < self.number_of_missions:
             self.demeter_manager.mission_sequence()
+            
+            # Get the vehicle name, allocated goal and time
+            vehicle_name = str(rospy.get_namespace())
+            allocated_goal = rospy.get_param(str(rospy.get_namespace() + "goals_allocated"), [])[0]  # The first goal in the list
+            mission_time = rospy.get_rostime().to_sec()  # This gives the time since node has started.
+            
+            # Log the mission data
+            self.log_mission_data(vehicle_name, allocated_goal, mission_time)
+
             self.remove_first_allocated_goal()
             self.mission_counter += 1
+
         rospy.spin()
 
 if __name__ == '__main__':
-    persistent_planning = PersistentPlanning(15)
+    persistent_planning = PersistentPlanning(1)
     persistent_planning.run()
