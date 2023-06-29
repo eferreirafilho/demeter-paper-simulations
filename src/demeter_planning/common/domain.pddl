@@ -1,10 +1,10 @@
-; Demeter Domain - Get data and measure vortexes
+; Demeter Domain - Get data
 
-(define (domain demeter-domain-with-weather) 
-    (:requirements :typing :fluents :timed-initial-literals :equality :preferences :constraints :durative-actions :duration-inequalities)
+(define (domain demeter-domain) 
+    (:requirements :typing :fluents :timed-initial-literals :equality :constraints :durative-actions :duration-inequalities)
 
     (:types
-        vehicle waypoint data vortex tide turbine
+        vehicle waypoint data tide turbine
     )
 
     (:functions
@@ -19,14 +19,11 @@
     (:predicates
         (can-move ?x - waypoint ?y - waypoint)
         (is-in ?d - data ?tu - turbine)
-        (is-in-vortex ?vx - vortex ?w - waypoint)
-        ; (been-at ?v - vehicle ?w - waypoint)
         (carry ?v - vehicle ?d - data)
         (at ?v - vehicle ?w - waypoint)
         (is-surfaced ?v - vehicle)
         (data-sent ?d - data)
         (empty ?v - vehicle)
-        (vortex-data-measured ?vx - vortex)
         (tide-low ?td - tide)
         (cable-localized ?tu - turbine)
         (is-turbine-wp ?w - waypoint ?tu - turbine)
@@ -79,7 +76,7 @@
     
     (:durative-action retrieve-data
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
-        :duration(= ?duration 50)
+        :duration(= ?duration 30)
         :condition (and 
             (over all (cable-localized ?tu))
             (over all (is-turbine-wp ?w ?tu))
@@ -88,6 +85,7 @@
             (over all (at ?v ?w))
             (at start (empty ?v))
             (at start (>= (battery-level ?v) 80))
+            (at start (is-surfaced ?v))
         )
         :effect (and 
             (at end (not (is-in ?d ?tu)))
@@ -101,27 +99,6 @@
             (at start (not (idle ?v)))
             (at end (idle ?v))
         )
-    )
-    (:durative-action measure-vortex
-        :parameters (?v - vehicle ?vx - vortex ?w - waypoint)
-        :duration(= ?duration 1)
-        :condition (and
-            (at start (is-in-vortex ?vx ?w))
-            (over all (at ?v ?w))
-            (at start (>= (battery-level ?v) 20))
-        )
-        :effect (and 
-            (at end (not (is-in-vortex ?vx ?w)))
-            (at start (decrease (battery-level ?v) 20))
-            (at start (not (is-surfaced ?v)))
-            (at end (is-surfaced ?v))
-            (at start (is-submerged ?v))
-            (at end (not (is-submerged ?v)))
-            (at end (vortex-data-measured ?vx))
-            ; (at end (increase (total-missions-completed ?v) 1))
-            (at start (not (idle ?v)))
-            (at end (idle ?v))
-    )
     )
 
     (:durative-action upload-data-histograms
@@ -138,11 +115,6 @@
             (at end (empty ?v))     
             (at start (decrease (battery-level ?v) 50))
             (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
-            ; (at end (increase (total-missions-completed ?v) 100))
-
-            ;not idle and idle effects commented allows for other actions to run in pararell with this
-            ; (at start (not (idle ?v)))
-            ; (at end (idle ?v))
             )
     )
      (:durative-action surface
@@ -156,8 +128,6 @@
         :effect (and
             (at end (not (is-submerged ?v)))
             (at end (is-surfaced ?v))
-            ; (at start (not (not-recharging ?v)))
-            ; (at end (not-recharging ?v))
             (at start (not (idle ?v)))
             (at end (idle ?v))
         )
@@ -170,15 +140,11 @@
                 )
         :condition (and 
             (over all (is-surfaced ?v))
-            ; (over all (at ?v ?w))
             (at start (< (battery-level ?v) 100))
-            ; (at start (not-recharging ?v))
             (over all (idle ?v))
         )
         :effect (and
             (at end (increase (battery-level ?v) (* ?duration (recharge-rate-dedicated ?v))))
-            ; (at start (not (not-recharging ?v)))
-            ; (at end (not-recharging ?v))
             (at start (not (idle ?v)))
             (at end (idle ?v))
         )

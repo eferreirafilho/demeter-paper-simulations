@@ -29,6 +29,7 @@ class DemeterManager:
             self.demeter.execute_plan()
             rospy.logwarn('Vehicle: ' + str(rospy.get_namespace()) + 'execute plan')
             self.demeter.clear_KB()
+            rospy.sleep(1)
             PopulateKB()  
         self.demeter = None
 
@@ -55,11 +56,16 @@ class PersistentPlanning:
 
         # Save the updated DataFrame to the CSV file
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        rospy.logwarn(script_dir)
         csv_path = os.path.join(script_dir, self.filename)
-        rospy.logwarn(csv_path)
-        rospy.logwarn(self.missions_df)
-        self.missions_df.to_csv(csv_path, sep=';', index=False)
+
+        # Check if file exists to avoid writing header multiple times
+        file_exists = os.path.isfile(csv_path)
+
+        with open(csv_path, 'a') as f:
+            self.missions_df.to_csv(f, sep=';', index=False, header=not file_exists)
+
+        # Clear the DataFrame after writing to file
+        self.missions_df = self.missions_df[0:0]
 
     def remove_first_allocated_goal(self):
         param_name = str(rospy.get_namespace() + "goals_allocated")
@@ -68,6 +74,7 @@ class PersistentPlanning:
             updated_goal_list = current_list[1:]
             rospy.set_param(param_name, updated_goal_list)
         else:
+            rospy.logwarn('Trigger realloc')
             self.reallocation_trigger.trigger()
             updated_goal_list = []
             
@@ -89,5 +96,5 @@ class PersistentPlanning:
         rospy.spin()
 
 if __name__ == '__main__':
-    persistent_planning = PersistentPlanning(5)
+    persistent_planning = PersistentPlanning(15)
     persistent_planning.run()

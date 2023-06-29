@@ -133,6 +133,10 @@ class PlotVehicles:
 
         # Restrict the view to one full tide cycle
         ax_tides.set_xlim(0, self.PERIOD_OF_TIDES)
+        x_ticks = [0, self.PERIOD_OF_TIDES/4, self.PERIOD_OF_TIDES/2, 3*self.PERIOD_OF_TIDES/4, self.PERIOD_OF_TIDES]
+        x_tick_labels = ['0', '3', '6', '9', '12']
+        ax_tides.set_xticks(x_ticks)
+        ax_tides.set_xticklabels(x_tick_labels)
         ax_tides.set_ylim(-1, 1)
 
 if __name__ == '__main__':
