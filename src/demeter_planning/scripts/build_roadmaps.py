@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
 import rospy
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -12,16 +12,17 @@ from rospkg import RosPack
 import pickle
 
 class BuildRoadmaps(object):
-
     def __init__(self):
         rospy.logwarn('Build Roadmaps')
         self._rate = rospy.Rate(10)
-        self.NUMBER_OF_COUNTOUR_POINTS = 5
-        self.DISTANCE_TO_TURBINE = 0.10
-        self.NUMBER_OF_TURBINES_CONSIDERED = 7
-        self.VISIBILITY_RADIUS = 1
-        self.BOUNDS_MAP = 25
+        self.DISTANCE_TO_TURBINE = 0.1
+        self.NUMBER_OF_TURBINES_CONSIDERED = 18
+        self.VISIBILITY_RADIUS = 1.2
+        self.BOUNDS_MAP = 50
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
+            
+    def set_number_of_contour_points(self, number):
+        self.NUMBER_OF_CONTOUR_POINTS = number        
             
     def load_turbines_xy(self):
         turbines_xy = rospy.get_param("/build_roadmaps/turbines_x"), rospy.get_param("/build_roadmaps/turbines_y")
@@ -53,15 +54,15 @@ class BuildRoadmaps(object):
         # Set corners as nodes
         for corner_point in corners:
             visibility_G.add_node(visibility_G.number_of_nodes(), pos = corner_point, description = 'corner', related_to = 'NaN')
-        obstacles = self.create_countor_point(turbines_xy)
+        obstacles = self.create_contour_point(turbines_xy)
 
-        # Set countor points as nodes
+        # Set contour points as nodes
         EPSILON = 0.001
         for turbine, obs in enumerate(obstacles):
             scaled_obs = self.scaled_obstacle(obs, scale_factor=1+EPSILON) # Scale obstacle a little to use the points in the visibility graph
             # points = np.concatenate((points, scaled_obs), axis=0)
-            for countor_point in scaled_obs:
-                visibility_G.add_node(max(visibility_G.nodes())+1, pos = countor_point, description = 'countor_point', related_to = turbine)
+            for contour_point in scaled_obs:
+                visibility_G.add_node(max(visibility_G.nodes())+1, pos = contour_point, description = 'contour_point', related_to = turbine)
 
         node_positions = []
         # Get all pos attributes concatenated in a numpy array
@@ -96,7 +97,8 @@ class BuildRoadmaps(object):
 
                     # If line between p1 and p2 is not obstructed, add an edge between them in visibility graph
                     if not obstructed:
-                        visibility_G.add_edge(node1, node2)
+                        visibility_G.add_edge(node1, node2, weight = dist)
+                        
                         
         return visibility_G, obstacles
 
@@ -116,13 +118,13 @@ class BuildRoadmaps(object):
         else:
             return False
     
-    def create_countor_point(self, turbines_xy): 
-        '''Countor points are considered obstacles in the visibility graph'''
-        countor_points=[]
+    def create_contour_point(self, turbines_xy): 
+        '''Contour points are considered obstacles in the visibility graph'''
+        contour_points=[]
         for turbine in range(self.NUMBER_OF_TURBINES_CONSIDERED):
-            obs_aux = self.generate_equidistant_points(turbines_xy[0][turbine], turbines_xy[1][turbine], self.NUMBER_OF_COUNTOUR_POINTS, self.DISTANCE_TO_TURBINE)
-            countor_points.append(obs_aux)
-        return countor_points
+            obs_aux = self.generate_equidistant_points(turbines_xy[0][turbine], turbines_xy[1][turbine], self.NUMBER_OF_CONTOUR_POINTS, self.DISTANCE_TO_TURBINE)
+            contour_points.append(obs_aux)
+        return contour_points
     
     def scaled_obstacle(self, obs, scale_factor):
         centroid = np.mean(obs, axis=0)
@@ -131,7 +133,7 @@ class BuildRoadmaps(object):
                                 (coord[1] - centroid[1]) * scale_factor + centroid[1]] for coord in obs])   
         return obs_scaled
     
-    def plot_visibility_graph(self, visibility_G, obstacles):
+    def plot_visibility_graph(self, visibility_G, obstacles=None):
         fig, ax = plt.subplots()
 
         # Plot the edges of the graph
@@ -145,25 +147,33 @@ class BuildRoadmaps(object):
             # Text in all nodes
             # plt.text(visibility_G.nodes[node]["pos"][0], visibility_G.nodes[node]["pos"][1], node, fontsize=9, color='black')
 
-        # Plot the obstacles
-        for i, obs in enumerate(obstacles):
-            obs_x = [point[0] for point in obs]
-            obs_y = [point[1] for point in obs]
-            obs_x.append(obs[0][0])
-            obs_y.append(obs[0][1])
+        if obstacles is not None:
+            # Plot the obstacles
+            for i, obs in enumerate(obstacles):
+                obs_x = [point[0] for point in obs]
+                obs_y = [point[1] for point in obs]
+                obs_x.append(obs[0][0])
+                obs_y.append(obs[0][1])
 
-            plt.fill(obs_x, obs_y, 'gray', alpha=0.4)
-            plt.plot(obs_x, obs_y, color='black', linewidth=1.0)
-            # Plot obstacle number
-            obs_center_x = sum(obs_x[:-1]) / len(obs_x[:-1])
-            obs_center_y = sum(obs_y[:-1]) / len(obs_y[:-1])
-            plt.text(obs_center_x, obs_center_y, str(i), fontsize=12, color='red')
-        
+                plt.fill(obs_x, obs_y, 'gray', alpha=0.4, label = 'Safe Regions')
+                plt.plot(obs_x, obs_y, color='red', linewidth = 1.0)
+                # Plot obstacle number
+                obs_center_x = sum(obs_x[:-1]) / len(obs_x[:-1])
+                obs_center_y = sum(obs_y[:-1]) / len(obs_y[:-1])
+                plt.text(0.9998*obs_center_x, 0.9998*obs_center_y, str(i), fontsize=12, color='black')
 
+        # Remove the text from axis
+        plt.gca().set_xticklabels([])
+        plt.gca().set_yticklabels([])
         ax.set_aspect('equal', adjustable='box')
         plt.xlabel("X")
         plt.ylabel("Y")
-        plt.title("Visibility Graph with Safe Regions")
+        plt.title("Visibility Graph based Roadmap")
+
+        # Manually set the legend
+        vis_safe_roads = plt.Line2D([], [], color='blue', linewidth=0.5, label='Safe roads')
+        vis_contour_points = plt.Line2D([], [], color='red', marker='o', markersize=5, label='Turbine contour points')
+        plt.legend(handles=[vis_safe_roads, vis_contour_points], loc='best')
         plt.show()
         
     def remove_disconected_nodes(self, graph):
@@ -182,11 +192,7 @@ class BuildRoadmaps(object):
         return graph, scaled_turbines_xy
         
     def add_turbines_to_graph(self, graph, turbines_xy):
-        
-        print(graph)
-        print(graph.nodes())
-        print(type(graph))
-        
+               
         for turbine in range(len(turbines_xy[0])):
             graph.add_node(max(graph.nodes)+1, pos = np.array([turbines_xy[0][turbine], turbines_xy[1][turbine]]), description = 'turbine', related_to = turbine)  
         return graph
@@ -196,7 +202,6 @@ class BuildRoadmaps(object):
         mapping = {node: i for i, node in enumerate(sorted(G))}
         rospy.logwarn(mapping)
         H = nx.relabel_nodes(G, mapping)
-                
         return H
     
     def plot_scaled_points(self, graph):
@@ -204,7 +209,7 @@ class BuildRoadmaps(object):
         for node, data in graph.nodes(data=True):
             if data['description'] == 'turbine':
                 ax.scatter(data['pos'][0], data['pos'][1], color='blue')
-            if data['description'] == 'countor_point':
+            if data['description'] == 'contour_point':
                 ax.scatter(data['pos'][0], data['pos'][1], color='red')
             if data['description'] == 'corner':
                 ax.scatter(data['pos'][0], data['pos'][1], color='gray')
@@ -308,7 +313,7 @@ class BuildRoadmaps(object):
     def set_waypoints_as_ros_parameters(self, graph):
         waypoints = []
         for node, data in graph.nodes(data=True):
-            if data['description'] != 'turbine': # Countor points and corners
+            if data['description'] != 'turbine': # Contour points and corners
                 waypoints.append(data['pos'])
         waypoints = [arr.tolist() for arr in waypoints]
         Z_POI_DISTANCE = -0.5
@@ -328,10 +333,11 @@ class BuildRoadmaps(object):
         filename = str(name) + ".pickle"
         yaml_path = os.path.join(self.package_path, "params", filename)
         with open(yaml_path, 'wb') as pickle_file:
-            pickle.dump(graph, pickle_file)
+            pickle.dump(graph, pickle_file, protocol=2)
    
     def draw_graph(self, graph):
-        nx.draw(graph, nx.get_node_attributes(graph, 'pos'), node_size=10, with_labels=False)
+        nx.draw(graph, nx.get_node_attributes(graph, 'pos'), node_size=10, with_labels=True)
+        
         plt.show()
         
     def get_scaled_nodes_xy(self, G):
@@ -356,7 +362,7 @@ class BuildRoadmaps(object):
     def remove_turbines_from_graph(self, graph):
         turbine_nodes = []
         for node, data in graph.nodes(data=True):
-            if data['description'] == 'turbine': # Countor points and corners
+            if data['description'] == 'turbine': # Contour points and corners
                 turbine_nodes.append(node)
         graph.remove_nodes_from(turbine_nodes)
         return graph
@@ -364,38 +370,73 @@ class BuildRoadmaps(object):
     def add_edges_to_turbines(self, graph):
         '''To be used for allocation purposes'''
         for node1, data1 in graph.nodes(data=True):
-            if data1['description'] == 'countor_point':
+            if data1['description'] == 'contour_point':
                 pos = data1['pos']
                 for node2, data2 in graph.nodes(data=True):
                     if data2['description'] == 'turbine' and data2['related_to'] == node1:
                         graph.add_edge(node1, node2)
         return graph
-                        
+    
+    def change_description(self, graph):
+        for node in graph.nodes():
+            node_data = graph.nodes[node]
+            if node_data['description'] == 'contour_point':
+                node_data['description'] = 'turbine'
+
+        return graph
+    
+    def build_and_save_roadmap_with_contour_points(self):
+        '''Build roadmap with contour points and save graph as a pickle file
+        Also save scaled turbines and waypoints as ROS parameters '''
+        NUMBER_OF_CONTOUR_POINTS = 4
+        self.set_number_of_contour_points(NUMBER_OF_CONTOUR_POINTS)
+        
+        visibility_G = self.build_roadmaps()
+        
+        # Create a new graph and scale
+        visibility_G_with_turbines = visibility_G.copy()
+        visibility_G_with_turbines = self.add_turbines_to_graph(visibility_G_with_turbines, self.load_turbines_xy())
+        scaled_visibility_G_with_turbines, scaled_turbines_xy = self.scale_graph(visibility_G_with_turbines)  
+          
+        self.define_turbines_in_world_launch(scaled_visibility_G_with_turbines, scaled_turbines_xy)
+        self.save_graph_to_file(scaled_visibility_G_with_turbines, 'scaled_visibility_G_with_contour_points')
+        self.set_scaled_turbines_as_ros_parameters(scaled_turbines_xy)
+
+        scaled_visibility_G = self.remove_turbines_from_graph(scaled_visibility_G_with_turbines)
+        self.set_waypoints_as_ros_parameters(scaled_visibility_G)
+        if nx.is_connected(visibility_G):
+            rospy.logwarn('Graph with contour points is connected, ok!')
+        else:
+            rospy.logwarn('Graph with contour points is not connected, create another roadmap!')
+            
+    def build_and_save_roadmap_only_with_turbines(self):
+        '''Build roadmap only with turbines and save graph as a pickle file'''
+        self.set_number_of_contour_points(1) # With only one contour point, the contour point is the turbine
+        
+        visibility_G = self.build_roadmaps()
+        
+        # Create a new graph and scale
+        visibility_G_with_turbines = visibility_G.copy()
+        visibility_G_with_turbines = self.add_turbines_to_graph(visibility_G_with_turbines, self.load_turbines_xy())
+        scaled_visibility_G_only_with_turbines, _ = self.scale_graph(visibility_G_with_turbines)  
+        scaled_visibility_G_only_with_turbines = self.remove_disconected_nodes(scaled_visibility_G_only_with_turbines)  
+        scaled_visibility_G_only_with_turbines = self.change_description(scaled_visibility_G_only_with_turbines)
+                  
+        self.save_graph_to_file(scaled_visibility_G_only_with_turbines, 'scaled_visibility_G_only_with_turbines')
+        self.plot_visibility_graph(scaled_visibility_G_only_with_turbines)
+        self.print_nodes_and_attributes(scaled_visibility_G_only_with_turbines)
+        
+        if nx.is_connected(scaled_visibility_G_only_with_turbines):
+            rospy.logwarn('Graph with only turbines is connected, ok!')
+        else:
+            rospy.logwarn('Graph with only turbines is not connected, create another roadmap!')
+
 if __name__ == '__main__':
     rospy.logdebug('Build Roadmaps.init')
     rospy.init_node('build_roadmaps', anonymous=True)
     
-    Roadmap = BuildRoadmaps()
-    visibility_G = Roadmap.build_roadmaps()
-       
-    # Print atributtes of graph:
-    # Roadmap.print_nodes_and_attributes(visibility_G)
+    roadmap_with_contour_points = BuildRoadmaps()
+    roadmap_with_contour_points.build_and_save_roadmap_with_contour_points()
     
-    # Create a new graph and scale
-    visibility_G_with_turbines = visibility_G.copy()
-    visibility_G_with_turbines = Roadmap.add_turbines_to_graph(visibility_G_with_turbines, Roadmap.load_turbines_xy())
-    scaled_visibility_G_with_turbines, scaled_turbines_xy = Roadmap.scale_graph(visibility_G_with_turbines)    
-    Roadmap.define_turbines_in_world_launch(scaled_visibility_G_with_turbines, scaled_turbines_xy)
-    Roadmap.save_graph_to_file(scaled_visibility_G_with_turbines, 'scaled_visibility_G_with_turbines')
-
-    Roadmap.set_scaled_turbines_as_ros_parameters(scaled_turbines_xy)
-
-    scaled_visibility_G = Roadmap.remove_turbines_from_graph(scaled_visibility_G_with_turbines)
-    # Roadmap.print_nodes_and_attributes(scaled_visibility_G)
-    Roadmap.set_waypoints_as_ros_parameters(scaled_visibility_G)
-    
-    if nx.is_connected(visibility_G):
-        rospy.logwarn('Graph is connected, ok!')
-    else:
-        rospy.logwarn('Graph is not connected, create another roadmap!')
-    # Roadmap.plot_scaled_points(scaled_visibility_G_with_turbines)
+    roadmap_with_only_turbines = BuildRoadmaps()
+    roadmap_with_only_turbines.build_and_save_roadmap_only_with_turbines()

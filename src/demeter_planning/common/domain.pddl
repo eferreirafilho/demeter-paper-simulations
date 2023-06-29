@@ -12,7 +12,7 @@
         (recharge-rate ?v - vehicle)
         (recharge-rate-dedicated ?v - vehicle)
         (traverse-cost ?f - waypoint ?t - waypoint )
-        (total-missions-completed ?v - vehicle)
+        ; (total-missions-completed ?v - vehicle)
         (speed ?v - vehicle)
     )
 
@@ -37,7 +37,7 @@
     ;define actions here
     (:durative-action move
         :parameters (?v - vehicle ?y ?z - waypoint)
-        :duration(= ?duration (* (traverse-cost ?y ?z) (speed ?v)))
+        :duration(= ?duration (/ (traverse-cost ?y ?z) (speed ?v)))
         :condition (and 
             (over all (can-move ?y ?z)) 
             (at start (at ?v ?y))
@@ -75,10 +75,11 @@
             (at end (not (is-surfaced ?v)))
         )
     )
+
     
-    (:durative-action submerge-mission
+    (:durative-action retrieve-data
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
-        :duration(= ?duration 200)
+        :duration(= ?duration 50)
         :condition (and 
             (over all (cable-localized ?tu))
             (over all (is-turbine-wp ?w ?tu))
@@ -117,13 +118,13 @@
             (at start (is-submerged ?v))
             (at end (not (is-submerged ?v)))
             (at end (vortex-data-measured ?vx))
-            (at end (increase (total-missions-completed ?v) 1))
+            ; (at end (increase (total-missions-completed ?v) 1))
             (at start (not (idle ?v)))
             (at end (idle ?v))
     )
     )
 
-    (:durative-action transmit-data
+    (:durative-action upload-data-histograms
         :parameters (?v - vehicle ?d - data)
         :duration (= ?duration 2)
         :condition (and 
@@ -137,7 +138,7 @@
             (at end (empty ?v))     
             (at start (decrease (battery-level ?v) 50))
             (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
-            (at end (increase (total-missions-completed ?v) 100))
+            ; (at end (increase (total-missions-completed ?v) 100))
 
             ;not idle and idle effects commented allows for other actions to run in pararell with this
             ; (at start (not (idle ?v)))
@@ -150,7 +151,6 @@
             (= ?duration 5)
         :condition (and 
             (at start  (is-submerged ?v))
-            (at start (> (battery-level ?v) 5))
             (over all (idle ?v))
         )
         :effect (and
@@ -160,10 +160,9 @@
             ; (at end (not-recharging ?v))
             (at start (not (idle ?v)))
             (at end (idle ?v))
-            (at start (decrease (battery-level ?v) 5))
         )
     )
-    (:durative-action wait-to-recharge
+    (:durative-action harvest-energy
         :parameters (?v - vehicle)
         :duration 
             (= ?duration

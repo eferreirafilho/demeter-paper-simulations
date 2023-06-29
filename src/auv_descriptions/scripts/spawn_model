@@ -376,8 +376,7 @@ class SpawnModel():
                 unpause_physics()
             except rospy.ServiceException as e:
                 rospy.logerr("unpause physics service call failed: %s", str(e))
-        return
-
+    
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
