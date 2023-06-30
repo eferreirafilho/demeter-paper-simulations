@@ -27,7 +27,7 @@ class DemeterManager:
         PopulateKB()
         while not self.demeter.mission_completed():
             self.demeter.execute_plan()
-            rospy.logwarn('Vehicle: ' + str(rospy.get_namespace()) + 'execute plan')
+            # rospy.logwarn('Vehicle: ' + str(rospy.get_namespace()) + 'execute plan')
             self.demeter.clear_KB()
             rospy.sleep(1)
             PopulateKB()  
@@ -41,9 +41,9 @@ class PersistentPlanning:
         self.demeter_manager = DemeterManager()
         self.mission_counter = 0
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')  # Get current time in 'YYYYMMDDHHMMSS' format
-        rospy.logwarn(timestamp)
+        # rospy.logwarn(timestamp)
         self.filename = 'missions_{}.csv'.format(timestamp)  # Create a filename with the timestamp
-        rospy.logwarn(self.filename)
+        # rospy.logwarn(self.filename)
         self.missions_df = pd.DataFrame(columns=['vehicle_name', 'allocated_goal', 'time'])
 
     def log_mission_data(self, vehicle_name, allocated_goal, time):
@@ -74,7 +74,7 @@ class PersistentPlanning:
             updated_goal_list = current_list[1:]
             rospy.set_param(param_name, updated_goal_list)
         else:
-            rospy.logwarn('Trigger realloc')
+            # rospy.logwarn('Trigger realloc')
             self.reallocation_trigger.trigger()
             updated_goal_list = []
             

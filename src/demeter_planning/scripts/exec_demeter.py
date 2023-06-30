@@ -16,13 +16,13 @@ from create_problem_instance import PopulateKB
 class ExecDemeter(object):
     def __init__(self, update_frequency=4.):
         self._rate = rospy.Rate(update_frequency)
-        rospy.sleep(5) # Wait for allocation
+        # rospy.sleep(1) # Wait for allocation
         self.namespace = self.get_namespace()
         self.demeter_rosplan_interface = DemeterInterface(demeter=DemeterActionInterface(namespace=self.namespace))
         self.mission_success = False
         self.goal_state = list()
         self.rosplan_services()
-        rospy.sleep(2) # Wait for planning
+        # rospy.sleep(2) # Wait for planning
                
     def rosplan_services(self):
         # Service proxies: Problem Generation, Planning, Parsing, Dispatching
@@ -62,14 +62,14 @@ class ExecDemeter(object):
         rospy.logwarn('Generating mission plan ...')
         self._problem_proxy()
         self._rate.sleep()
-        rospy.logwarn('1 Planning ...')
+        # rospy.logwarn('1 Planning ...')
         try: 
-            rospy.logwarn('2 Planning ...')
+            # rospy.logwarn('2 Planning ...')
             self._rate.sleep()
             
             self._planner_proxy()
             self._rate.sleep()
-            rospy.logwarn('3 Planning ...')
+            # rospy.logwarn('3 Planning ...')
             
         except:
             rospy.logwarn('Planning attempt failed')

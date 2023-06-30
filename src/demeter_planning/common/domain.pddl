@@ -25,9 +25,10 @@
         (data-sent ?d - data)
         (empty ?v - vehicle)
         (tide-low ?td - tide)
+        ; (not-low-tide ?td - tide)
+        ; (waiting-for-tide ?v - vehicle ?td - tide)
         (cable-localized ?tu - turbine)
         (is-turbine-wp ?w - waypoint ?tu - turbine)
-        (not-recharging ?v - vehicle)
         (idle ?v - vehicle)
     (is-submerged ?v - vehicle)
 )
@@ -46,7 +47,7 @@
             ; (at end (been-at ?v ?y))
             (at start (not (at ?v ?y)))
             (at start (decrease (battery-level ?v) (traverse-cost ?y ?z)))
-            (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
+            ; (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
             (at start (not (idle ?v)))
             (at end (idle ?v))
             )
@@ -55,7 +56,7 @@
     ;define actions here
     (:durative-action localize-cable
         :parameters (?v - vehicle ?w - waypoint ?tu - turbine)
-        :duration(= ?duration 5)
+        :duration(= ?duration 10)
         :condition (and 
             (at start (at ?v ?w))
             (over all (is-turbine-wp ?w ?tu))
@@ -65,7 +66,7 @@
         :effect (and 
             (at end (cable-localized ?tu))
             (at start (decrease (battery-level ?v) 5))
-            (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
+            ; (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
             (at start (not (idle ?v)))
             (at end (idle ?v))
             (at end (is-submerged ?v))
@@ -73,7 +74,22 @@
         )
     )
 
-    
+    ; (:durative-action wait-for-low-tide
+    ;     :parameters (?v - vehicle ?td - tide)
+    ;     :duration (= ?duration 1)
+    ;     :condition (and 
+    ;         (at start (not-low-tide ?td))
+    ;         ; (over all (idle ?v))
+    ;         (over all (is-surfaced ?v))
+    ;     )
+    ;     :effect (and 
+    ;         (at start (waiting-for-tide ?v ?td))
+    ;         (at end (not (waiting-for-tide ?v ?td)))
+    ;         (at start (not (idle ?v)))
+    ;         (at end (idle ?v))
+    ;     )
+    ; )
+
     (:durative-action retrieve-data
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
         :duration(= ?duration 30)
@@ -84,7 +100,7 @@
             (over all (is-in ?d ?tu))
             (over all (at ?v ?w))
             (at start (empty ?v))
-            (at start (>= (battery-level ?v) 80))
+            (at start (>= (battery-level ?v) 100))
             (at start (is-surfaced ?v))
         )
         :effect (and 
@@ -114,13 +130,13 @@
             (at end (data-sent ?d))
             (at end (empty ?v))     
             (at start (decrease (battery-level ?v) 50))
-            (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
+            ; (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
             )
     )
      (:durative-action surface
         :parameters (?v - vehicle)
         :duration 
-            (= ?duration 5)
+            (= ?duration 2)
         :condition (and 
             (at start  (is-submerged ?v))
             (over all (idle ?v))
@@ -133,20 +149,18 @@
         )
     )
     (:durative-action harvest-energy
-        :parameters (?v - vehicle)
-        :duration 
-            (= ?duration
-                (/ (- 100 (battery-level ?v)) (recharge-rate-dedicated ?v))
-                )
-        :condition (and 
-            (over all (is-surfaced ?v))
-            (at start (< (battery-level ?v) 100))
-            (over all (idle ?v))
-        )
-        :effect (and
-            (at end (increase (battery-level ?v) (* ?duration (recharge-rate-dedicated ?v))))
-            (at start (not (idle ?v)))
-            (at end (idle ?v))
-        )
+    :parameters (?v - vehicle)
+    :duration (= ?duration 1) ; fixed duration
+    :condition (and 
+        (over all (is-surfaced ?v))
+        (at start (< (battery-level ?v) 100))
+        (over all (idle ?v))
     )
+    :effect (and
+        (at end (increase (battery-level ?v) (recharge-rate-dedicated ?v))) ; increase battery level by recharge-rate-dedicated per time unit
+        (at start (not (idle ?v)))
+        (at end (idle ?v))
+    )
+)
+
 )

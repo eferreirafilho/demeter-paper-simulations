@@ -47,6 +47,7 @@ class DemeterInterface(object):
         # Publishers
         self._feedback_publisher = rospy.Publisher(str(self.namespace) +'rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
         self._rate = rospy.Rate(update_frequency)
+        
 
         # Auto call functions
         rospy.Timer(self._rate.sleep_dur, self.knowledge_update)
@@ -83,6 +84,9 @@ class DemeterInterface(object):
 
     def _dispatch_cb(self, msg):
         duration = rospy.Duration(msg.duration)
+        if msg.action_id==0: # First action of the plan
+            self.plan_start_time = rospy.get_rostime().to_sec()
+            
         # Parse action message
         if msg.action_id not in self.running_actions:
             if msg.name == 'move':
@@ -111,7 +115,14 @@ class DemeterInterface(object):
         start_time = rospy.Time(action_dispatch.dispatch_time)
         duration = rospy.Duration(action_dispatch.duration)
         # self._rate.sleep()
-        rospy.loginfo('Dispatching %s action at %s with duration %s ...' %(action_dispatch.name, str(start_time.secs), str(duration.to_sec())))   
+        current_time = rospy.get_rostime().to_sec()
+        action_dispatch_time = start_time.secs + self.plan_start_time
+        rospy.logwarn('Dispatching %s action at %s with duration %s | current time %s' %(action_dispatch.name, str(action_dispatch_time), str(duration.to_sec()) , str(current_time)))   
+        if action_dispatch_time > current_time:
+            rospy.logwarn('Action dispatch is ' + str(action_dispatch_time - current_time) + ' early')
+        else:
+            rospy.logwarn('Action dispatch is ' + str(current_time - action_dispatch_time) + ' delayed')
+            
             
         if action_func(*action_params) == self.demeter.ACTION_SUCCESS:
             if self._apply_operator_effect(action_dispatch.name,action_dispatch.parameters):
@@ -242,3 +253,23 @@ class DemeterInterface(object):
     def surface(self, duration=rospy.Duration(60, 0)):
         response = self.demeter.do_surface(duration)
         return response
+    
+    def compute_next_shift_to_high_tide_time(self):
+        if rospy.has_param('/period_of_tides'):   
+            PERIOD_OF_TIDES = rospy.get_param('/period_of_tides')
+        else:
+            rospy.logwarn("Parameter period_of_tides not set")
+        if rospy.has_param('/low_tides_thredshold'):   
+            LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+        else:
+            rospy.logwarn("Parameter low_tides_thredshold not set")
+        time = rospy.get_rostime().to_sec()
+        time_integer = time // PERIOD_OF_TIDES
+        if time < (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD):
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently low tide -> high tide is in this cycle
+            self.low_tide = True
+        else:
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently high tide
+            self.low_tide = False
+            
+        return next_shift_to_high_tide_time

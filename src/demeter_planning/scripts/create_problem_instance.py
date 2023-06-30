@@ -25,21 +25,21 @@ class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
-        self.SCALE_TRAVERSE_COSTS = 0.5
-        self.SPEED = 0.3 # Scale speed 
+        self.SCALE_TRAVERSE_COSTS = 1
+        self.SPEED = 0.5 # Scale speed 
         self.FULL_BATTERY = 20 # TODO: keep track of battery
         self.RECHARGE_RATE = 0.05 # While doing other tasks #TODO: Change here and in battery controller at the same time
         self.RECHARGE_RATE_DEDICATED = 10 #TODO: Change here and in battery controller at the same time
 
         self.namespace = rospy.get_namespace()
-        # sleep(1)
+        rospy.sleep(1)
         self.battery_level_subscribers()
         
         self.rate = rospy.Rate(1)  # 1Hz
         self.start_time = rospy.get_time()        
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self.vehicle_id = self.extract_number_from_string(self.namespace)
-        rospy.logwarn('Create Problem - Populating auv ' + str(self.vehicle_id) + ' KB with robots initial position and goals')
+        # rospy.logwarn('Create Problem - Populating auv ' + str(self.vehicle_id) + ' KB with robots initial position and goals')
         action_interface_object = DemeterActionInterface(self.namespace)
         self.position = action_interface_object.get_position()
         action_interface_object.set_init_position_param(self.position)  
@@ -72,10 +72,10 @@ class PopulateKB(object):
         self.add_object('currenttide', 'tide')
         self.add_fact('is-surfaced', 'vehicle'+str(self.vehicle_id))
         self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
-        self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
+        # self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
         self.add_fact('idle', 'vehicle'+str(self.vehicle_id))
         self.update_functions('battery-level', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.battery_level, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-        rospy.logwarn('Battery: ' + str(self.battery_level))
+        # rospy.logwarn('Battery: ' + str(self.battery_level))
         self.update_functions('recharge-rate', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('recharge-rate-dedicated', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE_DEDICATED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         # self.update_functions('total-missions-completed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], 0, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
@@ -320,9 +320,9 @@ class PopulateKB(object):
         time = rospy.get_rostime().to_sec()
         time_in_tide_cycle = time % PERIOD_OF_TIDES  # get the current ROS time in seconds and use the remainder after dividing by P to simulate repeating cycle
         time_integer = time // PERIOD_OF_TIDES
-        rospy.logwarn("time: " + str(time))
-        rospy.logwarn("time in tide cycle: " + str(time_in_tide_cycle))
-        rospy.logwarn("time integer: " + str(time_integer))
+        # rospy.logwarn("time: " + str(time))
+        # rospy.logwarn("time in tide cycle: " + str(time_in_tide_cycle))
+        # rospy.logwarn("time integer: " + str(time_integer))
         
         self.add_timed_initial_literals(0, False, 'tide-low', 'currenttide') # Past tides
         
