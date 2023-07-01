@@ -84,7 +84,8 @@ class PersistentPlanning:
             
             # Get the vehicle name, allocated goal and time
             vehicle_name = str(rospy.get_namespace())
-            allocated_goal = rospy.get_param(str(rospy.get_namespace() + "goals_allocated"), [])[0]  # The first goal in the list
+            if rospy.get_param(str(rospy.get_namespace() + "goals_allocated")) != []:
+                allocated_goal = rospy.get_param(str(rospy.get_namespace() + "goals_allocated"), [])[0]  # The first goal in the list
             mission_time = rospy.get_rostime().to_sec()  # This gives the time since node has started.
             
             # Log the mission data

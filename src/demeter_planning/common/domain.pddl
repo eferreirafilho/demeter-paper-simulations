@@ -136,7 +136,7 @@
      (:durative-action surface
         :parameters (?v - vehicle)
         :duration 
-            (= ?duration 2)
+            (= ?duration 15)
         :condition (and 
             (at start  (is-submerged ?v))
             (over all (idle ?v))
