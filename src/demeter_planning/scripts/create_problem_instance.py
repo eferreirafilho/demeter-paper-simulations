@@ -60,7 +60,7 @@ class PopulateKB(object):
             self.add_goal_mission(self.allocated_goals[0])
             self.populate_KB()
         else:
-            rospy.logwarn('No more goals')
+            rospy.logwarn('No more goals for vehicle: ' + str(self.namespace))
                 
     def populate_KB(self):
         self.init_position_to_KB()

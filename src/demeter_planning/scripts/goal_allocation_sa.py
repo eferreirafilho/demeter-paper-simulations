@@ -13,10 +13,11 @@ from std_msgs.msg import Bool
 from time import sleep
 
 # random.seed(15)
-TIME_WINDOW =  1000 # Time limit (Hours) - Next high waves
+TIME_WINDOW =  12 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
 MAX_MISSION_DIFFERENCE = 1 # Number of unbalance allowed
 TURBINE_PERCENTAGE = 50 # in percentage % of turbines to keep
+MAX_ALLOCATION_ITERATION = 50000
 
 # Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
@@ -38,13 +39,15 @@ class Allocation(object):
             self.time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
         except KeyError: # Turbines have not been inspected
             rospy.set_param('/goal_allocation/turbine_inspected', [0]*len(all_turbines_idx)) # Set times to zero if first time allocating
+            self.time_of_turbines_last_inspection = [0]*len(all_turbines_idx)
 
         current_time = rospy.get_rostime().to_sec()
-        self.time_of_turbines_last_inspection = [current_time - x for x in [0]*len(all_turbines_idx)]
+        self.time_of_turbines_last_inspection = [current_time - x for x in self.time_of_turbines_last_inspection]
         rospy.logwarn('How long ago turbines were inspected: ' + str(self.time_of_turbines_last_inspection)) # How long ago a turbine was inspected
         
         self.number_of_vehicles = self.get_number_of_vehicles()
         self.original_turbines = all_turbines
+        rospy.logwarn('before removing turbines: ' + str(all_turbines_idx))
         self.turbines, self.turbines_idx = self.remove_turbines_visited_lately(all_turbines, all_turbines_idx)
         rospy.logwarn('after removing turbines: ' + str(self.turbines_idx))
         
@@ -91,16 +94,31 @@ class Allocation(object):
             self._rate.sleep()
             
     def remove_turbines_visited_lately(self, all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx):
-    
+        
         threshold = int(len(self.time_of_turbines_last_inspection) * TURBINE_PERCENTAGE/100) # Number of turbines to keep
+        rospy.logwarn('threshold' + str(threshold))
         threshold = max(threshold, self.number_of_vehicles)
+        rospy.logwarn('threshold' + str(threshold))
+        
         items = list(zip(all_turbines_to_be_allocated_idx, self.time_of_turbines_last_inspection))
+        rospy.logwarn('items' + str(items))
+        
         sorted_items = sorted(items, key=lambda x: x[1])
-        lowest_items = sorted_items[:threshold]
-        lowest_indexes, lowest_values = map(list, zip(*lowest_items))
-        filtered_turbines = [all_turbines_to_be_allocated[all_turbines_to_be_allocated_idx.index(i)] for i in lowest_indexes]
-        filtered_indexes = [all_turbines_to_be_allocated_idx[all_turbines_to_be_allocated_idx.index(i)] for i in lowest_indexes]
+        rospy.logwarn('sorted items' + str(sorted_items))
+        
+        highest_items = sorted_items[-threshold:]  # This line has been changed to select the highest items
+        rospy.logwarn('highest items' + str(highest_items))
+        
+        highest_indexes, _ = map(list, zip(*highest_items))  # This line has been changed to reflect the new variable name
+        rospy.logwarn('highest_indexes' + str(highest_indexes))
+        
+        filtered_turbines = [all_turbines_to_be_allocated[all_turbines_to_be_allocated_idx.index(i)] for i in highest_indexes]
+        filtered_indexes = [all_turbines_to_be_allocated_idx[all_turbines_to_be_allocated_idx.index(i)] for i in highest_indexes]
+        rospy.logwarn('filtered_turbines' + str(filtered_turbines))
+        rospy.logwarn('filtered_indexes' + str(filtered_indexes))
+        
         return filtered_turbines, filtered_indexes
+
                 
     def get_turbine_positions(self, G_visibility):
         '''Get the nodes that are turbines (there are also and corners nodes in the graph)'''
@@ -277,7 +295,6 @@ class Allocation(object):
         return acceptance_probability if acceptance_probability > random.random() else 0
         
     def simulated_annealing(self):
-        MAX_ITERATIONS = 100
         INITIAL_TEMPERATURE = 1000
         COOLING_RATE = 0.999
         
@@ -290,9 +307,9 @@ class Allocation(object):
         rospy.logwarn(f'solution: {current_solution} cost: {current_cost}')
 
         temperature = INITIAL_TEMPERATURE
-        # for iteration in range(MAX_ITERATIONS):
-        iteration = 1 
-        while self.reallocation_trigger == False:
+        for iteration in range(MAX_ALLOCATION_ITERATION):
+        # while self.reallocation_trigger == False:
+            
             # Create a neighboring solution by randonly adding or remove an vehicle-> turbine allocation or perturb the system with a new random solution
             new_solution = random.choice([self.get_neighbour_solution(current_solution), self.random_allocation()])
             # new_solution = self.get_neighbour_solution(current_solution)
@@ -307,14 +324,12 @@ class Allocation(object):
             if new_cost > best_cost:
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
-                goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
                 rospy.logwarn(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
             
-            if self.reallocation_trigger == True:
-                rospy.logwarn(f'Realocation triggered: {self.reallocation_trigger}')
-            
+            # if self.reallocation_trigger == True:
+                # rospy.logwarn(f'Realocation triggered: {self.reallocation_trigger}')
+     
             temperature *= COOLING_RATE
-            iteration+=1
         return best_solution, best_cost
 
     def plot_allocation(self, solution_G, allocation):
@@ -353,7 +368,11 @@ if __name__ == '__main__':
         goal_allocation = Allocation()
         best_solution, best_cost = goal_allocation.simulated_annealing()
         rospy.logwarn(f'Last Best solution: {best_solution} Best cost: {best_cost}')
+        goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
+        while not goal_allocation.reallocation_trigger and not rospy.is_shutdown():
+            sleep(1)
+            # rospy.logwarn(f'Realocation triggered: {goal_allocation.reallocation_trigger}')
+        if rospy.is_shutdown():
+            break
         goal_allocation = None
-        sleep(1)
-    rospy.spin()    
-        
+    rospy.spin()  
