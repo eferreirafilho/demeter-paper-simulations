@@ -103,7 +103,7 @@ class PlotVehicles:
         # call plot_tides function to plot tides on a separate subplot
         self.plot_tides(gs)  # Pass the GridSpec object to plot_tides
 
-        plt.pause(0.05)
+        plt.pause(0.01)
 
     def plot_tides(self, gs):
         # create a separate subplot for tides

@@ -360,15 +360,6 @@ class DemeterActionInterface(object):
         pos.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
         self.publish_position_fixed_orientation(pos)
 
-    def goto_origin(self):
-        origin = self.load_origin_from_file()
-        pos = Point()
-        pos.x=float(origin[0])
-        pos.y=float(origin[1])
-        pos.z=float(origin[2])
-        self.publish_position_fixed_orientation(pos)
-        return
-
     def orientation_comparison(self,q1,q2):
         q1_inv=q1
         q1_inv.w=-q1_inv.w

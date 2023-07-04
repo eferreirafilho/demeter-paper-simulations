@@ -92,7 +92,7 @@
 
     (:durative-action retrieve-data
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
-        :duration(= ?duration 30)
+        :duration(= ?duration 10)
         :condition (and 
             (over all (cable-localized ?tu))
             (over all (is-turbine-wp ?w ?tu))

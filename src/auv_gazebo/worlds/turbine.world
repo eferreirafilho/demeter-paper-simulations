@@ -7,6 +7,13 @@
       <uri>model://sun</uri>
     </include>
 
+    <physics type="ode">
+      <max_step_size>0.005</max_step_size>
+      <real_time_factor>0</real_time_factor>
+      <real_time_update_rate>0</real_time_update_rate> 
+    </physics>
+
+
     <!-- Bounding box with sea surface -->
     <include>
       <uri>model://ocean_auv</uri>

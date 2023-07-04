@@ -58,7 +58,7 @@ class ExecDemeter(object):
     def resume_plan(self):
         rospy.Timer(self._rate.sleep_dur, self.execute_plan, oneshot=True)
 
-    def execute_plan(self, event=True):
+    def execute_plan(self):
         rospy.logwarn('Generating mission plan ...')
         self._problem_proxy()
         self._rate.sleep()
@@ -87,16 +87,7 @@ class ExecDemeter(object):
         else:
            rospy.logwarn('Mission Failed')
            self.mission_success=False
-           return self.mission_success
-        
-    def mission_completed(self):
-        return self.mission_success
-        
-    # def cancel_mission(self):
-    #     self.mission_success = False
-    #     self._cancel_plan_proxy()
-    #     self._rate.sleep()
-    #     rospy.loginfo('Cancel Mission!')    
+           return self.mission_success  
     
     def clear_KB(self):
         self._clear_KB_proxy()
