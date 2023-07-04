@@ -17,7 +17,10 @@ class ReallocationTrigger:
     def trigger(self):
         rospy.logwarn('Trigger reallocation')
         self.publisher.publish(True)
-
+        allocation_max_iterations = rospy.get_param('/goal_allocation/max_allocation_iteration')
+        GAIN_ITERATIONS_VS_TIME = 400
+        rospy.sleep(allocation_max_iterations/GAIN_ITERATIONS_VS_TIME) # Wait for new allocation, proportional to iterations
+        
 class DemeterManager:
     def __init__(self):
         self.demeter = None
@@ -74,15 +77,19 @@ class PersistentPlanning:
         param_name = str(rospy.get_namespace() + "goals_allocated")
         current_list = rospy.get_param(param_name)
         if current_list:
+            if len(current_list) == 1:             # Check if there's only one goal left in the current list
+                # Trigger reallocation because the last goal is being dispatched now
+                rospy.logwarn('Trigger reallocation triggered by vehicle ' + str(rospy.get_namespace()))
+                self.reallocation_trigger.trigger()
+
             updated_goal_list = current_list[1:]
             rospy.set_param(param_name, updated_goal_list)
         else:
-            
             global_allocation = rospy.get_param("/goals_allocated/allocation")
             rospy.logwarn(global_allocation)
             vehicle_id = self.extract_number_from_string(str(rospy.get_namespace()))
             updated_goal_list = []
-            if global_allocation[vehicle_id] != []: # Vehicle was initially allocated to zero turbines -> this vehicle can't trigger reallocation grom not having goals
+            if global_allocation[vehicle_id] != []: # Vehicle was initially allocated to zero turbines -> this vehicle can't trigger reallocation from not having goals
                 rospy.logwarn('Trigger reallocation trigerred by vehicle ' + str(rospy.get_namespace()))
                 self.reallocation_trigger.trigger()
             

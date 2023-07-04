@@ -17,7 +17,8 @@ TIME_WINDOW =  30 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
 MAX_MISSION_DIFFERENCE = 1 # Number of unbalance allowed
 TURBINE_PERCENTAGE = 50 # in percentage % of turbines to keep
-MAX_ALLOCATION_ITERATION = 20000
+MAX_ALLOCATION_ITERATION = 2000
+
 
 # Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
@@ -34,6 +35,7 @@ class Allocation(object):
 
         rospy.logwarn('all_turbines: ' + str(all_turbines_idx))
 
+        rospy.set_param('/goal_allocation/max_allocation_iteration', MAX_ALLOCATION_ITERATION)
         try: # Use memory of turbines inspected this ROS run
             # param_time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
             self.time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
@@ -57,7 +59,6 @@ class Allocation(object):
         self.turbines, self.turbines_idx = self._remove_turbines_visited_lately(all_turbines, all_turbines_idx)
         rospy.logwarn('after removing turbines: ' + str(self.turbines_idx))
         
-        
         self.reallocation_trigger = False
         rospy.Subscriber("/reallocation_trigger", Bool, self._reallocation_trigger_callback)
         self._update_vehicles_positions()
@@ -71,6 +72,7 @@ class Allocation(object):
         self.vehicles = []
         while len(self.gazebo_positions) != self.number_of_vehicles:
             self._wait(2) # Wait for all robots positions to be acquired
+            rospy.logwarn('Wait for all robots positions')
             
         rospy.logwarn('GAZEBO POS: ' + str(self.gazebo_positions))
         self.vehicles = [self.gazebo_positions[key] for key in sorted(self.gazebo_positions.keys())]

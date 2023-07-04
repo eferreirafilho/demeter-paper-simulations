@@ -6,7 +6,7 @@ from threading import Lock
 
 INIT_BATTERY_LEVEL = 100 # %
 NUMBER_OF_THRUSTERS = 6
-THRUSTERS_CONSUMPTION_FACTOR = 0.000001
+THRUSTERS_CONSUMPTION_FACTOR = 0.000003
 RECHARGING_RATE = 0.01
 RECHARGING_RATE_DEDICATED = 3
         
@@ -36,7 +36,7 @@ class BatteryController(object):
             thruster_list = [0] *NUMBER_OF_THRUSTERS
             self.vehicle_thruster_list.append(thruster_list)
             rospy.Subscriber("/auv"+ str(idx)+ "/battery_level_emulated", Float32, self.battery_level_callback, callback_args=idx)
-            rospy.Subscriber("/auv"+ str(idx)+ "/is_submerged", Bool , self.is_surfaced_callback, callback_args=idx)
+            rospy.Subscriber("/auv"+ str(idx)+ "/is_submerged", Bool , self.is_submerged_callback, callback_args=idx)
             rospy.Subscriber("/auv"+ str(idx)+ "/recharging_dedicated", Bool , self.recharging_dedicated_callback, callback_args=idx)
             battery_pub = rospy.Publisher("/auv" + str(idx) + "/battery_level_emulated", Float32, queue_size=1)
             self.battery_pub.append(battery_pub)
@@ -97,11 +97,11 @@ class BatteryController(object):
         self.recharging_dedicated[vehicle_idx] = msg.data
         self.received_recharging_dedicated[vehicle_idx] = True
         
-    def is_surfaced_callback(self, msg, vehicle_idx):
+    def is_submerged_callback(self, msg, vehicle_idx):
         # Update recharging based on surface status from callback
         if msg.data == True:
             self.recharging[vehicle_idx] = 0
-        else:
+        elif msg.data == False:
             self.recharging[vehicle_idx] = 1
         self.received_is_surfaced[vehicle_idx] = True
 

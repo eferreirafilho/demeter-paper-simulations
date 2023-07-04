@@ -16,13 +16,11 @@ from create_problem_instance import PopulateKB
 class ExecDemeter(object):
     def __init__(self, update_frequency=4.):
         self._rate = rospy.Rate(update_frequency)
-        # rospy.sleep(1) # Wait for allocation
         self.namespace = self.get_namespace()
         self.demeter_rosplan_interface = DemeterInterface(demeter=DemeterActionInterface(namespace=self.namespace))
         self.mission_success = False
         self.goal_state = list()
         self.rosplan_services()
-        # rospy.sleep(2) # Wait for planning
                
     def rosplan_services(self):
         # Service proxies: Problem Generation, Planning, Parsing, Dispatching
@@ -37,9 +35,11 @@ class ExecDemeter(object):
         self._dispatch_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan', DispatchService)
         rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch')
         self._cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch', Empty)
-        rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
-        self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
-
+        try:
+            rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
+            self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
+        except rospy.ServiceException as e:
+            rospy.logwarn("clear KB service error: %s", e)
         try:
             rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
         except rospy.ServiceException as e:
@@ -52,7 +52,6 @@ class ExecDemeter(object):
     
     def check_action_feedback(self,msg):
         if msg.status == ActionFeedback.ACTION_FAILED:
-            # self._rate.sleep()
             self.mission_success=False
             
     def resume_plan(self):
@@ -61,24 +60,14 @@ class ExecDemeter(object):
     def execute_plan(self):
         rospy.logwarn('Generating mission plan ...')
         self._problem_proxy()
-        self._rate.sleep()
-        # rospy.logwarn('1 Planning ...')
         try: 
-            # rospy.logwarn('2 Planning ...')
-            self._rate.sleep()
-            
             self._planner_proxy()
-            self._rate.sleep()
-            # rospy.logwarn('3 Planning ...')
-            
         except:
             rospy.logwarn('Planning attempt failed')
             self.mission_success=False
             return self.mission_success
-        # self._rate.sleep()
         rospy.logwarn('Execute mission plan ...')
         self._parser_proxy()
-        # self._rate.sleep()
         response = self._dispatch_proxy()
             
         if response.goal_achieved:

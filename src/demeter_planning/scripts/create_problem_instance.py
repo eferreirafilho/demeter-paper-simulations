@@ -3,7 +3,6 @@ from threading import Lock
 from cmath import sqrt
 from time import sleep
 from std_srvs.srv import Empty
-from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Float32
 import rospy
 from nav_msgs.msg import Odometry
@@ -20,17 +19,17 @@ import math
 import roslib
 from rospkg import RosPack
 
-
 class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
         self.SCALE_TRAVERSE_COSTS = 1
-        self.SPEED = 0.5 # Scale speed 
-        self.FULL_BATTERY = 20 # TODO: keep track of battery
+        self.SPEED = 0.35 # Scale speed 
+        self.FULL_BATTERY = 20
         self.RECHARGE_RATE = 0.05 # While doing other tasks #TODO: Change here and in battery controller at the same time
         self.RECHARGE_RATE_DEDICATED = 10 #TODO: Change here and in battery controller at the same time
 
+        self.valid_pose_received = False
         self.namespace = rospy.get_namespace()
         rospy.sleep(1)
         self.battery_level_subscribers()
@@ -39,20 +38,40 @@ class PopulateKB(object):
         self.start_time = rospy.get_time()        
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self.vehicle_id = self.extract_number_from_string(self.namespace)
-        # rospy.logwarn('Create Problem - Populating auv ' + str(self.vehicle_id) + ' KB with robots initial position and goals')
-        action_interface_object = DemeterActionInterface(self.namespace)
-        self.position = action_interface_object.get_position()
-        action_interface_object.set_init_position_param(self.position)  
-        self.closer_wp = action_interface_object.closer_wp([self.position.x, self.position.y, self.position.z])
+        rospy.Subscriber(str(self.namespace)+'pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
+        try:
+            wp_array = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
+            X = [wp[0] for wp in wp_array]
+            Y = [wp[1] for wp in wp_array]
+            Z = [wp[2] for wp in wp_array]
+            self.waypoints_position = [X, Y, Z] 
+        except rospy.ROSException:
+            rospy.logfatal('waypoints not set in parameter')
+
+        # Wait for position
+        while not self.valid_pose_received and not rospy.is_shutdown():
+            if self.valid_pose_received:
+                rospy.logwarn(str(self.namespace) + ' pose received')
+                break    
+
+        # self.position = action_interface_object.get_position()
+        # rospy.logwarn(str(self.namespace) + ' | Current pos: x: ' + str(self.position.x) + ' y: ' + str(self.position.y) )
+        # action_interface_object.set_init_position_param(self.position)  
+        # self.closer_wp = action_interface_object.closer_wp([self.position.x, self.position.y, self.position.z])
+        self.closer_wp = self.compute_closer_wp()
+        rospy.logwarn(str(self.namespace) + ' | Closer waypoint: ' + str(self.closer_wp))
+        rospy.logwarn(str(self.namespace) + ' | Position: ' + str(self.position))
         self.load_graph()
         self.remove_turbines_from_graph()
         self.add_distances_as_weights()
-                        
-        self.poi_position = rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/waypoints")
-        closer_wp_position = self.poi_position[self.closer_wp]
+
+        # rospy.logwarn(str(self.namespace) + ' | waypoints_position: ' + str(self.waypoints_position))
+        
+        closer_wp_position = [self.waypoints_position[0][self.closer_wp], self.waypoints_position[1][self.closer_wp], self.waypoints_position[2][self.closer_wp]]
+        rospy.logwarn(str(self.namespace) + ' | Closer waypoint position: ' + str(closer_wp_position))
         
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
-        # rospy.logwarn('self.distance_to_closer_wp: ' + str(self.distance_to_closer_wp))
+        rospy.logwarn('self.distance_to_closer_wp: ' + str(self.distance_to_closer_wp))
         # sleep(1)
         self.allocated_goals = self.load_allocation()
         
@@ -62,6 +81,22 @@ class PopulateKB(object):
         else:
             rospy.logwarn('No more goals for vehicle: ' + str(self.namespace))
                 
+    def _pose_gt_cb(self, msg):
+        new_position = [msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z]
+        if new_position != [0,0,0]:
+            self.valid_pose_received = True
+            self.position = new_position
+            
+    def compute_closer_wp(self):
+        dist = float('inf')
+        closer_wp = None
+        for i in range(len(self.waypoints_position[0])):
+            dist_aux=sqrt((self.position[0] - self.waypoints_position[0][i])**2+(self.position[1] - self.waypoints_position[1][i])**2+(self.position[2] - self.waypoints_position[2][i])**2)
+            if dist_aux.real<dist:
+                dist=dist_aux.real
+                closer_wp=i
+        return closer_wp
+    
     def populate_KB(self):
         self.init_position_to_KB()
         # rospy.logwarn(self.allocated_goals)
@@ -92,16 +127,16 @@ class PopulateKB(object):
         self.add_fact('is-turbine-wp','waypoint'+str(sensor_contour_point),'turbine'+str(target_turbine))      
         
     def init_position_to_KB(self):
-            self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
-            self.add_object('turbine'+str(self.allocated_goals[0]),'turbine') # Define turbine objects
-            self.add_fact('at','vehicle'+str(self.vehicle_id),'wp_init_auv'+str(self.vehicle_id)) # Real initial position
-            
-            # Vehicle can move between initial position and closest waypoint
-            self.add_fact('can-move', 'wp_init_auv'+str(self.vehicle_id), 'waypoint'+str(self.closer_wp)) # vehicle can move to its closer waypoint from initial waypoint
-            dist=round(float(self.distance_to_closer_wp.real),2)
-            if dist == 0: #Workaround, PDDL complains about distance equal to zero
-                dist = 0.01
-            self.update_functions('traverse-cost', [KeyValue('w', 'wp_init_auv'+str(self.vehicle_id)), KeyValue('w', 'waypoint'+str(self.closer_wp))], self.SCALE_TRAVERSE_COSTS*dist, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
+        self.add_object('turbine'+str(self.allocated_goals[0]),'turbine') # Define turbine objects
+        self.add_fact('at','vehicle'+str(self.vehicle_id),'wp_init_auv'+str(self.vehicle_id)) # Real initial position
+        
+        # Vehicle can move between initial position and closest waypoint
+        self.add_fact('can-move', 'wp_init_auv'+str(self.vehicle_id), 'waypoint'+str(self.closer_wp)) # vehicle can move to its closer waypoint from initial waypoint
+        dist=round(float(self.distance_to_closer_wp.real),2)
+        if dist == 0: #Workaround, PDDL complains about distance equal to zero
+            dist = 0.01
+        self.update_functions('traverse-cost', [KeyValue('w', 'wp_init_auv'+str(self.vehicle_id)), KeyValue('w', 'waypoint'+str(self.closer_wp))], self.SCALE_TRAVERSE_COSTS*dist, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
 
     def load_graph(self):
         with open(self.package_path + "/params/scaled_visibility_G_with_contour_points.pickle", "rb") as f:
@@ -199,7 +234,7 @@ class PopulateKB(object):
         return success
     
     def distance(self, p1, p2):
-        return sqrt((p1.x - p2[0])**2 + (p1.y - p2[1])**2 + (p1.z - p2[2])**2)
+        return sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2 + (p1[2] - p2[2])**2)
 
     def add_object(self,obj_name, obj_type):   
         self.mutex.acquire()
@@ -312,7 +347,7 @@ class PopulateKB(object):
         self.battery_level = msg.data
 
     def predict_next_tides(self):
-        PERIOD_OF_TIDES = 60 # Period in seconds
+        PERIOD_OF_TIDES = 360 # Period in seconds
         rospy.set_param('/period_of_tides', PERIOD_OF_TIDES)
         LOW_TIDES_THREDSHOLD = PERIOD_OF_TIDES/3.0
         rospy.set_param('/low_tides_thredshold', LOW_TIDES_THREDSHOLD)

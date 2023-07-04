@@ -20,7 +20,6 @@ from action_interface import DemeterActionInterface
 class DemeterInterface(object):
 
     mutex = Lock()
-
     running_actions = {}
     
     def __init__(self, demeter=None, update_frequency=10.):
@@ -48,7 +47,6 @@ class DemeterInterface(object):
         self._feedback_publisher = rospy.Publisher(str(self.namespace) +'rosplan_plan_dispatcher/action_feedback', ActionFeedback, queue_size=10)
         self._rate = rospy.Rate(update_frequency)
         
-
         # Auto call functions
         rospy.Timer(self._rate.sleep_dur, self.knowledge_update)
 
@@ -91,8 +89,6 @@ class DemeterInterface(object):
         if msg.action_id not in self.running_actions:
             if msg.name == 'move':
                 self._action_threaded(msg, self.move, [msg.parameters, duration])
-            elif msg.name == 'retrieve-data':
-                self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration])
             elif msg.name == 'upload-data-histograms':
                 self._action_threaded(msg, self.upload_data_histograms, [duration])
             elif msg.name == 'harvest-energy':
@@ -101,6 +97,12 @@ class DemeterInterface(object):
                 self._action_threaded(msg, self.localize_cable, [msg.parameters, duration])
             elif msg.name == 'surface':
                 self._action_threaded(msg, self.surface, [duration])
+            elif msg.name == 'retrieve-data':
+                # Start a new thread to handle the retrieve-data action, waiting for tides to dispatch
+                retrieve_data_thread = threading.Thread(target=self._retrieve_data_action_threaded, args=[msg])
+                retrieve_data_thread.start()
+                # Store the thread in the running actions
+                self.running_actions[msg.action_id] = retrieve_data_thread
 
     def _action_threaded(self, action_dispatch, action_func, action_params=list()):
         # Create a new thread for the action function
@@ -108,6 +110,15 @@ class DemeterInterface(object):
         action_thread.start()
         # Store the thread in the running actions
         self.running_actions[action_dispatch.action_id] = action_thread
+
+    def _retrieve_data_action_threaded(self, msg):
+        duration = rospy.Duration(msg.duration)
+        next_shift_to_high_tide = self.demeter.compute_next_shift_to_high_tide_time()
+        action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
+        while not self.demeter.low_tide or action_finish_time >= next_shift_to_high_tide: # Wait the low tide for safety
+            next_shift_to_high_tide = self.demeter.compute_next_shift_to_high_tide_time()
+            action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
+        self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration])
 
     def _action(self, action_dispatch, action_func, action_params=list()):
         self.current_action_id=action_dispatch.action_id
@@ -119,10 +130,9 @@ class DemeterInterface(object):
         action_dispatch_time = start_time.secs + self.plan_start_time
         rospy.logwarn('Dispatching %s action at %s with duration %s | current time %s' %(action_dispatch.name, str(action_dispatch_time), str(duration.to_sec()) , str(current_time)))   
         if action_dispatch_time > current_time:
-            rospy.logwarn('Action dispatch is ' + str(action_dispatch_time - current_time) + ' early')
+            rospy.logwarn('Action ' +str(action_dispatch.name) + ' dispatch is ' + str(action_dispatch_time - current_time) + ' early | ' + str(self.namespace))
         else:
-            rospy.logwarn('Action dispatch is ' + str(current_time - action_dispatch_time) + ' delayed')
-            
+            rospy.logwarn('Action ' +str(action_dispatch.name) + ' dispatch is ' + str(current_time - action_dispatch_time) + ' delayed | ' + str(self.namespace))
             
         if action_func(*action_params) == self.demeter.ACTION_SUCCESS:
             if self._apply_operator_effect(action_dispatch.name,action_dispatch.parameters):
@@ -212,9 +222,6 @@ class DemeterInterface(object):
         
     def get_robot_position(self):
         return self.demeter.get_position()
-    
-    def get_closer_waypoint(self):
-        return self.demeter.closer_wp(self.demeter.get_position())
 
     def move(self, dispatch_params, duration=rospy.Duration(60, 0)):
         waypoint = -1
@@ -224,7 +231,7 @@ class DemeterInterface(object):
                 break
         response = self.demeter.do_move(waypoint, duration) if waypoint != -1 else self.demeter.ACTION_FAIL
         return response
-
+    
     def retrieve_data(self, dispatch_params, duration=rospy.Duration(60, 0)):
         data_location = -1
         for param in dispatch_params:
@@ -253,23 +260,3 @@ class DemeterInterface(object):
     def surface(self, duration=rospy.Duration(60, 0)):
         response = self.demeter.do_surface(duration)
         return response
-    
-    def compute_next_shift_to_high_tide_time(self):
-        if rospy.has_param('/period_of_tides'):   
-            PERIOD_OF_TIDES = rospy.get_param('/period_of_tides')
-        else:
-            rospy.logwarn("Parameter period_of_tides not set")
-        if rospy.has_param('/low_tides_thredshold'):   
-            LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
-        else:
-            rospy.logwarn("Parameter low_tides_thredshold not set")
-        time = rospy.get_rostime().to_sec()
-        time_integer = time // PERIOD_OF_TIDES
-        if time < (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD):
-            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently low tide -> high tide is in this cycle
-            self.low_tide = True
-        else:
-            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently high tide
-            self.low_tide = False
-            
-        return next_shift_to_high_tide_time
