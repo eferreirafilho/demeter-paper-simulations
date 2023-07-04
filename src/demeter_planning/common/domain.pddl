@@ -123,8 +123,9 @@
         :condition (and 
             (at start (carry ?v ?d))
             (at start (> (battery-level ?v) 50))
-            (over all (is-surfaced ?v)))
-        
+            (at start (is-surfaced ?v))
+            (over all (is-surfaced ?v))
+            )
         :effect (and 
             (at end (not (carry ?v ?d)))
             (at end (data-sent ?d))
@@ -144,13 +145,15 @@
         :effect (and
             (at end (not (is-submerged ?v)))
             (at end (is-surfaced ?v))
+            (at start (is-submerged ?v))
+            (at start (not (is-submerged ?v)))
             (at start (not (idle ?v)))
             (at end (idle ?v))
         )
     )
     (:durative-action harvest-energy
     :parameters (?v - vehicle)
-    :duration (= ?duration 1) ; fixed duration
+    :duration (= ?duration 10) ; fixed duration
     :condition (and 
         (over all (is-surfaced ?v))
         (at start (< (battery-level ?v) 100))

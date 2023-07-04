@@ -27,7 +27,7 @@ class PopulateKB(object):
         self.SPEED = 0.35 # Scale speed 
         self.FULL_BATTERY = 20
         self.RECHARGE_RATE = 0.05 # While doing other tasks #TODO: Change here and in battery controller at the same time
-        self.RECHARGE_RATE_DEDICATED = 10 #TODO: Change here and in battery controller at the same time
+        self.RECHARGE_RATE_DEDICATED = 5 #TODO: Change here and in battery controller at the same time
 
         self.valid_pose_received = False
         self.namespace = rospy.get_namespace()
@@ -116,7 +116,7 @@ class PopulateKB(object):
         # self.update_functions('total-missions-completed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], 0, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('speed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.SPEED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.predict_next_tides() # All facts related to tides
-        # rospy.logwarn('Tides: ' + str(self.current_tide_level))
+        # rospy.logwarn('Tides: ' + str(self.current_tide_level))    
 
     def add_goal_mission(self, target_turbine):   
         self.add_object('data'+str(target_turbine),'data')
