@@ -180,8 +180,8 @@ class DemeterActionInterface(object):
         start = rospy.Time.now()
         while not (rospy.is_shutdown()) and self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
             self.goto_surface()   
-            rospy.loginfo('self.odom_pose.pose.pose.position.z: ' + str(self.odom_pose.pose.pose.position.z))
-            rospy.loginfo('self.SUBMERGED_Z: ' + str(self.SUBMERGED_Z))
+            # rospy.loginfo('self.odom_pose.pose.pose.position.z: ' + str(self.odom_pose.pose.pose.position.z))
+            # rospy.loginfo('self.SUBMERGED_Z: ' + str(self.SUBMERGED_Z))
             # completion_percentage = 'Surfacing: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             # rospy.loginfo_throttle(1,completion_percentage)
             # self._rate.sleep()

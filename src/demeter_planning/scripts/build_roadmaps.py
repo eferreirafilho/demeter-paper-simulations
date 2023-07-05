@@ -15,7 +15,7 @@ class BuildRoadmaps(object):
     def __init__(self):
         rospy.logwarn('Build Roadmaps')
         self._rate = rospy.Rate(10)
-        self.DISTANCE_TO_TURBINE = 0.15
+        self.DISTANCE_TO_TURBINE = 0.18
         self.NUMBER_OF_TURBINES_CONSIDERED = 15
         self.VISIBILITY_RADIUS = 1.2
         self.BOUNDS_MAP = 50
@@ -393,7 +393,7 @@ class BuildRoadmaps(object):
     def build_and_save_roadmap_with_contour_points(self):
         '''Build roadmap with contour points and save graph as a pickle file
         Also save scaled turbines and waypoints as ROS parameters '''
-        NUMBER_OF_CONTOUR_POINTS = 4
+        NUMBER_OF_CONTOUR_POINTS = 5
         self.set_number_of_contour_points(NUMBER_OF_CONTOUR_POINTS)
         
         visibility_G = self.build_roadmaps()

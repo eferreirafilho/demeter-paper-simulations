@@ -13,10 +13,10 @@ from std_msgs.msg import Bool
 from time import sleep
 
 # random.seed(15)
-TIME_WINDOW =  30 # Time limit (Hours) - Next high waves
+TIME_WINDOW =  25 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
 MAX_MISSION_DIFFERENCE = 1 # Number of unbalance allowed
-TURBINE_PERCENTAGE = 50 # in percentage % of turbines to keep
+TURBINE_PERCENTAGE = 30 # in percentage % of turbines to keep
 MAX_ALLOCATION_ITERATION = 2000
 
 
@@ -376,9 +376,17 @@ class Allocation(object):
         plt.axis('off')
         plt.show()
 
+    def get_solution_from_ros_param(self):
+        current_individual_allocation = []
+        current_global_allocation = []
+        for idx, _ in enumerate(self.vehicles):
+            rospy.logwarn('Get from param: auv' + str(idx) + '/goals_allocated')
+            current_individual_allocation.append(rospy.get_param('auv' + str(idx) + '/goals_allocated'))
+        current_global_allocation = rospy.get_param('/goals_allocated/allocation')
+        return current_individual_allocation, current_global_allocation
+
     def set_solution_to_ros_param(self, allocation):
-        for idx, vehicle in enumerate(self.vehicles):
-            # for turbine in allocation[vehicle]:
+        for idx, _ in enumerate(self.vehicles):
             rospy.logwarn('Set to param: auv' + str(idx) + '/goals_allocated' + str(allocation[idx]))
             rospy.set_param('auv' + str(idx) + '/goals_allocated', allocation[idx])
         rospy.set_param('/goals_allocated/allocation', allocation)
@@ -393,7 +401,7 @@ if __name__ == '__main__':
     best_solution, best_cost = goal_allocation.simulated_annealing()
     rospy.logwarn(f'Last Best solution: {best_solution} Best cost: {best_cost}')
     goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
-    
+
     # Reallocation (disregard current dispatch)
     while not rospy.is_shutdown():        
         while goal_allocation.reallocation_trigger == True:
@@ -402,7 +410,19 @@ if __name__ == '__main__':
             goal_allocation = Allocation(reallocation)
             best_solution, best_cost = goal_allocation.simulated_annealing()
             rospy.logwarn(f'Last Best solution: {best_solution} Best cost: {best_cost}')
-            goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
+            goal_allocation.get_solution_from_ros_param()
+            current_individual_allocation, current_global_allocation = goal_allocation.get_solution_from_ros_param()
+            for idx, _ in enumerate(goal_allocation.vehicles):
+                if len(current_individual_allocation[idx]) < 1:
+                    rospy.logwarn('Add all new allocation to auv' + str(idx))
+                    goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
+                else:
+                    rospy.logwarn('keep only first allocation: ' + str(current_individual_allocation[idx][0]))
+                    first_individual_allocation = current_individual_allocation[idx][0]
+                    best_solution[0].insert(0, first_individual_allocation)
+                    goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed preserving first allocated goal
+                    rospy.logwarn('best solution: ' + str(best_solution))
+            
             sleep(1)
             rospy.logwarn(f'Realocation triggered: {goal_allocation.reallocation_trigger}')
             if rospy.is_shutdown():

@@ -19,7 +19,7 @@ class ReallocationTrigger:
         self.publisher.publish(True)
         allocation_max_iterations = rospy.get_param('/goal_allocation/max_allocation_iteration')
         GAIN_ITERATIONS_VS_TIME = 400
-        rospy.sleep(allocation_max_iterations/GAIN_ITERATIONS_VS_TIME) # Wait for new allocation, proportional to iterations
+        # rospy.sleep(allocation_max_iterations/GAIN_ITERATIONS_VS_TIME) # Wait for new allocation, proportional to iterations
         
 class DemeterManager:
     def __init__(self):
@@ -74,24 +74,30 @@ class PersistentPlanning:
         self.missions_df = self.missions_df[0:0]
 
     def remove_first_allocated_goal(self):
+        vehicle_id = self.extract_number_from_string(str(rospy.get_namespace()))
+        global_allocation = rospy.get_param("/goals_allocated/allocation")
         param_name = str(rospy.get_namespace() + "goals_allocated")
         current_list = rospy.get_param(param_name)
+        rospy.logwarn(str(param_name) + ' | current list: ' + str(current_list))
+        rospy.logwarn('global allocation: ' + str(global_allocation))
+        updated_goal_list = []
         if current_list:
-            if len(current_list) == 1:             # Check if there's only one goal left in the current list
-                # Trigger reallocation because the last goal is being dispatched now
-                rospy.logwarn('Trigger reallocation triggered by vehicle ' + str(rospy.get_namespace()))
-                self.reallocation_trigger.trigger()
-
             updated_goal_list = current_list[1:]
-            rospy.set_param(param_name, updated_goal_list)
+            rospy.set_param(param_name, updated_goal_list) # Just remove one element of vehicles goal list       
+            if len(updated_goal_list) <= 1:             # Check if there's only one goal left in the current list
+                # Trigger reallocation because the last goal is being dispatched now or vehicle has no goals
+                if global_allocation[vehicle_id] != []: # Vehicle was initially allocated to zero turbines -> this vehicle can't trigger reallocation from not having goals
+                    self.reallocation_trigger.trigger()
+                    rospy.logwarn('Trigger reallocation trigerred by vehicle ' + str(rospy.get_namespace()) + ' having no goals')
         else:
-            global_allocation = rospy.get_param("/goals_allocated/allocation")
-            rospy.logwarn(global_allocation)
-            vehicle_id = self.extract_number_from_string(str(rospy.get_namespace()))
-            updated_goal_list = []
+            # Trigger reallocation because the last goal is being dispatched now or vehicle has no goals
             if global_allocation[vehicle_id] != []: # Vehicle was initially allocated to zero turbines -> this vehicle can't trigger reallocation from not having goals
-                rospy.logwarn('Trigger reallocation trigerred by vehicle ' + str(rospy.get_namespace()))
                 self.reallocation_trigger.trigger()
+                rospy.logwarn('Trigger reallocation trigerred by vehicle ' + str(rospy.get_namespace()) + ' | Last goal is being dispatched')
+        if all(not sublist for sublist in global_allocation): # All vehicles have no goals
+            self.reallocation_trigger.trigger()
+            rospy.logwarn('Trigger reallocation trigerred by all vehicles having no goals')
+            
             
     def extract_number_from_string(self, string):
         match = re.search(r'\d+', string)
@@ -104,7 +110,6 @@ class PersistentPlanning:
         while not rospy.is_shutdown():
             mission_success = self.demeter_manager.dispatch_mission_sequence()
             rospy.logwarn('mission success: ' + str(mission_success))
-            
             # Get the vehicle name, allocated goal and time
             vehicle_name = int(self.extract_number_from_string(str(rospy.get_namespace())))
             if rospy.get_param(str(rospy.get_namespace() + "goals_allocated")) != []:
@@ -114,7 +119,6 @@ class PersistentPlanning:
             mission_time = rospy.get_rostime().to_sec()
             # Log the mission data
             self.log_mission_data(vehicle_name, allocated_goal, mission_success, mission_time)
-
             self.remove_first_allocated_goal()
 
         rospy.spin()
