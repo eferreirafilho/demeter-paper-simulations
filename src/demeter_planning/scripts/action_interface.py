@@ -13,8 +13,8 @@ class DemeterActionInterface(object):
     ACTION_SUCCESS = 1
     ACTION_FAIL = 0
     EPS_DISTANCE = 0.2 # Distance we consider that vehicle is at a waypoint
-    SUBMERGED_Z = -1.5 # Z Distance we consider that vehicle is on surface
-    SUBMERGED_Z_CMD = -0.7 # Z Distance we send vehicle to surface
+    SUBMERGED_Z = -0.8 # Z Distance we consider that vehicle is on surface
+    SUBMERGED_Z_CMD = -0.6 # Z Distance we send vehicle to surface
     EPS_ANGLE = 1 # Distance (degrees) we consider that a desired angle is achieved
 
     def __init__(self, namespace, update_frequency=10.):
@@ -132,7 +132,7 @@ class DemeterActionInterface(object):
             next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
             action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
 
-        rospy.logwarn('Interface: \'Inspect Turbine\' Action')
+        rospy.logwarn('Interface: \'Retrieve Data\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position
@@ -147,8 +147,8 @@ class DemeterActionInterface(object):
                 pos.x, pos.y, pos.z = wp_x, wp_y, wp_z
                 while self.squared_distance(self.odom_pose.pose.pose.position, pos) > self.EPS_DISTANCE**2:
                     self.publish_position_fixed_orientation(pos)
-                    completion_percentage = 'Inspecting turbine: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-                    rospy.loginfo_throttle(1,completion_percentage)
+                    # completion_percentage = 'Inspecting turbine: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                    # rospy.loginfo_throttle(1,completion_percentage)
                 self.set_inspected_times(turbine)               
                 response = self.ACTION_SUCCESS   
                 
@@ -180,6 +180,8 @@ class DemeterActionInterface(object):
         start = rospy.Time.now()
         while not (rospy.is_shutdown()) and self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
             self.goto_surface()   
+            rospy.loginfo('self.odom_pose.pose.pose.position.z: ' + str(self.odom_pose.pose.pose.position.z))
+            rospy.loginfo('self.SUBMERGED_Z: ' + str(self.SUBMERGED_Z))
             # completion_percentage = 'Surfacing: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             # rospy.loginfo_throttle(1,completion_percentage)
             # self._rate.sleep()
@@ -223,11 +225,15 @@ class DemeterActionInterface(object):
         pos.x=float(turbine_pos[0] + DELTA_X)
         pos.y=float(turbine_pos[1])
         pos.z=float(DELTA_Z)
-        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+
+        while (rospy.Time.now() - start < duration/2) and not (rospy.is_shutdown()):        # Half action time: Submerge
             self.publish_position_fixed_orientation(pos)
             # self._rate.sleep()
             # completion_percentage = 'Localizing ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             # rospy.loginfo_throttle(1,completion_percentage)
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):        # Other half action time: Surface
+            self.goto_surface()
+        
         response = self.ACTION_SUCCESS     
         # rospy.loginfo('Localizing!')
         rospy.logwarn('Action LOCALIZE CABLE took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
@@ -330,8 +336,9 @@ class DemeterActionInterface(object):
         
     def goto_surface(self):
         pos = Point()
-        pos = self.odom_pose.pose.pose.position
-        pos.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
+        pos.x = self.odom_pose.pose.pose.position.x 
+        pos.y = self.odom_pose.pose.pose.position.y
+        pos.z = self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
         self.publish_position_fixed_orientation(pos)
 
     def orientation_comparison(self,q1,q2):

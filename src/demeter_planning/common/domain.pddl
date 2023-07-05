@@ -56,12 +56,12 @@
     ;define actions here
     (:durative-action localize-cable
         :parameters (?v - vehicle ?w - waypoint ?tu - turbine)
-        :duration(= ?duration 10)
+        :duration(= ?duration 15)
         :condition (and 
             (at start (at ?v ?w))
             (over all (is-turbine-wp ?w ?tu))
             (at start (>= (battery-level ?v) 5))
-            (over all (is-surfaced ?v))
+            ; (over all (is-surfaced ?v))
         )
         :effect (and 
             (at end (cable-localized ?tu))
@@ -69,8 +69,8 @@
             ; (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
             (at start (not (idle ?v)))
             (at end (idle ?v))
-            (at end (is-submerged ?v))
-            (at end (not (is-surfaced ?v)))
+            ; (at end (is-submerged ?v))
+            ; (at end (not (is-surfaced ?v)))
         )
     )
 
