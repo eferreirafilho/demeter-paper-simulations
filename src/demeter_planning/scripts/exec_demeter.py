@@ -69,6 +69,7 @@ class ExecDemeter(object):
         rospy.logwarn('Execute mission plan ...')
         self._parser_proxy()
         response = self._dispatch_proxy()
+        rospy.logwarn('Response: ' + str(response))
             
         if response.goal_achieved:
            rospy.logwarn('Mission Succeed')
@@ -76,7 +77,7 @@ class ExecDemeter(object):
         else:
            rospy.logwarn('Mission Failed')
            self.mission_success=False
-           return self.mission_success  
+        return self.mission_success  
     
     def clear_KB(self):
         self._clear_KB_proxy()

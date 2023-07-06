@@ -59,8 +59,8 @@ class PopulateKB(object):
         # action_interface_object.set_init_position_param(self.position)  
         # self.closer_wp = action_interface_object.closer_wp([self.position.x, self.position.y, self.position.z])
         self.closer_wp = self.compute_closer_wp()
-        rospy.logwarn(str(self.namespace) + ' | Closer waypoint: ' + str(self.closer_wp))
-        rospy.logwarn(str(self.namespace) + ' | Position: ' + str(self.position))
+        # rospy.logwarn(str(self.namespace) + ' | Closer waypoint: ' + str(self.closer_wp))
+        # rospy.logwarn(str(self.namespace) + ' | Position: ' + str(self.position))
         self.load_graph()
         self.remove_turbines_from_graph()
         self.add_distances_as_weights()
@@ -68,10 +68,10 @@ class PopulateKB(object):
         # rospy.logwarn(str(self.namespace) + ' | waypoints_position: ' + str(self.waypoints_position))
         
         closer_wp_position = [self.waypoints_position[0][self.closer_wp], self.waypoints_position[1][self.closer_wp], self.waypoints_position[2][self.closer_wp]]
-        rospy.logwarn(str(self.namespace) + ' | Closer waypoint position: ' + str(closer_wp_position))
+        # rospy.logwarn(str(self.namespace) + ' | Closer waypoint position: ' + str(closer_wp_position))
         
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
-        rospy.logwarn('self.distance_to_closer_wp: ' + str(self.distance_to_closer_wp))
+        # rospy.logwarn('self.distance_to_closer_wp: ' + str(self.distance_to_closer_wp))
         # sleep(1)
         self.allocated_goals = self.load_allocation()
         

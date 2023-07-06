@@ -160,19 +160,31 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
-    def do_upload_data_histograms(self, duration=rospy.Duration()):
+    def do_upload_data_histograms(self, turbine_data_index, duration=rospy.Duration()):
         rospy.logdebug('Interface: Mock \'Upload Data Histograms\' Action')
         start = rospy.Time.now()
+        data_histogram_upload_history_index = []
+        data_histogram_upload_history_time = []
+        if rospy.has_param(str(self.namespace) + 'data_histogram/index'):   
+            data_histogram_upload_history_index = rospy.get_param(str(self.namespace) + 'data_histogram/index')
+        if rospy.has_param(str(self.namespace) + 'data_histogram/time'):   
+            data_histogram_upload_history_time = rospy.get_param(str(self.namespace) + 'data_histogram/time')
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             # self._rate.sleep()
             completion_percentage = 'Uploading Data Histograms: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             # rospy.loginfo_throttle(1,completion_percentage)
         response = self.ACTION_SUCCESS #MOCK SUCCESS    
         rospy.logwarn('Action UPLOAD DATA HISTOGRAMS took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
-
-        # rospy.loginfo('Histograms uploaded!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
+        if response == self.ACTION_SUCCESS:
+            rospy.logwarn('Setting param data: ' + str(turbine_data_index) + ' Time: ' + str(rospy.Time.now().secs) + ' seconds')
+            data_histogram_upload_history_index.append(turbine_data_index)
+            data_histogram_upload_history_time.append(rospy.Time.now().secs)
+            rospy.logwarn('histogram: ' + str(data_histogram_upload_history_index) + ' Time: ' + str(data_histogram_upload_history_time) + ' seconds')
+            rospy.set_param(str(self.namespace) + 'data_histogram/index', data_histogram_upload_history_index)
+            rospy.set_param(str(self.namespace) + 'data_histogram/time', data_histogram_upload_history_time)
+
         return response
     
     def do_surface(self, duration=rospy.Duration()):
@@ -184,7 +196,6 @@ class DemeterActionInterface(object):
             # rospy.loginfo('self.SUBMERGED_Z: ' + str(self.SUBMERGED_Z))
             # completion_percentage = 'Surfacing: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             # rospy.loginfo_throttle(1,completion_percentage)
-            # self._rate.sleep()
         response = self.ACTION_SUCCESS     
         rospy.logwarn('Action SURFACE took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
         

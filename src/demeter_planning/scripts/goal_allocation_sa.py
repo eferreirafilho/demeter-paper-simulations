@@ -419,7 +419,7 @@ if __name__ == '__main__':
                 else:
                     rospy.logwarn('keep only first allocation: ' + str(current_individual_allocation[idx][0]))
                     first_individual_allocation = current_individual_allocation[idx][0]
-                    best_solution[0].insert(0, first_individual_allocation)
+                    best_solution[idx].insert(0, first_individual_allocation)
                     goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed preserving first allocated goal
                     rospy.logwarn('best solution: ' + str(best_solution))
             

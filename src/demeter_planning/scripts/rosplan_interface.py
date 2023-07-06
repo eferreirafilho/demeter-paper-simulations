@@ -90,7 +90,7 @@ class DemeterInterface(object):
             if msg.name == 'move':
                 self._action_threaded(msg, self.move, [msg.parameters, duration])
             elif msg.name == 'upload-data-histograms':
-                self._action_threaded(msg, self.upload_data_histograms, [duration])
+                self._action_threaded(msg, self.upload_data_histograms, [msg.parameters, duration])
             elif msg.name == 'harvest-energy':
                 self._action_threaded(msg, self.harvest_energy, [duration])
             elif msg.name == 'localize-cable':
@@ -241,8 +241,12 @@ class DemeterInterface(object):
         response = self.demeter.do_retrieve_data(data_location, duration) if data_location != -1 else self.demeter.ACTION_FAIL
         return response
     
-    def upload_data_histograms(self, duration=rospy.Duration(60, 0)):
-        response = self.demeter.do_upload_data_histograms(duration)
+    def upload_data_histograms(self, dispatch_params, duration=rospy.Duration(60, 0)):
+        for param in dispatch_params:
+            if param.key == 'd': # data
+                turbine_data_index = param.value[4:]
+                break
+        response = self.demeter.do_upload_data_histograms(turbine_data_index, duration)
         return response
     
     def harvest_energy(self, duration=rospy.Duration(60, 0)):

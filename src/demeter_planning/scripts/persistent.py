@@ -9,7 +9,6 @@ import os
 from datetime import datetime
 import re
 
-
 class ReallocationTrigger:
     def __init__(self, topic, queue_size):
         self.publisher = rospy.Publisher(topic, Bool, queue_size=queue_size)
@@ -26,12 +25,12 @@ class DemeterManager:
         self.demeter = None
 
     def dispatch_mission_sequence(self):
+        self.demeter = None
         self.demeter = ExecDemeter()
         self.demeter.clear_KB()
         PopulateKB()
         mission_success = self.demeter.execute_plan()
         rospy.sleep(1)
-        self.demeter = None
         return mission_success
 
 class PersistentPlanning:
@@ -49,13 +48,17 @@ class PersistentPlanning:
         self.filename = base_filename.format(counter)
         self.missions_df = pd.DataFrame(columns=['vehicle_name', 'allocated_goal', 'time'])
 
-    def log_mission_data(self, vehicle_name, allocated_goal, mission_sucess, time):
+    def log_mission_data(self, mission_sucess):
+        vehicle_name = int(self.extract_number_from_string(str(rospy.get_namespace())))
+        auv_data = rospy.get_param('/auv1/data_histogram')  # Assuming auv1, replace with your vehicle name dynamically
+        allocated_goal = auv_data['index'][-1]  # Get last element
+        mission_time = auv_data['time'][-1]  # Get last element
         # Append new mission data to DataFrame
         self.missions_df = self.missions_df.append({
             'vehicle_name': vehicle_name,
             'allocated_goal': allocated_goal,
             'mission_success': mission_sucess,
-            'time': time
+            'time': mission_time
         }, ignore_index=True)
 
         # Save the updated DataFrame to the CSV file
@@ -98,7 +101,6 @@ class PersistentPlanning:
             self.reallocation_trigger.trigger()
             rospy.logwarn('Trigger reallocation trigerred by all vehicles having no goals')
             
-            
     def extract_number_from_string(self, string):
         match = re.search(r'\d+', string)
         if match:
@@ -110,17 +112,9 @@ class PersistentPlanning:
         while not rospy.is_shutdown():
             mission_success = self.demeter_manager.dispatch_mission_sequence()
             rospy.logwarn('mission success: ' + str(mission_success))
-            # Get the vehicle name, allocated goal and time
-            vehicle_name = int(self.extract_number_from_string(str(rospy.get_namespace())))
-            if rospy.get_param(str(rospy.get_namespace() + "goals_allocated")) != []:
-                allocated_goal = rospy.get_param(str(rospy.get_namespace() + "goals_allocated"), [])[0]  # The first goal in the list
-            else:
-                allocated_goal = []
-            mission_time = rospy.get_rostime().to_sec()
-            # Log the mission data
-            self.log_mission_data(vehicle_name, allocated_goal, mission_success, mission_time)
+            if mission_success:
+                self.log_mission_data(mission_success)
             self.remove_first_allocated_goal()
-
         rospy.spin()
 
 if __name__ == '__main__':
