@@ -13,17 +13,16 @@ from std_msgs.msg import Bool
 from time import sleep
 
 # random.seed(15)
-TIME_WINDOW =  25 # Time limit (Hours) - Next high waves
+TIME_WINDOW =  300 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
-MAX_MISSION_DIFFERENCE = 1 # Number of unbalance allowed
-TURBINE_PERCENTAGE = 30 # in percentage % of turbines to keep
-MAX_ALLOCATION_ITERATION = 2000
-
+MAX_BALANCE_DIFFERENCE = 1 # Number of unbalance allowed
+TURBINE_PERCENTAGE = 100 # in percentage % of turbines to keep
+MAX_ALLOCATION_ITERATION = 1000000
 
 # Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
 ALPHA = 0.1  # Focus on travelling less distances
-GAMMA = 100 # Focused on balanced robots
+ZETA = 1 # Focus on visiting turbines not visited lately
         
 class Allocation(object):
     def __init__(self, reallocation):
@@ -44,7 +43,8 @@ class Allocation(object):
             self.time_of_turbines_last_inspection = [0]*len(all_turbines_idx)
 
         current_time = rospy.get_rostime().to_sec()
-        self.time_of_turbines_last_inspection = [current_time - x for x in self.time_of_turbines_last_inspection]
+        # self.time_of_turbines_last_inspection = [current_time - x for x in self.time_of_turbines_last_inspection]
+        self.time_of_turbines_last_inspection = all_turbines_idx
         rospy.logwarn('How long ago turbines were inspected: ' + str(self.time_of_turbines_last_inspection)) # How long ago a turbine was inspected
         self.number_of_vehicles = self.get_number_of_vehicles()
         self.original_turbines = all_turbines
@@ -240,19 +240,24 @@ class Allocation(object):
 
     def calculate_balance_score(self, allocation):
         '''Compute the maximum difference between allocations'''
-        # Find the number of elements in each list in the allocation
         alloc_size = [len(alloc) for alloc in allocation]
         max_size = max(alloc_size)
         min_size = min(alloc_size)
         # Calculate the balance score
-        balance_score = 1/(0.1+(max_size - min_size)) #0.1 to shift values and not divide by zero in edge cases
+        # balance_score = 1/(0.1+(max_size - min_size)) #0.1 to shift values and not divide by zero in edge cases
+        balance_score = max_size-min_size
         return balance_score
 
     def objective_function(self, solution):
         '''For each allocated turbines, consider the cost of travelling to that turbine plus the time it takes to inspect that turbine
         Also penalizes unbalanced allocations and forbid solutions that passes the allowed time window'''
-        max_time = 0  # Maximum time a vehicle takes
         
+        # Penalty if balance between allocations and vehicles is too big
+        balanced = self.calculate_balance_score(solution)
+        if balanced > MAX_BALANCE_DIFFERENCE:
+            return -float('Inf')
+        
+        max_time = 0  # Maximum time a vehicle takes
         distance_vehicle_to_graph, closer_node = self.distance_vehicles_to_graph_nodes(self.G_with_only_turbines)
         total_distance = 0
         for vehicle_idx, vehicle in enumerate(solution):
@@ -273,13 +278,18 @@ class Allocation(object):
                 max_time = time
         total_allocations = sum(len(sublist) for sublist in solution)
         
-        balanced = self.calculate_balance_score(solution)
+        # Penalty if total time exceeds the limit 
+        if max_time > TIME_WINDOW:
+            return -float('Inf') 
+        
+        turbines_last_inspection = 0
+        for individual_solution in solution:
+            for allocated_turbine in individual_solution:
+                turbines_last_inspection += self.time_of_turbines_last_inspection[allocated_turbine]
 
-        DELTA = float('Inf') if max_time > TIME_WINDOW else 0  # Penalty if total time exceeds the limit 
+        cost = ALPHA*total_distance - BETA*total_allocations - ZETA*turbines_last_inspection
         
-        cost = -ALPHA*total_distance + BETA*total_allocations + GAMMA*balanced - DELTA*max_time 
-        
-        return float(cost)
+        return float(-cost)
 
     def add_element_to_sublist(self, main_list, sublist_list):
         all_elements_in_sublists = [item for sublist in sublist_list for item in sublist]
@@ -320,6 +330,7 @@ class Allocation(object):
     def simulated_annealing(self):
         INITIAL_TEMPERATURE = 1000
         COOLING_RATE = 0.999
+        REHEATING_TEMPERATURE = 1
         
         # Generate an initial random solution
         current_solution = self.random_allocation()
@@ -328,9 +339,11 @@ class Allocation(object):
         best_cost = current_cost
         
         rospy.logwarn(f'solution: {current_solution} cost: {current_cost}')
+        reheated = 0
 
         temperature = INITIAL_TEMPERATURE
         for iteration in range(MAX_ALLOCATION_ITERATION):
+        
         # while self.reallocation_trigger == False:
             
             # Create a neighboring solution by randonly adding or remove an vehicle-> turbine allocation or perturb the system with a new random solution
@@ -342,17 +355,22 @@ class Allocation(object):
                 current_solution = new_solution
                 current_cost = new_cost
 
-            # rospy.logwarn_throttle(5, f'Iter: {iteration} New solution: {new_solution} New cost: {new_cost}')
-
             if new_cost > best_cost:
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
                 rospy.logwarn(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
-            
-            # if self.reallocation_trigger == True:
-                # rospy.logwarn(f'Realocation triggered: {self.reallocation_trigger}')
+                rospy.logwarn(f'Temp: {temperature}')            
      
             temperature *= COOLING_RATE
+            
+            # Reheating            
+            if temperature < REHEATING_TEMPERATURE:
+                temperature = INITIAL_TEMPERATURE*(2 ** reheated)
+                reheated+=1
+                current_solution = self.random_allocation() # generate a new random solution
+                current_cost = self.objective_function(current_solution)
+                rospy.logwarn(f'Reheated: {temperature}')  
+                
         return best_solution, best_cost
 
     def plot_allocation(self, solution_G, allocation):
