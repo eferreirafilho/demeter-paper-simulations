@@ -91,7 +91,7 @@ class PersistentPlanning:
                 # Trigger reallocation because the last goal is being dispatched now or vehicle has no goals
                 if global_allocation[vehicle_id] != []: # Vehicle was initially allocated to zero turbines -> this vehicle can't trigger reallocation from not having goals
                     self.reallocation_trigger.trigger()
-                    rospy.logwarn('Trigger reallocation trigerred by vehicle ' + str(rospy.get_namespace()) + ' having no goals')
+                    rospy.logwarn('Trigger reallocation trigerred by vehicle ' + str(rospy.get_namespace()) + ' having no goals | global_allocation(this vehicle): ' + str(global_allocation[vehicle_id]) + ' current list: ' + str(current_list) + 'updated_goal_list' + str(updated_goal_list))
         else:
             # Trigger reallocation because the last goal is being dispatched now or vehicle has no goals
             if global_allocation[vehicle_id] != []: # Vehicle was initially allocated to zero turbines -> this vehicle can't trigger reallocation from not having goals

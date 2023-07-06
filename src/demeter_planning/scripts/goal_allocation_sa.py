@@ -16,12 +16,11 @@ from time import sleep
 TIME_WINDOW =  300 # Time limit (Hours) - Next high waves
 EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
 MAX_BALANCE_DIFFERENCE = 1 # Number of unbalance allowed
-TURBINE_PERCENTAGE = 100 # in percentage % of turbines to keep
-MAX_ALLOCATION_ITERATION = 1000000
+MAX_ALLOCATION_ITERATION = 20000
 
 # Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
-ALPHA = 0.1  # Focus on travelling less distances
+ALPHA = 1  # Focus on travelling less distances
 ZETA = 1 # Focus on visiting turbines not visited lately
         
 class Allocation(object):
@@ -30,34 +29,28 @@ class Allocation(object):
         self._rate = rospy.Rate(1)
 
         self.G_with_only_turbines = self.load_graph_with_only_turbines()
-        all_turbines, all_turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
+        self.turbines, self.turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
 
-        rospy.logwarn('all_turbines: ' + str(all_turbines_idx))
+        rospy.logwarn('all_turbines: ' + str(self.turbines_idx))
 
         rospy.set_param('/goal_allocation/max_allocation_iteration', MAX_ALLOCATION_ITERATION)
         try: # Use memory of turbines inspected this ROS run
-            # param_time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
             self.time_of_turbines_last_inspection = rospy.get_param('/goal_allocation/turbine_inspected')
         except KeyError: # Turbines have not been inspected
-            rospy.set_param('/goal_allocation/turbine_inspected', [0]*len(all_turbines_idx)) # Set times to zero if first time allocating
-            self.time_of_turbines_last_inspection = [0]*len(all_turbines_idx)
+            rospy.set_param('/goal_allocation/turbine_inspected', [0]*len(self.turbines_idx)) # Set times to zero if first time allocating
+            self.time_of_turbines_last_inspection = [0]*len(self.turbines_idx)
 
         current_time = rospy.get_rostime().to_sec()
-        # self.time_of_turbines_last_inspection = [current_time - x for x in self.time_of_turbines_last_inspection]
-        self.time_of_turbines_last_inspection = all_turbines_idx
+        self.time_of_turbines_last_inspection = [current_time - x for x in self.time_of_turbines_last_inspection]
         rospy.logwarn('How long ago turbines were inspected: ' + str(self.time_of_turbines_last_inspection)) # How long ago a turbine was inspected
         self.number_of_vehicles = self.get_number_of_vehicles()
-        self.original_turbines = all_turbines
-        rospy.logwarn('Reallocation: ' + str(reallocation))
-        rospy.logwarn('before removing current dispatch turbines: ' + str(all_turbines_idx))
-        # Not first time allocating
+        self.original_turbines = self.turbines
         if reallocation:
-            self._remove_current_dispatched_turbines(all_turbines, all_turbines_idx)
-        rospy.logwarn('after removing current dispatch turbines: ' + str(all_turbines_idx))
-            
-        rospy.logwarn('before removing turbines: ' + str(all_turbines_idx))
-        self.turbines, self.turbines_idx = self._remove_turbines_visited_lately(all_turbines, all_turbines_idx)
-        rospy.logwarn('after removing turbines: ' + str(self.turbines_idx))
+            rospy.logwarn('Reallocation: ' + str(reallocation))
+            rospy.logwarn('before removing current dispatch turbines: ' + str(self.turbines_idx))
+            # Not first time allocating
+            self.turbines, self.turbines_idx = self._remove_current_dispatched_turbines(self.turbines, self.turbines_idx)
+        rospy.logwarn('after removing current dispatch turbines: ' + str(self.turbines_idx))
         
         self.reallocation_trigger = False
         rospy.Subscriber("/reallocation_trigger", Bool, self._reallocation_trigger_callback)
@@ -102,18 +95,6 @@ class Allocation(object):
         self.reallocation_trigger = msg.data
         rospy.logwarn('Realocation trigger inside goal allocation simulated annealing')
         rospy.logwarn(self.reallocation_trigger)
-        
-    def _remove_turbines_visited_lately(self, all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx):
-        
-        threshold = int(len(self.time_of_turbines_last_inspection) * TURBINE_PERCENTAGE/100) # Number of turbines to keep
-        threshold = max(threshold, self.number_of_vehicles)
-        items = list(zip(all_turbines_to_be_allocated_idx, self.time_of_turbines_last_inspection))
-        sorted_items = sorted(items, key=lambda x: x[1])
-        highest_items = sorted_items[-threshold:]  # This line has been changed to select the highest items
-        highest_indexes, _ = map(list, zip(*highest_items))  # This line has been changed to reflect the new variable name
-        filtered_turbines = [all_turbines_to_be_allocated[all_turbines_to_be_allocated_idx.index(i)] for i in highest_indexes]
-        filtered_indexes = [all_turbines_to_be_allocated_idx[all_turbines_to_be_allocated_idx.index(i)] for i in highest_indexes]
-        return filtered_turbines, filtered_indexes
     
     def _remove_current_dispatched_turbines(self, all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx):
         rospy.loginfo(f'Starting _remove_current_dispatched_turbines with turbines: {all_turbines_to_be_allocated} and indexes: {all_turbines_to_be_allocated_idx}')
@@ -331,7 +312,6 @@ class Allocation(object):
         INITIAL_TEMPERATURE = 1000
         COOLING_RATE = 0.999
         REHEATING_TEMPERATURE = 1
-        
         # Generate an initial random solution
         current_solution = self.random_allocation()
         best_solution = current_solution
