@@ -339,7 +339,7 @@ class Allocation(object):
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
                 rospy.logwarn(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
-                rospy.logwarn(f'Temp: {temperature}')            
+                # rospy.logwarn(f'Temp: {temperature}')            
      
             temperature *= COOLING_RATE
             
@@ -349,7 +349,7 @@ class Allocation(object):
                 reheated+=1
                 current_solution = self.random_allocation() # generate a new random solution
                 current_cost = self.objective_function(current_solution)
-                rospy.logwarn(f'Reheated: {temperature}')  
+                # rospy.logwarn(f'Reheated: {temperature}')  
                 
         return best_solution, best_cost
 
@@ -378,15 +378,14 @@ class Allocation(object):
         current_individual_allocation = []
         current_global_allocation = []
         for idx, _ in enumerate(self.vehicles):
-            rospy.logwarn('Get from param: auv' + str(idx) + '/goals_allocated')
             current_individual_allocation.append(rospy.get_param('auv' + str(idx) + '/goals_allocated'))
         current_global_allocation = rospy.get_param('/goals_allocated/allocation')
         return current_individual_allocation, current_global_allocation
 
     def set_solution_to_ros_param(self, allocation):
         for idx, _ in enumerate(self.vehicles):
-            rospy.logwarn('Set to param: auv' + str(idx) + '/goals_allocated' + str(allocation[idx]))
             rospy.set_param('auv' + str(idx) + '/goals_allocated', allocation[idx])
+        rospy.logwarn('Set to param /goals_allocated/allocation: ' + str(allocation))
         rospy.set_param('/goals_allocated/allocation', allocation)
     
 if __name__ == '__main__':

@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # ROS
 import rospy
-from diagnostic_msgs.msg import KeyValue
 from std_srvs.srv import Empty
-from std_msgs.msg import String
 # ROSplan
 from rosplan_dispatch_msgs.srv import DispatchService
 from rosplan_dispatch_msgs.msg import ActionFeedback
@@ -11,7 +9,6 @@ from rosplan_knowledge_msgs.srv import KnowledgeUpdateServiceRequest
 # Project
 from action_interface import DemeterActionInterface
 from rosplan_interface import DemeterInterface
-from create_problem_instance import PopulateKB
 
 class ExecDemeter(object):
     def __init__(self, update_frequency=4.):
