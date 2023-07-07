@@ -15,13 +15,13 @@
 		<arg name="model_name" value="auv0"/>
 	</include>
 
-	<!-- <include file="$(find auv_control)/launch/position_hold.launch">
+	 <include file="$(find auv_control)/launch/position_hold.launch">
 		<arg name="model_name" value="auv1"/>
 	</include>
 
 	<include file="$(find auv_control)/launch/position_hold.launch">
 		<arg name="model_name" value="auv2"/>
-	</include> -->
+	</include>
 <!-- 
 
 	<include file="$(find auv_control)/launch/position_hold.launch">
@@ -31,7 +31,7 @@
     <!-- Position control (launches uuv acceleration, velocity and position cascade control loops) -->
 	<!-- Launch one for each vehicle -->
 
-	<!-- <include file="$(find auv_autonomy)/launch/aruco.launch">
+	<include file="$(find auv_autonomy)/launch/aruco.launch">
 		<arg name="model_name" value="auv0"/>
 	</include>
 	<include file="$(find auv_autonomy)/launch/aruco.launch">
@@ -39,7 +39,7 @@
 	</include>
 	<include file="$(find auv_autonomy)/launch/aruco.launch">
 		<arg name="model_name" value="auv2"/>
-	</include> -->
+	</include>
 
 	<!-- <include file="$(find auv_autonomy)/launch/aruco.launch">
 		<arg name="model_name" value="auv3"/>

@@ -6,16 +6,16 @@ from threading import Lock
 
 INIT_BATTERY_LEVEL = 100 # %
 NUMBER_OF_THRUSTERS = 6
-THRUSTERS_CONSUMPTION_FACTOR = 0.0005
+THRUSTERS_CONSUMPTION_FACTOR = 0.000003
 RECHARGING_RATE = 0.01
-RECHARGING_RATE_DEDICATED = 3
+RECHARGING_RATE_DEDICATED = 0.05
         
 class BatteryController(object):
 
     def __init__(self):
         # Fetch AUV index and initialize variables
         self.vehicle_idx = rospy.get_param("/goal_allocation/vehicle_idx")
-        rospy.logwarn(self.vehicle_idx)
+        # rospy.logwarn(self.vehicle_idx)
         # Initialize is_submerged status for each AUV
         self.is_submerged = [True] * len(self.vehicle_idx)
         self.vehicle_thruster_list = []
@@ -27,7 +27,7 @@ class BatteryController(object):
         self.received_battery_level = [False] * len(self.vehicle_idx)
         self.received_recharging_dedicated = [False] * len(self.vehicle_idx)
         self.received_is_surfaced = [False] * len(self.vehicle_idx)
-        rospy.logwarn(self.mean_thruster_usage)
+        # rospy.logwarn(self.mean_thruster_usage)
         self.battery_level = [INIT_BATTERY_LEVEL] * len(self.vehicle_idx)
         self.battery_pub = []
         self.rate = rospy.Rate(5)  # ROS Rate at 5Hz
@@ -36,12 +36,12 @@ class BatteryController(object):
             thruster_list = [0] *NUMBER_OF_THRUSTERS
             self.vehicle_thruster_list.append(thruster_list)
             rospy.Subscriber("/auv"+ str(idx)+ "/battery_level_emulated", Float32, self.battery_level_callback, callback_args=idx)
-            rospy.Subscriber("/auv"+ str(idx)+ "/is_submerged", Bool , self.is_surfaced_callback, callback_args=idx)
+            rospy.Subscriber("/auv"+ str(idx)+ "/is_submerged", Bool , self.is_submerged_callback, callback_args=idx)
             rospy.Subscriber("/auv"+ str(idx)+ "/recharging_dedicated", Bool , self.recharging_dedicated_callback, callback_args=idx)
             battery_pub = rospy.Publisher("/auv" + str(idx) + "/battery_level_emulated", Float32, queue_size=1)
             self.battery_pub.append(battery_pub)
         self.create_thrusters_subscribers() # For all vehicles
-        self.rate.sleep()
+        # self.rate.sleep()
         
     def publish_battery_level(self):
         # Update and publish battery level until ROS shutdown
@@ -49,7 +49,7 @@ class BatteryController(object):
             self.update_battery_level()
             for i in range(len(self.vehicle_idx)):
                 self.battery_pub[i].publish(self.battery_level[i])
-            self.rate.sleep()
+            # self.rate.sleep()
 
     def update_battery_level(self):
         # Update battery level for each AUV
@@ -97,11 +97,11 @@ class BatteryController(object):
         self.recharging_dedicated[vehicle_idx] = msg.data
         self.received_recharging_dedicated[vehicle_idx] = True
         
-    def is_surfaced_callback(self, msg, vehicle_idx):
+    def is_submerged_callback(self, msg, vehicle_idx):
         # Update recharging based on surface status from callback
         if msg.data == True:
             self.recharging[vehicle_idx] = 0
-        else:
+        elif msg.data == False:
             self.recharging[vehicle_idx] = 1
         self.received_is_surfaced[vehicle_idx] = True
 

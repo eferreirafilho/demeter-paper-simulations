@@ -13,15 +13,15 @@ class DemeterActionInterface(object):
     ACTION_SUCCESS = 1
     ACTION_FAIL = 0
     EPS_DISTANCE = 0.2 # Distance we consider that vehicle is at a waypoint
-    SUBMERGED_Z = -1.5 # Z Distance we consider that vehicle is on surface
-    SUBMERGED_Z_CMD = -1 # Z Distance we send vehicle to surface
+    SUBMERGED_Z = -0.8 # Z Distance we consider that vehicle is on surface
+    SUBMERGED_Z_CMD = -0.6 # Z Distance we send vehicle to surface
     EPS_ANGLE = 1 # Distance (degrees) we consider that a desired angle is achieved
 
     def __init__(self, namespace, update_frequency=10.):
         """
         A Class that interfaces ROSPlan and Demeter Vehicle for executing actions
         """
-        rospy.logwarn(namespace)
+        # rospy.logwarn(namespace)
         self.namespace=namespace
 
         self.wp_reached = -1
@@ -72,7 +72,7 @@ class DemeterActionInterface(object):
         self.received_battery_level = True
 
     def load_submerge_wp_from_param(self):
-        waypoints = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/plan_wp_z")]
+        waypoints = [rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/underwater_waypoints_x"), rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/underwater_waypoints_y"),rospy.get_param(str(self.namespace)+"rosplan_demeter_exec/underwater_waypoints_z")]
         return waypoints
 
     def load_origin_from_file(self):
@@ -87,7 +87,7 @@ class DemeterActionInterface(object):
     def closer_wp(self, pos):
         dist = float('inf')
         closer_wp = None
-        for i in range(len(self.waypoints_position[0])): # Don't compare with itself
+        for i in range(len(self.waypoints_position[0])):
             dist_aux=sqrt((pos[0] - self.waypoints_position[0][i])**2+(pos[1] - self.waypoints_position[1][i])**2+(pos[2] - self.waypoints_position[2][i])**2)
             if dist_aux.real<dist:
                 dist=dist_aux.real
@@ -98,55 +98,41 @@ class DemeterActionInterface(object):
         '''Publish the time in which turbine was inspected'''
         time_turbine_inspected = rospy.Time.now().to_sec()
         turbines_inspected = rospy.get_param('/goal_allocation/turbine_inspected')
-        rospy.logwarn(turbines_inspected)
+        # rospy.logwarn(turbines_inspected)
         turbines_inspected[turbine] = time_turbine_inspected
         rospy.set_param('/goal_allocation/turbine_inspected', turbines_inspected)
-        rospy.logwarn(turbines_inspected)
+        # rospy.logwarn(turbines_inspected)
         # self._rate.sleep()
     
     # Actions
     def do_move(self, waypoint, duration=rospy.Duration()):
         self.wp_reached = -1
         start = rospy.Time.now()
-        rospy.logwarn('Moving to waypoint ' + str(waypoint))
+        # rospy.logwarn('Moving to waypoint ' + str(waypoint))
         self.set_current_target_wp(waypoint) # Set current waypoint to internal variable
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and ((waypoint != self.wp_reached)):
             self.publish_wp_cmd_pose_fixed_orientation(waypoint)
             self.update_wp_position(waypoint)
             if self._current_wp==waypoint: # Query if vehicle is at target WP
                 self.wp_reached=waypoint # SUCCESS
-                rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
+                # rospy.loginfo('Waypoint ' + str(waypoint) + ' reached!')
             # self._rate.sleep()
         response = int(waypoint == self.wp_reached)
+        rospy.logwarn('Action MOVE took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
 
         if (rospy.Time.now() - start) > duration:
             response = self.OUT_OF_DURATION
         return response
     
     def do_retrieve_data(self, turbine, duration=rospy.Duration()):
-        # rospy.logwarn('Dispatch time: ' + str(start_time))
-        
-        rospy.logwarn_throttle(5, 'duration: ' + str(duration.to_sec()))
-
         next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-        rospy.logwarn_throttle(5, 'next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
         action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-        rospy.logwarn_throttle(5, 'action_finish_time: ' + str(action_finish_time))
         
-        while not self.low_tide or action_finish_time >= next_shift_to_high_tide: # Wait the next low tide for safety
+        while not self.low_tide or action_finish_time >= next_shift_to_high_tide: # Wait the low tide for safety
             next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
             action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-            
-            # rospy.logwarn_throttle(5, 'Wait')
-            rospy.logwarn_throttle(5, 'action_finish_time: ' + str(action_finish_time))
-            rospy.logwarn_throttle(5, 'next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
-            
-            if self.low_tide:
-                rospy.logwarn_throttle(5, 'Tide: low')
-            else:
-                rospy.logwarn_throttle(5, 'Tide: high')
-                
-        rospy.logwarn('Interface: \'Inspect Turbine\' Action')
+
+        rospy.logwarn('Interface: \'Retrieve Data\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position
@@ -161,44 +147,58 @@ class DemeterActionInterface(object):
                 pos.x, pos.y, pos.z = wp_x, wp_y, wp_z
                 while self.squared_distance(self.odom_pose.pose.pose.position, pos) > self.EPS_DISTANCE**2:
                     self.publish_position_fixed_orientation(pos)
-                    completion_percentage = 'Inspecting turbine: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-                    rospy.loginfo_throttle(1,completion_percentage)
+                    # completion_percentage = 'Inspecting turbine: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+                    # rospy.loginfo_throttle(1,completion_percentage)
                 self.set_inspected_times(turbine)               
-            
-            while self.squared_distance(self.odom_pose.pose.pose.position, start_pos) > self.EPS_DISTANCE**2:
-                self.publish_position_fixed_orientation(start_pos)
-                completion_percentage = 'Returning to submerge point: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
-                rospy.loginfo_throttle(1,completion_percentage)
                 response = self.ACTION_SUCCESS   
                 
+            rospy.logwarn('Action RETRIEVE DATA took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
+
             # rospy.loginfo('Data acquired!')
                 
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
     
-    def do_upload_data_histograms(self, duration=rospy.Duration()):
+    def do_upload_data_histograms(self, turbine_data_index, duration=rospy.Duration()):
         rospy.logdebug('Interface: Mock \'Upload Data Histograms\' Action')
         start = rospy.Time.now()
+        data_histogram_upload_history_index = []
+        data_histogram_upload_history_time = []
+        if rospy.has_param(str(self.namespace) + 'data_histogram/index'):   
+            data_histogram_upload_history_index = rospy.get_param(str(self.namespace) + 'data_histogram/index')
+        if rospy.has_param(str(self.namespace) + 'data_histogram/time'):   
+            data_histogram_upload_history_time = rospy.get_param(str(self.namespace) + 'data_histogram/time')
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             # self._rate.sleep()
             completion_percentage = 'Uploading Data Histograms: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             # rospy.loginfo_throttle(1,completion_percentage)
-        response = self.ACTION_SUCCESS #MOCK SUCCESS     
-        # rospy.loginfo('Histograms uploaded!')
+        response = self.ACTION_SUCCESS #MOCK SUCCESS    
+        rospy.logwarn('Action UPLOAD DATA HISTOGRAMS took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
+        if response == self.ACTION_SUCCESS:
+            rospy.logwarn('Setting param data: ' + str(turbine_data_index) + ' Time: ' + str(rospy.Time.now().secs) + ' seconds')
+            data_histogram_upload_history_index.append(turbine_data_index)
+            data_histogram_upload_history_time.append(rospy.Time.now().secs)
+            rospy.logwarn('histogram: ' + str(data_histogram_upload_history_index) + ' Time: ' + str(data_histogram_upload_history_time) + ' seconds')
+            rospy.set_param(str(self.namespace) + 'data_histogram/index', data_histogram_upload_history_index)
+            rospy.set_param(str(self.namespace) + 'data_histogram/time', data_histogram_upload_history_time)
+
         return response
     
     def do_surface(self, duration=rospy.Duration()):
         rospy.logdebug('Interface: \'Surface\' Action')
         start = rospy.Time.now()
-        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
-            self.surface_if_submerged()   
-            completion_percentage = 'Surfacing: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+        while not (rospy.is_shutdown()) and self.odom_pose.pose.pose.position.z < self.SUBMERGED_Z:
+            self.goto_surface()   
+            # rospy.loginfo('self.odom_pose.pose.pose.position.z: ' + str(self.odom_pose.pose.pose.position.z))
+            # rospy.loginfo('self.SUBMERGED_Z: ' + str(self.SUBMERGED_Z))
+            # completion_percentage = 'Surfacing: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             # rospy.loginfo_throttle(1,completion_percentage)
-            # self._rate.sleep()
-        response = self.ACTION_SUCCESS #MOCK SUCCESS     
+        response = self.ACTION_SUCCESS     
+        rospy.logwarn('Action SURFACE took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
+        
         # rospy.loginfo('Surfaced!')
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
@@ -207,12 +207,16 @@ class DemeterActionInterface(object):
     def do_harvest_energy(self, duration=rospy.Duration()):
         rospy.logdebug('Interface: \'harvest-energy (recharging) \' Action') # Actual action is handled in BatteryController class
         start = rospy.Time.now()
-        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()) and not self.battery_level>=100:
+        while not (rospy.is_shutdown()) and not self.battery_level>=100:
                 # self._rate.sleep()
-                self.recharging_dedicated_pub.publish(True) # Recharge dedicated
+                if not self.is_submerged():
+                    self.recharging_dedicated_pub.publish(True) # Recharge dedicated
         self.recharging_dedicated_pub.publish(False) # Stop Recharging dedicated
         response = self.ACTION_SUCCESS     
         # rospy.loginfo('Recharged!')
+        rospy.logwarn('Action HARVEST ENERGY took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
+
+        
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             self.recharging_dedicated_pub.publish(False) # Stop Recharging dedicated
             response = self.OUT_OF_DURATION        
@@ -232,13 +236,19 @@ class DemeterActionInterface(object):
         pos.x=float(turbine_pos[0] + DELTA_X)
         pos.y=float(turbine_pos[1])
         pos.z=float(DELTA_Z)
-        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
+
+        while (rospy.Time.now() - start < duration/2) and not (rospy.is_shutdown()):        # Half action time: Submerge
             self.publish_position_fixed_orientation(pos)
             # self._rate.sleep()
-            completion_percentage = 'Localizing ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
+            # completion_percentage = 'Localizing ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
             # rospy.loginfo_throttle(1,completion_percentage)
+        while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):        # Other half action time: Surface
+            self.goto_surface()
+        
         response = self.ACTION_SUCCESS     
         # rospy.loginfo('Localizing!')
+        rospy.logwarn('Action LOCALIZE CABLE took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
+
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
@@ -246,7 +256,7 @@ class DemeterActionInterface(object):
     def get_number_of_turbines(self):
         param = rospy.get_param(str(self.namespace) + 'rosplan_demeter_exec/scaled_turbines_xy')
         number_of_turbines = len(param)
-        rospy.logwarn('Number of turbines: ' + str(number_of_turbines))
+        # rospy.logwarn('Number of turbines: ' + str(number_of_turbines))
         return number_of_turbines
 
     def get_turbine_start_position(self, turbine):
@@ -258,7 +268,7 @@ class DemeterActionInterface(object):
         self.get_init_position_param()
         self.append_to_waypoint_position(self.init_position)
         wp_set=[item[wp_index] for item in self.waypoints_position] # Get specified waypoint
-        rospy.logwarn('Setting target waypoint to: ' + str(wp_set))
+        # rospy.logwarn('Setting target waypoint to: ' + str(wp_set))
         self.target_wp=wp_set
 
     def set_init_position_param(self, position):
@@ -312,7 +322,7 @@ class DemeterActionInterface(object):
         self.cmd_pose_pub.publish(cmd_pose)
     
     def get_position(self):
-        rospy.logwarn(self.odom_pose.pose.pose.position)
+        # rospy.logwarn(self.odom_pose.pose.pose.position)
         return self.odom_pose.pose.pose.position
 
     def get_orientation(self):
@@ -323,41 +333,24 @@ class DemeterActionInterface(object):
 
     def is_submerged(self):
         # current_pos=self.get_position()
-        rospy.logwarn('Position z' + str(self.odom_pose.pose.pose.position.z))
-        rospy.logwarn('SUBMERGED Z' + str(self.SUBMERGED_Z))
+        # rospy.logwarn('Position z' + str(self.odom_pose.pose.pose.position.z))
+        # rospy.logwarn('SUBMERGED Z' + str(self.SUBMERGED_Z))
         if float(self.odom_pose.pose.pose.position.z)<float(self.SUBMERGED_Z):
-            rospy.logwarn(float(self.odom_pose.pose.pose.position.z))
-            rospy.logwarn(float(self.SUBMERGED_Z))
-            rospy.logwarn('submerged!!')
+            # rospy.logwarn(float(self.odom_pose.pose.pose.position.z))
+            # rospy.logwarn(float(self.SUBMERGED_Z))
+            # rospy.logwarn('submerged!!')
             
             return True
         else:
-            rospy.logwarn('surfaced!!')
+            # rospy.logwarn('surfaced!!')
             return False
-    
-    def surface_if_submerged(self):
-        # rospy.loginfo('Surfacing...')
-        pos = Point()
-        pos.x = self.odom_pose.pose.pose.position.x
-        pos.y = self.odom_pose.pose.pose.position.y
-        pos.z = self.SUBMERGED_Z
-        self.publish_position_fixed_orientation(pos)
-        self._wait(2) 
         
     def goto_surface(self):
         pos = Point()
-        pos = self.odom_pose.pose.pose.position
-        pos.z=self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
+        pos.x = self.odom_pose.pose.pose.position.x 
+        pos.y = self.odom_pose.pose.pose.position.y
+        pos.z = self.SUBMERGED_Z_CMD # Submerge while in the same X and Y
         self.publish_position_fixed_orientation(pos)
-
-    def goto_origin(self):
-        origin = self.load_origin_from_file()
-        pos = Point()
-        pos.x=float(origin[0])
-        pos.y=float(origin[1])
-        pos.z=float(origin[2])
-        self.publish_position_fixed_orientation(pos)
-        return
 
     def orientation_comparison(self,q1,q2):
         q1_inv=q1

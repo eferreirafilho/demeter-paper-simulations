@@ -1,18 +1,17 @@
 (define (problem task)
-(:domain demeter-domain-with-weather)
+(:domain demeter-domain)
 (:objects
     vehicle0 - vehicle
-    wp_init_auv0 waypoint20 waypoint22 - waypoint
-    data5 - data
+    wp_init_auv0 waypoint46 waypoint50 - waypoint
+    data12 - data
     currenttide - tide
-    turbine5 - turbine
+    turbine12 - turbine
 )
 (:init
-    (can-move wp_init_auv0 waypoint20)
-    (can-move waypoint20 waypoint22)
+    (can-move wp_init_auv0 waypoint46)
+    (can-move waypoint46 waypoint50)
 
-    (is-in data5 turbine5)
-
+    (is-in data12 turbine12)
 
 
     (at vehicle0 wp_init_auv0)
@@ -22,40 +21,39 @@
 
     (empty vehicle0)
 
-
     (not (tide-low currenttide))
 
-    (at 12000.5 (tide-low currenttide))
-    (at 12026.9 (not (tide-low currenttide)))
-    (at 12093.6 (tide-low currenttide))
-    (at 12127 (not (tide-low currenttide)))
-    (at 12193.8 (tide-low currenttide))
-    (at 12227.1 (not (tide-low currenttide)))
-    (at 12293.8 (tide-low currenttide))
-    (at 12327.2 (not (tide-low currenttide)))
-    (at 12393.9 (tide-low currenttide))
-    (at 12427.3 (not (tide-low currenttide)))
+    (at 357.68 (tide-low currenttide))
+    (at 477.775 (not (tide-low currenttide)))
+    (at 717.8 (tide-low currenttide))
+    (at 837.97 (not (tide-low currenttide)))
+    (at 1078.07 (tide-low currenttide))
+    (at 1198.16 (not (tide-low currenttide)))
+    (at 1438.24 (tide-low currenttide))
+    (at 1558.31 (not (tide-low currenttide)))
+    (at 1798.55 (tide-low currenttide))
+    (at 1918.62 (not (tide-low currenttide)))
 
 
-    (is-turbine-wp waypoint22 turbine5)
+    (is-turbine-wp waypoint50 turbine12)
 
-    (not-recharging vehicle0)
+    (idle vehicle0)
 
 
-
-    (= (battery-level vehicle0) 0)
+    (= (battery-level vehicle0) 100)
 
     (= (recharge-rate vehicle0) 0.05)
 
-    (= (recharge-rate-dedicated vehicle0) 10)
+    (= (recharge-rate-dedicated vehicle0) 1)
 
-    (= (traverse-cost wp_init_auv0 waypoint20) 0.005)
-    (= (traverse-cost waypoint20 waypoint22) 12.265)
+    (= (traverse-cost wp_init_auv0 waypoint46) 4.31)
+    (= (traverse-cost waypoint46 waypoint50) 31)
 
-    (= (speed vehicle0) 0.3)
+    (= (speed vehicle0) 0.35)
 
 )
 (:goal (and
-    (data-sent data5)
+    (data-sent data12)
 ))
+    ; (:metric minimize (total-time))
 )

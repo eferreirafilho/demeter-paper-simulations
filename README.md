@@ -16,7 +16,7 @@ git clone https://github.com/codres-ali/auv_sim.git
 
 ## Pre-planning
 
-A visibility graph is created and saved in scaled_visibility_G_with_turbines.pickle. This consider as many turbines as set in get_data_allocation.yaml and create a roadmap to avoid collisions with turbines.
+A visibility graph is created and saved in scaled_visibility_G_with_turbines.pickle. This consider as many turbines as set in vehicles_in_the_system.yaml and create a roadmap to avoid collisions with turbines.
 
 ![visibility_graph](https://user-images.githubusercontent.com/92797165/232097906-bedde59f-6862-4dbf-a4b3-dbc34de8e41d.png)
 
@@ -31,20 +31,22 @@ Possible PDDl actions: move, retrieve-data, upload-data-histograms, harvest-ener
 
 - Action **move** return success if vehicle has reached the waypoint within the time described in common/auv{i}/domain.pddl. Plan fails otherwise.
 
+- Action **localize-cable** return success if vehicle has localized the cable. The localization action is a mock action. Vehicle dives a little to simulate it is localizaing the cable.
+
 - Actions **upload-data-histograms** is simulated, vehicle just wait in position for some time (as defined in common/auv{i}/domain.pddl) and the action always returns as successfull.
 
-- Action **retrieve-data** is sucessfull if last way point in plan_wp was reached, simulating data-retrieval from sensor. 
+- Action **retrieve-data** is sucessfull if last way point in underwater_waypoints was reached, simulating data-retrieval from sensor. 
 
 - Action **harvest-energy** recharge the Vehicle (when in surface) and block most of other actions. Note that is possible to set the vehicle to also recharge while executing other surface actions (RECHARGE_RATE == 0 in battery.py).  
+
+- Action **surface** send the Vehicle to the surface.  
 
 ## Parameters
 
 original_windfarm_coodinates.yaml: The original position of turbines and corners of Robin Rigg wind farm 
-get_data_allocation.yaml: number of vehicles and turbines that have sensors
-plan_wp.yaml: waypoints related to retrieve-data action. Relative to the turbines positions, define at least two points.
+vehicles_in_the_system.yaml: Index of the vehicles currently in the system
+underwater_waypoints.yaml: Those are the waypoints that the vehicle will follow in retrieve-mission action. Last waypoint is the sensor location.
 scaled_turbines_xy.yaml: turbines that are considered scaled to Gazebo size
-
-Inside folder /params, a YAML file define the waypoints. 
 
 ## To run:
 

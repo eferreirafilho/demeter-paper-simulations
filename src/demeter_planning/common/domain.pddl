@@ -1,10 +1,10 @@
-; Demeter Domain - Get data and measure vortexes
+; Demeter Domain - Get data
 
-(define (domain demeter-domain-with-weather) 
-    (:requirements :typing :fluents :timed-initial-literals :equality :preferences :constraints :durative-actions :duration-inequalities)
+(define (domain demeter-domain) 
+    (:requirements :typing :fluents :timed-initial-literals :equality :constraints :durative-actions :duration-inequalities)
 
     (:types
-        vehicle waypoint data vortex tide turbine
+        vehicle waypoint data tide turbine
     )
 
     (:functions
@@ -19,18 +19,16 @@
     (:predicates
         (can-move ?x - waypoint ?y - waypoint)
         (is-in ?d - data ?tu - turbine)
-        (is-in-vortex ?vx - vortex ?w - waypoint)
-        ; (been-at ?v - vehicle ?w - waypoint)
         (carry ?v - vehicle ?d - data)
         (at ?v - vehicle ?w - waypoint)
         (is-surfaced ?v - vehicle)
         (data-sent ?d - data)
         (empty ?v - vehicle)
-        (vortex-data-measured ?vx - vortex)
         (tide-low ?td - tide)
+        ; (not-low-tide ?td - tide)
+        ; (waiting-for-tide ?v - vehicle ?td - tide)
         (cable-localized ?tu - turbine)
         (is-turbine-wp ?w - waypoint ?tu - turbine)
-        (not-recharging ?v - vehicle)
         (idle ?v - vehicle)
     (is-submerged ?v - vehicle)
 )
@@ -49,7 +47,7 @@
             ; (at end (been-at ?v ?y))
             (at start (not (at ?v ?y)))
             (at start (decrease (battery-level ?v) (traverse-cost ?y ?z)))
-            (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
+            ; (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
             (at start (not (idle ?v)))
             (at end (idle ?v))
             )
@@ -58,28 +56,43 @@
     ;define actions here
     (:durative-action localize-cable
         :parameters (?v - vehicle ?w - waypoint ?tu - turbine)
-        :duration(= ?duration 5)
+        :duration(= ?duration 15)
         :condition (and 
             (at start (at ?v ?w))
             (over all (is-turbine-wp ?w ?tu))
             (at start (>= (battery-level ?v) 5))
-            (over all (is-surfaced ?v))
+            ; (over all (is-surfaced ?v))
         )
         :effect (and 
             (at end (cable-localized ?tu))
             (at start (decrease (battery-level ?v) 5))
-            (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
+            ; (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
             (at start (not (idle ?v)))
             (at end (idle ?v))
-            (at end (is-submerged ?v))
-            (at end (not (is-surfaced ?v)))
+            ; (at end (is-submerged ?v))
+            ; (at end (not (is-surfaced ?v)))
         )
     )
 
-    
+    ; (:durative-action wait-for-low-tide
+    ;     :parameters (?v - vehicle ?td - tide)
+    ;     :duration (= ?duration 1)
+    ;     :condition (and 
+    ;         (at start (not-low-tide ?td))
+    ;         ; (over all (idle ?v))
+    ;         (over all (is-surfaced ?v))
+    ;     )
+    ;     :effect (and 
+    ;         (at start (waiting-for-tide ?v ?td))
+    ;         (at end (not (waiting-for-tide ?v ?td)))
+    ;         (at start (not (idle ?v)))
+    ;         (at end (idle ?v))
+    ;     )
+    ; )
+
     (:durative-action retrieve-data
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
-        :duration(= ?duration 50)
+        :duration(= ?duration 55)
         :condition (and 
             (over all (cable-localized ?tu))
             (over all (is-turbine-wp ?w ?tu))
@@ -87,7 +100,8 @@
             (over all (is-in ?d ?tu))
             (over all (at ?v ?w))
             (at start (empty ?v))
-            (at start (>= (battery-level ?v) 80))
+            (at start (>= (battery-level ?v) 100))
+            (at start (is-surfaced ?v))
         )
         :effect (and 
             (at end (not (is-in ?d ?tu)))
@@ -102,27 +116,6 @@
             (at end (idle ?v))
         )
     )
-    (:durative-action measure-vortex
-        :parameters (?v - vehicle ?vx - vortex ?w - waypoint)
-        :duration(= ?duration 1)
-        :condition (and
-            (at start (is-in-vortex ?vx ?w))
-            (over all (at ?v ?w))
-            (at start (>= (battery-level ?v) 20))
-        )
-        :effect (and 
-            (at end (not (is-in-vortex ?vx ?w)))
-            (at start (decrease (battery-level ?v) 20))
-            (at start (not (is-surfaced ?v)))
-            (at end (is-surfaced ?v))
-            (at start (is-submerged ?v))
-            (at end (not (is-submerged ?v)))
-            (at end (vortex-data-measured ?vx))
-            ; (at end (increase (total-missions-completed ?v) 1))
-            (at start (not (idle ?v)))
-            (at end (idle ?v))
-    )
-    )
 
     (:durative-action upload-data-histograms
         :parameters (?v - vehicle ?d - data)
@@ -130,25 +123,21 @@
         :condition (and 
             (at start (carry ?v ?d))
             (at start (> (battery-level ?v) 50))
-            (over all (is-surfaced ?v)))
-        
+            (at start (is-surfaced ?v))
+            (over all (is-surfaced ?v))
+            )
         :effect (and 
             (at end (not (carry ?v ?d)))
             (at end (data-sent ?d))
             (at end (empty ?v))     
             (at start (decrease (battery-level ?v) 50))
-            (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
-            ; (at end (increase (total-missions-completed ?v) 100))
-
-            ;not idle and idle effects commented allows for other actions to run in pararell with this
-            ; (at start (not (idle ?v)))
-            ; (at end (idle ?v))
+            ; (at end (increase (battery-level ?v) (* ?duration (recharge-rate ?v))))
             )
     )
      (:durative-action surface
         :parameters (?v - vehicle)
         :duration 
-            (= ?duration 5)
+            (= ?duration 40)
         :condition (and 
             (at start  (is-submerged ?v))
             (over all (idle ?v))
@@ -156,31 +145,25 @@
         :effect (and
             (at end (not (is-submerged ?v)))
             (at end (is-surfaced ?v))
-            ; (at start (not (not-recharging ?v)))
-            ; (at end (not-recharging ?v))
+            (at start (is-submerged ?v))
+            (at start (not (is-submerged ?v)))
             (at start (not (idle ?v)))
             (at end (idle ?v))
         )
     )
     (:durative-action harvest-energy
-        :parameters (?v - vehicle)
-        :duration 
-            (= ?duration
-                (/ (- 100 (battery-level ?v)) (recharge-rate-dedicated ?v))
-                )
-        :condition (and 
-            (over all (is-surfaced ?v))
-            ; (over all (at ?v ?w))
-            (at start (< (battery-level ?v) 100))
-            ; (at start (not-recharging ?v))
-            (over all (idle ?v))
-        )
-        :effect (and
-            (at end (increase (battery-level ?v) (* ?duration (recharge-rate-dedicated ?v))))
-            ; (at start (not (not-recharging ?v)))
-            ; (at end (not-recharging ?v))
-            (at start (not (idle ?v)))
-            (at end (idle ?v))
-        )
+    :parameters (?v - vehicle)
+    :duration (= ?duration 10) ; fixed duration
+    :condition (and 
+        (over all (is-surfaced ?v))
+        (at start (< (battery-level ?v) 100))
+        (over all (idle ?v))
     )
+    :effect (and
+        (at end (increase (battery-level ?v) (recharge-rate-dedicated ?v))) ; increase battery level by recharge-rate-dedicated per time unit
+        (at start (not (idle ?v)))
+        (at end (idle ?v))
+    )
+)
+
 )

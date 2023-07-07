@@ -15,8 +15,8 @@ class BuildRoadmaps(object):
     def __init__(self):
         rospy.logwarn('Build Roadmaps')
         self._rate = rospy.Rate(10)
-        self.DISTANCE_TO_TURBINE = 0.1
-        self.NUMBER_OF_TURBINES_CONSIDERED = 18
+        self.DISTANCE_TO_TURBINE = 0.18
+        self.NUMBER_OF_TURBINES_CONSIDERED = 15
         self.VISIBILITY_RADIUS = 1.2
         self.BOUNDS_MAP = 50
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
@@ -260,6 +260,11 @@ class BuildRoadmaps(object):
             file.write('    <include>\n')
             file.write('      <uri>model://sun</uri>\n')
             file.write('    </include>\n')
+            file.write('    <physics type="ode">\n')
+            file.write('      <max_step_size>0.005</max_step_size>\n')
+            file.write('      <real_time_factor>0.0</real_time_factor>\n')
+            file.write('      <real_time_update_rate>0</real_time_update_rate> \n')
+            file.write('    </physics> \n')
             file.write('\n')
             file.write('    <!-- Bounding box with sea surface -->\n')
             file.write('    <include>\n')
@@ -388,7 +393,7 @@ class BuildRoadmaps(object):
     def build_and_save_roadmap_with_contour_points(self):
         '''Build roadmap with contour points and save graph as a pickle file
         Also save scaled turbines and waypoints as ROS parameters '''
-        NUMBER_OF_CONTOUR_POINTS = 4
+        NUMBER_OF_CONTOUR_POINTS = 5
         self.set_number_of_contour_points(NUMBER_OF_CONTOUR_POINTS)
         
         visibility_G = self.build_roadmaps()

@@ -11,7 +11,7 @@
 	<!-- knowledge base -->
 	<node name="rosplan_knowledge_base" pkg="rosplan_knowledge_base" type="knowledgeBase" respawn="false" output="screen">
 		<param name="domain_path" value="$(arg domain_path)" />
-		<param name="problem_path" value="$(arg problem_path)" />
+		<!-- <param name="problem_path" value="$(arg problem_path)" /> -->
 		<!-- conditional planning flags -->
 		<param name="use_unknowns" value="false" />
 	</node>
@@ -38,7 +38,8 @@
 		<arg name="problem_path"         value="$(arg problem_path)" />
 		<arg name="data_path"            value="$(find demeter_planning)/common/$(arg namespace)" />
 		<arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/optic-cplex DOMAIN PROBLEM" />
-		<!-- <arg name="planner_command"      value="timeout 60 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM" /> -->
+		<!-- <arg name="planner_command"      value="timeout 60 $(find rosplan_planning_system)/common/bin/popf -n DOMAIN PROBLEM" /> -->
+		<!-- <arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM" /> -->
 	</include> 
 
 	<!-- plan parsing -->
@@ -67,8 +68,8 @@
 	<!-- call planning server -->
 	<!-- <node pkg="demeter_planning" type="exec_demeter.py" name="rosplan_demeter_exec" output="screen"> -->
 	<node pkg="demeter_planning" type="persistent.py" name="rosplan_demeter_exec" output="screen">
-		<rosparam file="$(find demeter_planning)/params/plan_wp.yaml" command="load"/>
-		<rosparam file="$(find demeter_planning)/params/get_data_allocation.yaml" command="load"/>
+		<rosparam file="$(find demeter_planning)/params/underwater_waypoints.yaml" command="load"/>
+		<rosparam file="$(find demeter_planning)/params/vehicles_in_the_system.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/scaled_turbines_xy.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/waypoints.yaml" command="load"/>
 		<param name="namespace" value="$(arg namespace)" />

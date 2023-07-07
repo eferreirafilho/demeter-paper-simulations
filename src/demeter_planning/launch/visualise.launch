@@ -3,7 +3,7 @@
 
 	<!-- Visualise vehicles paths -->
 	<node pkg="demeter_planning" type="visualise_trajectories.py" name="visualise_trajectories" output="screen"> 
-		<rosparam file="$(find demeter_planning)/params/get_data_allocation.yaml" command="load"/>
+		<rosparam file="$(find demeter_planning)/params/vehicles_in_the_system.yaml" command="load"/>
 	</node>
 
 </launch>
