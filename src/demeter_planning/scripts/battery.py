@@ -2,7 +2,6 @@
 import rospy
 from uuv_gazebo_ros_plugins_msgs.msg import FloatStamped
 from std_msgs.msg import Float32, Bool
-from threading import Lock
 
 INIT_BATTERY_LEVEL = 100 # %
 NUMBER_OF_THRUSTERS = 6

@@ -11,7 +11,7 @@ from matplotlib import gridspec
 
 
 class PlotVehicles:
-    PERIOD_OF_TIDES = rospy.get_param('/period_of_tides')
+    PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
     LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
     def __init__(self):
         rospy.init_node('robot_plotter', anonymous=True)

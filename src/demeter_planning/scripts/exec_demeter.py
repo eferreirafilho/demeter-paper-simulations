@@ -32,15 +32,9 @@ class ExecDemeter(object):
         self._dispatch_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan', DispatchService)
         rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch')
         self._cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch', Empty)
-        try:
-            rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
-            self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
-        except rospy.ServiceException as e:
-            rospy.logwarn("clear KB service error: %s", e)
-        try:
-            rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
-        except rospy.ServiceException as e:
-            rospy.logwarn("Service already registered: %s", e)
+        self.clear_KB()
+        self.resume_plan()
+      
         rospy.Subscriber(str(self.namespace)+'rosplan_plan_dispatcher/action_feedback', ActionFeedback, self.check_action_feedback, queue_size=10)
             
     def get_namespace(self):
@@ -77,4 +71,15 @@ class ExecDemeter(object):
         return self.mission_success  
     
     def clear_KB(self):
-        self._clear_KB_proxy()
+        # self._clear_KB_proxy()
+        try:
+            rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
+            self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
+        except rospy.ServiceException as e:
+            rospy.logwarn("clear KB service error: %s", e)
+
+    def resume_plan(self):
+        try:
+            rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
+        except rospy.ServiceException as e:
+            rospy.logwarn("Service already registered: %s", e)

@@ -408,8 +408,8 @@ class DemeterActionInterface(object):
         self.publish_cmd_pose(position,orientation)
         
     def compute_next_shift_to_high_tide_time(self):
-        if rospy.has_param('/period_of_tides'):   
-            PERIOD_OF_TIDES = rospy.get_param('/period_of_tides')
+        if rospy.has_param('/goal_allocation/period_of_tides'):   
+            PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
         else:
             rospy.logwarn("Parameter period_of_tides not set")
         if rospy.has_param('/low_tides_thredshold'):   

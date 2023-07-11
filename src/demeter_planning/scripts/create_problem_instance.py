@@ -347,8 +347,7 @@ class PopulateKB(object):
         self.battery_level = msg.data
 
     def predict_next_tides(self):
-        PERIOD_OF_TIDES = 360 # Period in seconds
-        rospy.set_param('/period_of_tides', PERIOD_OF_TIDES)
+        PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides') # Period in seconds
         LOW_TIDES_THREDSHOLD = PERIOD_OF_TIDES/3.0
         rospy.set_param('/low_tides_thredshold', LOW_TIDES_THREDSHOLD)
 

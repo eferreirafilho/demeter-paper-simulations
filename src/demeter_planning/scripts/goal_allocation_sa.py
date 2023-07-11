@@ -13,8 +13,8 @@ from std_msgs.msg import Bool
 from time import sleep
 
 # random.seed(15)
-TIME_WINDOW =  300 # Time limit (Hours) - Next high waves
-EXECUTE_TIME = 4 # Inspect turbine estimated execute time (Hours)
+# TIME_WINDOW =  2000 # Time limit (Hours) - Next high waves
+EXECUTE_TIME = 360 # Inspect turbine estimated execute time (Seconds)
 MAX_BALANCE_DIFFERENCE = 1 # Number of unbalance allowed
 MAX_ALLOCATION_ITERATION = 20000
 
@@ -31,7 +31,7 @@ class Allocation(object):
         self.G_with_only_turbines = self.load_graph_with_only_turbines()
         self.turbines, self.turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
 
-        rospy.logwarn('all_turbines: ' + str(self.turbines_idx))
+        rospy.loginfo('all_turbines: ' + str(self.turbines_idx))
 
         rospy.set_param('/goal_allocation/max_allocation_iteration', MAX_ALLOCATION_ITERATION)
         try: # Use memory of turbines inspected this ROS run
@@ -42,15 +42,15 @@ class Allocation(object):
 
         current_time = rospy.get_rostime().to_sec()
         self.time_of_turbines_last_inspection = [current_time - x for x in self.time_of_turbines_last_inspection]
-        rospy.logwarn('How long ago turbines were inspected: ' + str(self.time_of_turbines_last_inspection)) # How long ago a turbine was inspected
+        rospy.loginfo('How long ago turbines were inspected: ' + str(self.time_of_turbines_last_inspection)) # How long ago a turbine was inspected
         self.number_of_vehicles = self.get_number_of_vehicles()
         self.original_turbines = self.turbines
         if reallocation:
-            rospy.logwarn('Reallocation: ' + str(reallocation))
-            rospy.logwarn('before removing current dispatch turbines: ' + str(self.turbines_idx))
+            rospy.loginfo('Reallocation: ' + str(reallocation))
+            rospy.loginfo('before removing current dispatch turbines: ' + str(self.turbines_idx))
             # Not first time allocating
             self.turbines, self.turbines_idx = self._remove_current_dispatched_turbines(self.turbines, self.turbines_idx)
-        rospy.logwarn('after removing current dispatch turbines: ' + str(self.turbines_idx))
+        rospy.loginfo('after removing current dispatch turbines: ' + str(self.turbines_idx))
         
         self.reallocation_trigger = False
         rospy.Subscriber("/reallocation_trigger", Bool, self._reallocation_trigger_callback)
@@ -66,13 +66,9 @@ class Allocation(object):
         while len(self.gazebo_positions) != self.number_of_vehicles:
             self._wait(2) # Wait for all robots positions to be acquired
             rospy.logwarn('Wait for all robots positions')
-            
-        rospy.logwarn('GAZEBO POS: ' + str(self.gazebo_positions))
         self.vehicles = [self.gazebo_positions[key] for key in sorted(self.gazebo_positions.keys())]
         self._wait(1)
-
-        rospy.logwarn('VEHICLES: ' + str(self.vehicles))
-        
+        rospy.loginfo('VEHICLES: ' + str(self.vehicles))
         
     def load_graph_with_only_turbines(self):
         '''Load precomputed Roadmap based on visibility graphs with only turbines'''
@@ -260,7 +256,7 @@ class Allocation(object):
         total_allocations = sum(len(sublist) for sublist in solution)
         
         # Penalty if total time exceeds the limit 
-        if max_time > TIME_WINDOW:
+        if max_time > self.time_window:
             return -float('Inf') 
         
         turbines_last_inspection = 0
@@ -307,8 +303,31 @@ class Allocation(object):
         acceptance_ratio = self.sigmoid(scaled_cost_diff)
         acceptance_probability = math.exp(-acceptance_ratio / temperature)
         return acceptance_probability if acceptance_probability > random.random() else 0
+            
+    def compute_next_time_window(self):
+        period_of_tides = rospy.get_param('/goal_allocation/period_of_tides')  # assumed to be duration of a single tide
+        number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        current_time = rospy.get_rostime().to_sec()
+        time_since_start_of_current_cycle = current_time % (period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
+        high_waves_start_time = period_of_tides * number_of_tides_until_next_high_waves
+        high_waves_end_time = period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves)
+    
+        while high_waves_start_time < time_since_start_of_current_cycle < high_waves_end_time: 
+            rospy.loginfo_throttle(5,'We are in highs waves now. Time to end high waves: ' + str(int(high_waves_end_time - time_since_start_of_current_cycle)) + ' seconds')
+            current_time = rospy.get_rostime().to_sec()
+            time_since_start_of_current_cycle = current_time % (period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
+
+        # if time_since_start_of_current_cycle < period_of_tides * number_of_tides_until_next_high_waves:
+        # We are currently not in a high wave
+        time_to_next_high_wave = period_of_tides * number_of_tides_until_next_high_waves - time_since_start_of_current_cycle
+        rospy.loginfo('Not in high waves. Time to next: ' + str(int(time_to_next_high_wave)) + ' seconds')
+        
+        return time_to_next_high_wave
         
     def simulated_annealing(self):
+        self.time_window = self.compute_next_time_window()
+        
         INITIAL_TEMPERATURE = 1000
         COOLING_RATE = 0.999
         REHEATING_TEMPERATURE = 1
@@ -318,7 +337,7 @@ class Allocation(object):
         current_cost = self.objective_function(current_solution)
         best_cost = current_cost
         
-        rospy.logwarn(f'solution: {current_solution} cost: {current_cost}')
+        rospy.loginfo(f'solution: {current_solution} cost: {current_cost}')
         reheated = 0
 
         temperature = INITIAL_TEMPERATURE
@@ -338,7 +357,7 @@ class Allocation(object):
             if new_cost > best_cost:
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
-                rospy.logwarn(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
+                rospy.loginfo(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
                 # rospy.logwarn(f'Temp: {temperature}')            
      
             temperature *= COOLING_RATE
@@ -352,27 +371,6 @@ class Allocation(object):
                 # rospy.logwarn(f'Reheated: {temperature}')  
                 
         return best_solution, best_cost
-
-    def plot_allocation(self, solution_G, allocation):
-        color_list = ['red', 'blue', 'gray', 'orange', 'purple', 'brown', 'pink', 'green', 'olive', 'cyan']
-        self.set_of_all_vehicles = range(len(self.vehicles))
-        pattern = r'\d+'
-        # plot the graph
-        pos = self.turbines + self.vehicles
-        # create a dictionary to map vehicle numbers to colors
-        vehicle_colors = {k: v for k, v in zip(range(len(self.set_of_all_vehicles)), color_list)}
-
-        fig, ax = plt.subplots()
-        # create a list of edge colors based on the vehicle that travels on each edge
-        edge_colors = [vehicle_colors[int(re.findall(pattern, label)[0])] for _, _, label in solution_G.edges(data='label')]
-        nx.draw_networkx_edges(solution_G, pos, width=1, alpha=0.8, edge_color=edge_colors)
-        nx.draw_networkx_edge_labels(solution_G, pos, edge_labels=nx.get_edge_attributes(solution_G, 'label'), font_size=8)
-
-        for vehicle_idx, vehicle_allocation in enumerate(allocation):
-            for turbine in vehicle_allocation:
-                ax.scatter(self.original_turbines[turbine][0], self.original_turbines[turbine][1], color = vehicle_colors[vehicle_idx])
-        plt.axis('off')
-        plt.show()
 
     def get_solution_from_ros_param(self):
         current_individual_allocation = []
@@ -396,29 +394,30 @@ if __name__ == '__main__':
     reallocation = False
     goal_allocation = Allocation(reallocation)
     best_solution, best_cost = goal_allocation.simulated_annealing()
-    rospy.logwarn(f'Last Best solution: {best_solution} Best cost: {best_cost}')
+    rospy.loginfo(f'Last Best solution: {best_solution} Best cost: {best_cost}')
+    goal_allocation.high_wave_reallocation_trigger = False
     goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
 
     # Reallocation (disregard current dispatch)
     while not rospy.is_shutdown():        
-        while goal_allocation.reallocation_trigger == True:
+        while goal_allocation.reallocation_trigger == True or goal_allocation.high_wave_reallocation_trigger == True:
             reallocation = True
             goal_allocation = None
             goal_allocation = Allocation(reallocation)
             best_solution, best_cost = goal_allocation.simulated_annealing()
-            rospy.logwarn(f'Last Best solution: {best_solution} Best cost: {best_cost}')
+            rospy.loginfo(f'Last Best solution: {best_solution} Best cost: {best_cost}')
             goal_allocation.get_solution_from_ros_param()
             current_individual_allocation, current_global_allocation = goal_allocation.get_solution_from_ros_param()
             for idx, _ in enumerate(goal_allocation.vehicles):
                 if len(current_individual_allocation[idx]) < 1:
-                    rospy.logwarn('Add all new allocation to auv' + str(idx))
+                    rospy.loginfo('Add all new allocation to auv' + str(idx))
                     goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
                 else:
-                    rospy.logwarn('keep only first allocation: ' + str(current_individual_allocation[idx][0]))
+                    rospy.loginfo('keep only first allocation: ' + str(current_individual_allocation[idx][0]))
                     first_individual_allocation = current_individual_allocation[idx][0]
                     best_solution[idx].insert(0, first_individual_allocation)
                     goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed preserving first allocated goal
-                    rospy.logwarn('best solution: ' + str(best_solution))
+                    rospy.loginfo('best solution: ' + str(best_solution))
             
             sleep(1)
             rospy.logwarn(f'Realocation triggered: {goal_allocation.reallocation_trigger}')
@@ -426,5 +425,6 @@ if __name__ == '__main__':
                 break
             # Reset the trigger
             goal_allocation.reallocation_trigger = False
+            goal_allocation.high_wave_reallocation_trigger = False
     goal_allocation = None
     rospy.spin()  
