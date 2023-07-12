@@ -77,7 +77,7 @@ class ExecDemeter(object):
             self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
             self._clear_KB_proxy()
             KB_cleared = True
-            rospy.logwarn('KB cleared' + str(self.namespace))
+            # rospy.logwarn('KB cleared' + str(self.namespace))
         except rospy.ServiceException as e:
             rospy.logerr("clear KB service error: %s", e)
         return KB_cleared
@@ -86,4 +86,4 @@ class ExecDemeter(object):
         try:
             rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
         except rospy.ServiceException as e:
-            rospy.logerr("Service already registered: %s", e)
+            rospy.loginfo("Service already registered: %s", e)

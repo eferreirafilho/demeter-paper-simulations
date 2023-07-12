@@ -57,6 +57,18 @@ class PlotVehicles:
 
     def get_scaled_turbine_coordinates(self):
         return rospy.get_param('/goal_allocation/scaled_turbines_xy')
+    
+    def high_waves(self):
+        number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        current_time = rospy.get_rostime().to_sec()
+        time_since_start_of_current_cycle = current_time % (self.PERIOD_OF_TIDES * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
+        high_waves_start_time = self.PERIOD_OF_TIDES * number_of_tides_until_next_high_waves
+        high_waves_end_time = self.PERIOD_OF_TIDES * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves)
+        if high_waves_start_time < time_since_start_of_current_cycle < high_waves_end_time: 
+            return True
+        else:
+            return False
 
     def plot_positions(self):
         AXIS_LIMITS = 130
@@ -121,6 +133,11 @@ class PlotVehicles:
         ax_tides.axhline(y=self.low_tides, color='k', linestyle='-')
         ax_tides.text(0.1 * self.PERIOD_OF_TIDES, self.low_tides+0.1, 'Low tide threshold', fontsize=8, color='black')
 
+        # Check for high waves and annotate if true
+        if self.high_waves():
+            # ax_tides.text(self.current_state_x, self.current_state_y, 'High Waves', fontsize=10, color='red')
+            ax_tides.text(0.50, 0.55, 'High Waves', fontsize=20, color='red', horizontalalignment='center', verticalalignment='center', transform=ax_tides.transAxes)
+
         # Mark the current tide state on the sine wave
         self.current_state_x = (rospy.get_rostime().to_sec() % self.PERIOD_OF_TIDES)
         self.current_state_y = self.get_tide_state()
@@ -138,6 +155,7 @@ class PlotVehicles:
         ax_tides.set_xticks(x_ticks)
         ax_tides.set_xticklabels(x_tick_labels)
         ax_tides.set_ylim(-1, 1)
+        
 
 if __name__ == '__main__':
     plotter = PlotVehicles()

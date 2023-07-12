@@ -53,14 +53,14 @@ class PopulateKB(object):
         closer_wp_position = [self.waypoints_position[0][self.closer_wp], self.waypoints_position[1][self.closer_wp], self.waypoints_position[2][self.closer_wp]]
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
         self.allocated_goals = self.load_allocation()
-        rospy.logwarn('Allocated goals in create problem: ' + str(self.allocated_goals) + ' | ' + str(self.namespace))
+        # rospy.logwarn('Allocated goals in create problem: ' + str(self.allocated_goals) + ' | ' + str(self.namespace))
         self.remove_all_data_goals_from_KB()
         
         if self.allocated_goals:
             self.add_goal_mission(self.allocated_goals[0])
             self.populate_KB()
         else:
-            rospy.logwarn('No more goals for vehicle: ' + str(self.namespace))
+            rospy.loginfo('No more goals for vehicle: ' + str(self.namespace))
                
     def _pose_gt_cb(self, msg):
         new_position = [msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z]
@@ -102,7 +102,6 @@ class PopulateKB(object):
 
     def add_goal_mission(self, target_turbine):   
         self.add_object('data'+str(target_turbine),'data')
-        rospy.logwarn('Target turbine added to problem: ' + str(target_turbine))
         self.add_fact('is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
         self.add_goal('data-sent', 'data'+str(target_turbine))
         sensor_contour_point = self.get_sensor_contour_points(target_turbine)
