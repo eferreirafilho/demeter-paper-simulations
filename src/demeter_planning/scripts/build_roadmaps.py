@@ -248,7 +248,6 @@ class BuildRoadmaps(object):
 
     def define_turbines_in_world_launch(self, graph, scaled_turbines_xy):
         
-        # scaled_turbines_xy = rospy.get_param('/build_roadmaps/scaled_turbine_cordinates')
         package_path = roslib.packages.get_pkg_dir("auv_gazebo")
         with open(str(package_path) + "/worlds/turbine.world", "w") as file:
             # Write header

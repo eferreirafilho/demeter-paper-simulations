@@ -31,7 +31,7 @@ class Allocation(object):
         self.G_with_only_turbines = self.load_graph_with_only_turbines()
         self.turbines, self.turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
 
-        rospy.loginfo('all_turbines: ' + str(self.turbines_idx))
+        # rospy.loginfo('all_turbines: ' + str(self.turbines_idx))
 
         rospy.set_param('/goal_allocation/max_allocation_iteration', MAX_ALLOCATION_ITERATION)
         try: # Use memory of turbines inspected this ROS run
@@ -68,7 +68,7 @@ class Allocation(object):
             rospy.logwarn('Wait for all robots positions')
         self.vehicles = [self.gazebo_positions[key] for key in sorted(self.gazebo_positions.keys())]
         self._wait(1)
-        rospy.loginfo('VEHICLES: ' + str(self.vehicles))
+        # rospy.loginfo('VEHICLES: ' + str(self.vehicles))
         
     def load_graph_with_only_turbines(self):
         '''Load precomputed Roadmap based on visibility graphs with only turbines'''
@@ -89,8 +89,6 @@ class Allocation(object):
             
     def _reallocation_trigger_callback(self, msg):
         self.reallocation_trigger = msg.data
-        rospy.logwarn('Realocation trigger inside goal allocation simulated annealing')
-        rospy.logwarn(self.reallocation_trigger)
     
     def _remove_current_dispatched_turbines(self, all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx):
         rospy.loginfo(f'Starting _remove_current_dispatched_turbines with turbines: {all_turbines_to_be_allocated} and indexes: {all_turbines_to_be_allocated_idx}')
@@ -111,13 +109,13 @@ class Allocation(object):
                         remove_idx = all_turbines_to_be_allocated_idx.index(goal_to_remove)  # Changed line
                         all_turbines_to_be_allocated.pop(remove_idx)
                         all_turbines_to_be_allocated_idx.pop(remove_idx)
-                        rospy.loginfo(f'Removed goal {goal_to_remove} from turbines. Current turbines: {all_turbines_to_be_allocated} and indexes: {all_turbines_to_be_allocated_idx}')
+                        # rospy.loginfo(f'Removed goal {goal_to_remove} from turbines. Current turbines: {all_turbines_to_be_allocated} and indexes: {all_turbines_to_be_allocated_idx}')
                     else:
                         rospy.loginfo(f'Goal {goal_to_remove} not found in the turbine list.')
             else:
                 rospy.loginfo(f'Parameter {param_name} does not exist.')
 
-        rospy.loginfo(f'Finished _remove_current_dispatched_turbines with turbines: {all_turbines_to_be_allocated} and indexes: {all_turbines_to_be_allocated_idx}')
+        # rospy.loginfo(f'Finished _remove_current_dispatched_turbines with turbines: {all_turbines_to_be_allocated} and indexes: {all_turbines_to_be_allocated_idx}')
         return all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx
                 
     def get_turbine_positions(self, G_visibility):
@@ -314,14 +312,14 @@ class Allocation(object):
         high_waves_end_time = period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves)
     
         while high_waves_start_time < time_since_start_of_current_cycle < high_waves_end_time: 
-            rospy.loginfo_throttle(5,'We are in highs waves now. Time to end high waves: ' + str(int(high_waves_end_time - time_since_start_of_current_cycle)) + ' seconds')
+            # rospy.loginfo_throttle(5,'We are in highs waves now. Time to end high waves: ' + str(int(high_waves_end_time - time_since_start_of_current_cycle)) + ' seconds')
             current_time = rospy.get_rostime().to_sec()
             time_since_start_of_current_cycle = current_time % (period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
 
         # if time_since_start_of_current_cycle < period_of_tides * number_of_tides_until_next_high_waves:
         # We are currently not in a high wave
         time_to_next_high_wave = period_of_tides * number_of_tides_until_next_high_waves - time_since_start_of_current_cycle
-        rospy.loginfo('Not in high waves. Time to next: ' + str(int(time_to_next_high_wave)) + ' seconds')
+        # rospy.loginfo('Not in high waves. Time to next: ' + str(int(time_to_next_high_wave)) + ' seconds')
         
         return time_to_next_high_wave
         
@@ -337,7 +335,7 @@ class Allocation(object):
         current_cost = self.objective_function(current_solution)
         best_cost = current_cost
         
-        rospy.loginfo(f'solution: {current_solution} cost: {current_cost}')
+        # rospy.loginfo(f'solution: {current_solution} cost: {current_cost}')
         reheated = 0
 
         temperature = INITIAL_TEMPERATURE
@@ -357,7 +355,7 @@ class Allocation(object):
             if new_cost > best_cost:
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
-                rospy.loginfo(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
+                # rospy.loginfo(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
                 # rospy.logwarn(f'Temp: {temperature}')            
      
             temperature *= COOLING_RATE
