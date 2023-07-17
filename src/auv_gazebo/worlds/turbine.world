@@ -12,6 +12,18 @@
       <real_time_update_rate>0</real_time_update_rate> 
     </physics> 
 
+    <!-- Turn off shadows -->
+    <scene>
+      <shadows>0</shadows>    
+      <grid>false</grid>
+      <origin_visual>false</origin_visual>
+    </scene>
+
+    <!-- Default camera -->
+    <gui>
+      <camera name="gzclient_camera"><pose>77 -130 45 0 0.35 2.12</pose></camera>
+    </gui>
+
     <!-- Bounding box with sea surface -->
     <include>
       <uri>model://ocean_auv</uri>

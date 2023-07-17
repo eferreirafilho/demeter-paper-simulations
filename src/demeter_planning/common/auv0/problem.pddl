@@ -2,20 +2,17 @@
 (:domain demeter-domain)
 (:objects
     vehicle0 - vehicle
-    wp_init_auv0 waypoint52 waypoint50 waypoint49 waypoint44 waypoint39 waypoint67 - waypoint
-    data13 - data
+    wp_init_auv0 waypoint19 waypoint16 waypoint12 - waypoint
+    data2 - data
     currenttide - tide
-    turbine13 - turbine
+    turbine2 - turbine
 )
 (:init
-    (can-move wp_init_auv0 waypoint52)
-    (can-move waypoint52 waypoint50)
-    (can-move waypoint50 waypoint49)
-    (can-move waypoint49 waypoint44)
-    (can-move waypoint44 waypoint39)
-    (can-move waypoint39 waypoint67)
+    (can-move wp_init_auv0 waypoint19)
+    (can-move waypoint19 waypoint16)
+    (can-move waypoint16 waypoint12)
 
-    (is-in data13 turbine13)
+    (is-in data2 turbine2)
 
 
     (at vehicle0 wp_init_auv0)
@@ -27,20 +24,20 @@
 
     (tide-low currenttide)
 
-    (at 118.645 (not (tide-low currenttide)))
-    (at 358.675 (tide-low currenttide))
-    (at 478.695 (not (tide-low currenttide)))
-    (at 718.715 (tide-low currenttide))
-    (at 838.745 (not (tide-low currenttide)))
-    (at 1078.76 (tide-low currenttide))
-    (at 1198.77 (not (tide-low currenttide)))
-    (at 1438.79 (tide-low currenttide))
-    (at 1558.81 (not (tide-low currenttide)))
-    (at 1798.85 (tide-low currenttide))
-    (at 1918.88 (not (tide-low currenttide)))
+    (at 118.675 (not (tide-low currenttide)))
+    (at 358.695 (tide-low currenttide))
+    (at 478.725 (not (tide-low currenttide)))
+    (at 718.745 (tide-low currenttide))
+    (at 838.765 (not (tide-low currenttide)))
+    (at 1078.79 (tide-low currenttide))
+    (at 1198.81 (not (tide-low currenttide)))
+    (at 1438.83 (tide-low currenttide))
+    (at 1558.85 (not (tide-low currenttide)))
+    (at 1798.88 (tide-low currenttide))
+    (at 1918.89 (not (tide-low currenttide)))
 
 
-    (is-turbine-wp waypoint67 turbine13)
+    (is-turbine-wp waypoint12 turbine2)
 
     (idle vehicle0)
 
@@ -51,17 +48,14 @@
 
     (= (recharge-rate-dedicated vehicle0) 5)
 
-    (= (traverse-cost wp_init_auv0 waypoint52) 6.2)
-    (= (traverse-cost waypoint52 waypoint50) 25.52)
-    (= (traverse-cost waypoint50 waypoint49) 7.18)
-    (= (traverse-cost waypoint49 waypoint44) 29.18)
-    (= (traverse-cost waypoint44 waypoint39) 31.48)
-    (= (traverse-cost waypoint39 waypoint67) 33.7)
+    (= (traverse-cost wp_init_auv0 waypoint19) 6.41)
+    (= (traverse-cost waypoint19 waypoint16) 39.21)
+    (= (traverse-cost waypoint16 waypoint12) 13.47)
 
     (= (speed vehicle0) 0.35)
 
 )
 (:goal (and
-    (data-sent data13)
+    (data-sent data2)
 ))
 )

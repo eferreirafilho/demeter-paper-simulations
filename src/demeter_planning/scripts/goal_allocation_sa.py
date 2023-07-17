@@ -14,7 +14,7 @@ from time import sleep
 # random.seed(15)
 EXECUTE_TIME = 300 # Inspect turbine estimated execute time (Seconds)
 MAX_BALANCE_DIFFERENCE = 1 # Number of unbalance allowed
-MAX_ALLOCATION_ITERATION = 20000
+MAX_ALLOCATION_ITERATION = 100000
 
 # Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
@@ -43,10 +43,8 @@ class Allocation(object):
         self.original_turbines = self.turbines
         if reallocation:
             # rospy.loginfo('Reallocation: ' + str(reallocation))
-            # rospy.loginfo('before removing current dispatch turbines: ' + str(self.turbines_idx))
             # Not first time allocating
             self.turbines, self.turbines_idx = self._remove_current_dispatched_turbines(self.turbines, self.turbines_idx)
-        rospy.loginfo('after removing current dispatch turbines: ' + str(self.turbines_idx))
         
         self.reallocation_trigger = False
         rospy.Subscriber("/reallocation_trigger", Bool, self._reallocation_trigger_callback)
@@ -210,47 +208,6 @@ class Allocation(object):
         balance_score = max_size-min_size
         return balance_score
 
-    def objective_function(self, solution):
-        '''For each allocated turbines, consider the cost of travelling to that turbine plus the time it takes to inspect that turbine
-        Also penalizes unbalanced allocations and forbid solutions that passes the allowed time window'''
-        # Penalty if balance between allocations and vehicles is too big
-        balanced = self.calculate_balance_score(solution)
-        if balanced > MAX_BALANCE_DIFFERENCE:
-            return -float('Inf')
-        max_time = 0  # Maximum time a vehicle takes
-        distance_vehicle_to_graph, closer_node = self.distance_vehicles_to_graph_nodes(self.G_with_only_turbines)
-        total_distance = 0
-        for vehicle_idx, vehicle in enumerate(solution):
-            time = 0 
-            distance = 0
-            for turbine_order_individual_vehicle, turbine in enumerate(vehicle):
-                if turbine_order_individual_vehicle == 0:
-                    distance = distance_vehicle_to_graph[vehicle_idx]
-                    distance += self.graph_distance(self.G_with_only_turbines, closer_node[vehicle_idx], turbine)
-                    time += distance + EXECUTE_TIME# Assume that the time it takes to travel equals the distance
-                else:
-                    travel_time = self.graph_distance(self.G_with_only_turbines, previous_turbine, turbine)
-                    distance += travel_time
-                    time += travel_time + EXECUTE_TIME  # Add inspection time
-                previous_turbine = turbine
-                total_distance += distance
-            if time > max_time:  # Only update max_time if the current vehicle took longer
-                max_time = time
-        
-        # Penalty if total time exceeds the limit 
-        if max_time > self.time_window:
-            return -float('Inf') 
-        
-        turbines_last_inspection = 0
-        for individual_solution in solution:
-            for allocated_turbine in individual_solution:
-                turbines_last_inspection += self.time_of_turbines_last_inspection[allocated_turbine]
-
-        total_allocations = sum(len(sublist) for sublist in solution)
-        
-        cost = ALPHA*total_distance - BETA*total_allocations - ZETA*turbines_last_inspection
-        
-        return float(-cost)
 
     def add_element_to_sublist(self, main_list, sublist_list):
         all_elements_in_sublists = [item for sublist in sublist_list for item in sublist]
@@ -310,9 +267,51 @@ class Allocation(object):
         
         return time_to_next_high_wave
         
+    def objective_function(self, solution):
+        '''For each allocated turbines, consider the cost of travelling to that turbine plus the time it takes to inspect that turbine
+        Also penalizes unbalanced allocations and forbid solutions that passes the allowed time window'''
+        # Penalty if balance between allocations and vehicles is too big
+        balanced = self.calculate_balance_score(solution)
+        if balanced > MAX_BALANCE_DIFFERENCE:
+            return -float('Inf')
+        max_time = 0  # Maximum time a vehicle takes
+        distance_vehicle_to_graph, closer_node = self.distance_vehicles_to_graph_nodes(self.G_with_only_turbines)
+        total_distance = 0
+        for vehicle_idx, vehicle in enumerate(solution):
+            time = 0 
+            distance = 0
+            for turbine_order_individual_vehicle, turbine in enumerate(vehicle):
+                if turbine_order_individual_vehicle == 0:
+                    distance = distance_vehicle_to_graph[vehicle_idx]
+                    distance += self.graph_distance(self.G_with_only_turbines, closer_node[vehicle_idx], turbine)
+                    time += distance + EXECUTE_TIME# Assume that the time it takes to travel equals the distance
+                else:
+                    travel_time = self.graph_distance(self.G_with_only_turbines, previous_turbine, turbine)
+                    distance += travel_time
+                    time += travel_time + EXECUTE_TIME  # Add inspection time
+                previous_turbine = turbine
+                total_distance += distance
+            if time > max_time:  # Only update max_time if the current vehicle took longer
+                max_time = time
+        
+        # Penalty if total time exceeds the limit 
+        if max_time > self.time_window:
+            return -float('Inf') 
+        
+        turbines_last_inspection = 0
+        for individual_solution in solution:
+            for allocated_turbine in individual_solution:
+                turbines_last_inspection += self.time_of_turbines_last_inspection[allocated_turbine]
+
+        total_allocations = sum(len(sublist) for sublist in solution)
+        
+        cost = ALPHA*total_distance - BETA*total_allocations - ZETA*turbines_last_inspection
+        
+        return float(-cost)
+    
     def simulated_annealing(self):
         self.time_window = self.compute_next_time_window()
-        rospy.loginfo('Time Window: ' + str(self.time_window))
+        rospy.loginfo('Next High wave event in: ' + str(int(self.time_window)) + ' seconds')
         
         INITIAL_TEMPERATURE = 1000
         COOLING_RATE = 0.999
@@ -344,7 +343,7 @@ class Allocation(object):
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
                 rospy.loginfo(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
-                # rospy.logwarn(f'Temp: {temperature}')            
+                # rospy.logwarn(f'Temp: {temperature}')  
      
             temperature *= COOLING_RATE
             
@@ -354,7 +353,7 @@ class Allocation(object):
                 reheated+=1
                 current_solution = self.random_allocation() # generate a new random solution
                 current_cost = self.objective_function(current_solution)
-                # rospy.logwarn(f'Reheated: {temperature}')  
+                rospy.loginfo(f'Reheated, new initial temperature: {temperature}')  
                 
         return best_solution, best_cost
 
@@ -369,7 +368,7 @@ class Allocation(object):
     def set_solution_to_ros_param(self, allocation):
         for idx, _ in enumerate(self.vehicles):
             rospy.set_param('auv' + str(idx) + '/goals_allocated', allocation[idx])
-        rospy.logwarn('Set to param /goals_allocated/allocation: ' + str(allocation))
+        rospy.logwarn('Solution /goals_allocated/allocation: ' + str(allocation))
         rospy.set_param('/goals_allocated/allocation', allocation)
     
 if __name__ == '__main__':
