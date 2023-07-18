@@ -2,17 +2,16 @@
 (:domain demeter-domain)
 (:objects
     vehicle1 - vehicle
-    wp_init_auv1 waypoint29 waypoint26 waypoint22 - waypoint
-    data4 - data
+    wp_init_auv1 waypoint37 waypoint42 - waypoint
+    data8 - data
     currenttide - tide
-    turbine4 - turbine
+    turbine8 - turbine
 )
 (:init
-    (can-move wp_init_auv1 waypoint29)
-    (can-move waypoint29 waypoint26)
-    (can-move waypoint26 waypoint22)
+    (can-move wp_init_auv1 waypoint37)
+    (can-move waypoint37 waypoint42)
 
-    (is-in data4 turbine4)
+    (is-in data8 turbine8)
 
 
     (at vehicle1 wp_init_auv1)
@@ -24,20 +23,20 @@
 
     (tide-low currenttide)
 
-    (at 118.65 (not (tide-low currenttide)))
-    (at 358.66 (tide-low currenttide))
-    (at 478.68 (not (tide-low currenttide)))
-    (at 718.69 (tide-low currenttide))
+    (at 118.565 (not (tide-low currenttide)))
+    (at 358.59 (tide-low currenttide))
+    (at 478.615 (not (tide-low currenttide)))
+    (at 718.71 (tide-low currenttide))
     (at 838.725 (not (tide-low currenttide)))
-    (at 1078.74 (tide-low currenttide))
-    (at 1198.76 (not (tide-low currenttide)))
-    (at 1438.78 (tide-low currenttide))
-    (at 1558.8 (not (tide-low currenttide)))
-    (at 1798.83 (tide-low currenttide))
-    (at 1918.85 (not (tide-low currenttide)))
+    (at 1078.77 (tide-low currenttide))
+    (at 1198.79 (not (tide-low currenttide)))
+    (at 1438.82 (tide-low currenttide))
+    (at 1558.86 (not (tide-low currenttide)))
+    (at 1798.86 (tide-low currenttide))
+    (at 1918.88 (not (tide-low currenttide)))
 
 
-    (is-turbine-wp waypoint22 turbine4)
+    (is-turbine-wp waypoint42 turbine8)
 
     (idle vehicle1)
 
@@ -48,14 +47,13 @@
 
     (= (recharge-rate-dedicated vehicle1) 5)
 
-    (= (traverse-cost wp_init_auv1 waypoint29) 7.07)
-    (= (traverse-cost waypoint29 waypoint26) 38.43)
-    (= (traverse-cost waypoint26 waypoint22) 13.47)
+    (= (traverse-cost wp_init_auv1 waypoint37) 7.65)
+    (= (traverse-cost waypoint37 waypoint42) 31.48)
 
     (= (speed vehicle1) 0.35)
 
 )
 (:goal (and
-    (data-sent data4)
+    (data-sent data8)
 ))
 )

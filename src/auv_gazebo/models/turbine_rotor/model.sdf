@@ -32,7 +32,7 @@
       <visual name="visual">
           <geometry>
             <mesh>
-              <uri>model://turbine_rotor/meshes/rotor.dae</uri>
+              <uri>model://turbine_rotor/meshes/rotor_low.dae</uri>
             </mesh>
           </geometry>
       </visual>
@@ -59,17 +59,17 @@
       </inertial>
 
       <collision name='collision'>
-        <pose>0 0 0  0 0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <mesh><uri>model://turbine_rotor/meshes/monopile.dae</uri></mesh>
+          <mesh><uri>model://turbine_rotor/meshes/monopile2_low.dae</uri></mesh>
         </geometry>
         <max_contacts>10</max_contacts>
       </collision>
 
       <visual name='visual'>
-        <pose>0 0 0  0 0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
         <geometry>
-          <mesh><uri>model://turbine_rotor/meshes/monopile.dae</uri></mesh>
+          <mesh><uri>model://turbine_rotor/meshes/monopile2_low.dae</uri></mesh>
         </geometry>
       </visual>
 
