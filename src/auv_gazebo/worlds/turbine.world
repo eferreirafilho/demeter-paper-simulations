@@ -7,14 +7,17 @@
       <uri>model://sun</uri>
     </include>
     <physics type="ode">
-      <max_step_size>0.005</max_step_size>
-      <real_time_factor>0.0</real_time_factor>
+      <max_step_size>0.01</max_step_size>
+      <real_time_factor>2.0</real_time_factor>
       <real_time_update_rate>0</real_time_update_rate> 
+      <ode>
+        <solver>
+          <iterations>10</iterations>
+        </solver>
+      </ode>
     </physics> 
-
-    <!-- Turn off shadows -->
     <scene>
-      <shadows>0</shadows>    
+      <shadows>0</shadows>
       <grid>false</grid>
       <origin_visual>false</origin_visual>
     </scene>
@@ -22,12 +25,19 @@
     <!-- Default camera -->
     <gui>
       <camera name="gzclient_camera"><pose>77 -130 45 0 0.35 2.12</pose></camera>
+      <view_quality>1</view_quality>
     </gui>
 
     <!-- Bounding box with sea surface -->
     <include>
       <uri>model://ocean_auv</uri>
       <pose>0 0 -0.95 0 0 0</pose>
+    </include>
+
+    <!-- Heightmap -->
+    <include>
+      <uri>model://sand_heightmap</uri>
+      <pose>0 0 -34 0 0 0</pose>
     </include>
   <include>
     <name>turbine0</name>

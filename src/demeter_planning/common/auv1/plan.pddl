@@ -1,41 +1,42 @@
-Number of literals: 12
+Number of literals: 13
 Constructing lookup tables:
 Post filtering unreachable actions: 
 No semaphore facts found, returning
 [01;34mNo analytic limits found, not considering limit effects of goal-only operators[00m
-57% of the ground temporal actions in this problem are compression-safe
-Initial heuristic = 7.000, admissible cost estimate 0.000
-b (6.000 | 41.859)b (5.000 | 191.808)b (4.000 | 216.810)b (3.000 | 761.873)
-Resorting to best-first search
-Running WA* with W = 5.000, not restarting with goal states
-b (6.000 | 41.859)b (5.000 | 191.808)b (4.000 | 216.810)b (2.000 | 513.597)b (1.000 | 515.597)(G)
+62% of the ground temporal actions in this problem are compression-safe
+Initial heuristic = 9.000, admissible cost estimate 0.000
+b (8.000 | 358.540)b (7.000 | 358.540)b (6.000 | 358.540)b (5.000 | 358.540)b (4.000 | 358.540)b (2.000 | 513.548)b (1.000 | 515.549)(G)
 ; No metric specified - using makespan
 
-; Plan found with metric 515.598
-; States evaluated so far: 2896
+; Plan found with metric 515.549
+; States evaluated so far: 76
 ; States pruned based on pre-heuristic cost lower bound: 0
-; Time 2.50
-0.000: (move vehicle1 wp_init_auv1 waypoint37)  [21.857]
-21.858: (harvest-energy vehicle1)  [10.000]
-31.859: (harvest-energy vehicle1)  [10.000]
-41.860: (move vehicle1 waypoint37 waypoint42)  [89.942]
-131.803: (harvest-energy vehicle1)  [10.000]
-141.804: (harvest-energy vehicle1)  [10.000]
-151.805: (harvest-energy vehicle1)  [10.000]
-161.806: (harvest-energy vehicle1)  [10.000]
-171.807: (harvest-energy vehicle1)  [10.000]
-181.808: (harvest-energy vehicle1)  [10.000]
-191.809: (localize-cable vehicle1 waypoint42 turbine8)  [15.000]
-348.589: (harvest-energy vehicle1)  [10.000]
-358.590: (retrieve-data vehicle1 data8 waypoint42 currenttide turbine8)  [55.000]
-413.591: (surface vehicle1)  [40.000]
-453.592: (harvest-energy vehicle1)  [10.000]
-463.593: (harvest-energy vehicle1)  [10.000]
-473.594: (harvest-energy vehicle1)  [10.000]
-483.595: (harvest-energy vehicle1)  [10.000]
-493.596: (harvest-energy vehicle1)  [10.000]
-503.597: (harvest-energy vehicle1)  [10.000]
-513.598: (upload-data-histograms vehicle1 data8)  [2.000]
+; Time 0.09
+0.000: (move vehicle1 wp_init_auv1 waypoint29)  [20.200]
+20.201: (harvest-energy vehicle1)  [10.000]
+30.202: (harvest-energy vehicle1)  [10.000]
+40.203: (move vehicle1 waypoint29 waypoint30)  [20.514]
+60.718: (harvest-energy vehicle1)  [10.000]
+70.719: (move vehicle1 waypoint30 waypoint32)  [61.857]
+132.577: (harvest-energy vehicle1)  [10.000]
+142.578: (harvest-energy vehicle1)  [10.000]
+152.579: (harvest-energy vehicle1)  [10.000]
+162.580: (harvest-energy vehicle1)  [10.000]
+172.581: (harvest-energy vehicle1)  [10.000]
+182.582: (localize-cable vehicle1 waypoint32 turbine6)  [15.000]
+348.540: (harvest-energy vehicle1)  [10.000]
+358.541: (retrieve-data vehicle1 data6 waypoint32 currenttide turbine6)  [55.000]
+413.542: (surface vehicle1)  [40.000]
+453.543: (harvest-energy vehicle1)  [10.000]
+463.544: (harvest-energy vehicle1)  [10.000]
+473.545: (harvest-energy vehicle1)  [10.000]
+483.546: (harvest-energy vehicle1)  [10.000]
+493.547: (harvest-energy vehicle1)  [10.000]
+503.548: (harvest-energy vehicle1)  [10.000]
+513.549: (upload-data-histograms vehicle1 data6)  [2.000]
 
- * All goal deadlines now no later than 515.598
-b (0.000 | 515.598)(G)(G)(G)
+ * All goal deadlines now no later than 515.549
+
+Resorting to best-first search
+Running WA* with W = 5.000, not restarting with goal states
+b (8.000 | 358.540)b (7.000 | 358.540)b (6.000 | 358.540)b (5.000 | 358.540)b (4.000 | 358.540)b (2.000 | 513.548)b (1.000 | 515.549)

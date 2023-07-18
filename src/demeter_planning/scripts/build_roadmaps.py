@@ -247,7 +247,6 @@ class BuildRoadmaps(object):
         return normalized_dict
 
     def define_turbines_in_world_launch(self, graph, scaled_turbines_xy):
-        
         package_path = roslib.packages.get_pkg_dir("auv_gazebo")
         with open(str(package_path) + "/worlds/turbine.world", "w") as file:
             # Write header
@@ -260,29 +259,38 @@ class BuildRoadmaps(object):
             file.write('      <uri>model://sun</uri>\n')
             file.write('    </include>\n')
             file.write('    <physics type="ode">\n')
-            file.write('      <max_step_size>0.005</max_step_size>\n')
-            file.write('      <real_time_factor>0.0</real_time_factor>\n')
+            file.write('      <max_step_size>0.01</max_step_size>\n')
+            file.write('      <real_time_factor>2.0</real_time_factor>\n')
             file.write('      <real_time_update_rate>0</real_time_update_rate> \n')
+            file.write('      <ode>\n')
+            file.write('        <solver>\n')
+            file.write('          <iterations>10</iterations>\n')
+            file.write('        </solver>\n')
+            file.write('      </ode>\n')
             file.write('    </physics> \n')
             # Add scene
-            file.write('\n')
-            file.write('    <!-- Turn off shadows -->\n')
             file.write('    <scene>\n')
             file.write('      <shadows>0</shadows>\n')    
             file.write('      <grid>false</grid>\n')
             file.write('      <origin_visual>false</origin_visual>\n')
             file.write('    </scene>\n')
-            # Add default camera
             file.write('\n')
             file.write('    <!-- Default camera -->\n')
             file.write('    <gui>\n')
             file.write('      <camera name="gzclient_camera"><pose>77 -130 45 0 0.35 2.12</pose></camera>\n')
+            file.write('      <view_quality>1</view_quality>\n')
             file.write('    </gui>\n')
             file.write('\n')
             file.write('    <!-- Bounding box with sea surface -->\n')
             file.write('    <include>\n')
             file.write('      <uri>model://ocean_auv</uri>\n')
             file.write('      <pose>0 0 -0.95 0 0 0</pose>\n')
+            file.write('    </include>\n')
+            file.write('\n')
+            file.write('    <!-- Heightmap -->\n')
+            file.write('    <include>\n')
+            file.write('      <uri>model://sand_heightmap</uri>\n')
+            file.write('      <pose>0 0 -34 0 0 0</pose>\n')
             file.write('    </include>\n')
             # Write turbines
             for i, (x, y) in enumerate(scaled_turbines_xy):
@@ -323,6 +331,8 @@ class BuildRoadmaps(object):
             file.write('    <plugin name="sc_interface" filename="libuuv_sc_ros_interface_plugin.so"/>\n')
             file.write('</world>')
             file.write('</sdf>')
+            
+        
             
     def set_scaled_turbines_as_ros_parameters(self, scaled_turbines_xy):
         scaled_list = [arr.tolist() for arr in scaled_turbines_xy]
