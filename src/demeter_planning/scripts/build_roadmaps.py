@@ -2,8 +2,6 @@
 import rospy
 import networkx as nx
 import matplotlib.pyplot as plt
-from itertools import combinations
-from scipy.spatial import Voronoi, voronoi_plot_2d
 import numpy as np
 import yaml
 import os
@@ -16,7 +14,7 @@ class BuildRoadmaps(object):
         rospy.logwarn('Build Roadmaps')
         self._rate = rospy.Rate(10)
         self.DISTANCE_TO_TURBINE = 0.18
-        self.NUMBER_OF_TURBINES_CONSIDERED = 15
+        self.NUMBER_OF_TURBINES_CONSIDERED = 3
         self.VISIBILITY_RADIUS = 1.2
         self.BOUNDS_MAP = 50
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
@@ -245,95 +243,28 @@ class BuildRoadmaps(object):
         for key, (x, y) in zip(nodes_dict.keys(), zip(normalized_x, normalized_y)):
             normalized_dict[key] = np.array([x, y])
         return normalized_dict
-
+            
+    def read_xml_template(self, filename):
+        with open(filename, 'r') as file:
+            return file.read()
+            
     def define_turbines_in_world_launch(self, graph, scaled_turbines_xy):
         package_path = roslib.packages.get_pkg_dir("auv_gazebo")
+        template = self.read_xml_template(str(package_path) + "/worlds/turbine_template.world")
+
+        # Write turbines
+        turbines = ""
+        for i, (x, y) in enumerate(scaled_turbines_xy):
+            if i < self.NUMBER_OF_TURBINES_CONSIDERED:
+                turbines += "  <include>\n"
+                turbines += "    <name>turbine" + str(i) + "</name>\n"
+                turbines += "    <uri> model://turbine_rotor</uri>\n"
+                turbines += "    <pose>" + str(x) + " " + str(y) + " 0 0 0 0</pose>\n"
+                turbines += "  </include>\n"
+
         with open(str(package_path) + "/worlds/turbine.world", "w") as file:
-            # Write header
-            file.write('<?xml version="1.0" ?>\n')
-            file.write('<sdf version="1.6">\n')
-            file.write('\n')
-            file.write('  <world name="turbine_world">\n')
-            file.write('\n')
-            file.write('    <include>\n')
-            file.write('      <uri>model://sun</uri>\n')
-            file.write('    </include>\n')
-            file.write('    <physics type="ode">\n')
-            file.write('      <max_step_size>0.01</max_step_size>\n')
-            file.write('      <real_time_factor>2.0</real_time_factor>\n')
-            file.write('      <real_time_update_rate>0</real_time_update_rate> \n')
-            file.write('      <ode>\n')
-            file.write('        <solver>\n')
-            file.write('          <iterations>10</iterations>\n')
-            file.write('        </solver>\n')
-            file.write('      </ode>\n')
-            file.write('    </physics> \n')
-            # Add scene
-            file.write('    <scene>\n')
-            file.write('      <shadows>0</shadows>\n')    
-            file.write('      <grid>false</grid>\n')
-            file.write('      <origin_visual>false</origin_visual>\n')
-            file.write('    </scene>\n')
-            file.write('\n')
-            file.write('    <!-- Default camera -->\n')
-            file.write('    <gui>\n')
-            file.write('      <camera name="gzclient_camera"><pose>77 -130 45 0 0.35 2.12</pose></camera>\n')
-            file.write('      <view_quality>1</view_quality>\n')
-            file.write('    </gui>\n')
-            file.write('\n')
-            file.write('    <!-- Bounding box with sea surface -->\n')
-            file.write('    <include>\n')
-            file.write('      <uri>model://ocean_auv</uri>\n')
-            file.write('      <pose>0 0 -0.95 0 0 0</pose>\n')
-            file.write('    </include>\n')
-            file.write('\n')
-            file.write('    <!-- Heightmap -->\n')
-            file.write('    <include>\n')
-            file.write('      <uri>model://sand_heightmap</uri>\n')
-            file.write('      <pose>0 0 -34 0 0 0</pose>\n')
-            file.write('    </include>\n')
-            # Write turbines
-            for i, (x, y) in enumerate(scaled_turbines_xy):
-                if i<self.NUMBER_OF_TURBINES_CONSIDERED:
-                    file.write("  <include>\n")
-                    file.write("    <name>turbine" + str(i) + "</name>\n")
-                    file.write("    <uri> model://turbine_rotor</uri>\n")
-                    file.write("    <pose>" + str(x) + " " + str(y) + " 0 0 0 0</pose>\n")
-                    file.write("  </include>\n")
-            #Write footer
-            file.write('    <plugin name="underwater_current_plugin" filename="libuuv_underwater_current_ros_plugin.so">\n')
-            file.write('      <namespace>hydrodynamics</namespace>\n')
-            file.write('      <constant_current>\n')
-            file.write('        <topic>current_velocity</topic>\n')
-            file.write('        <velocity>\n')
-            file.write('          <mean>0</mean>\n')
-            file.write('          <min>0</min>\n')
-            file.write('          <max>0</max>\n')
-            file.write('          <mu>0.0</mu>\n')
-            file.write('          <noiseAmp>0.0</noiseAmp>\n')
-            file.write('        </velocity>\n\n')
-            file.write('        <horizontal_angle>\n')
-            file.write('          <mean>0</mean>\n')
-            file.write('          <min>-3.141592653589793238</min>\n')
-            file.write('          <max>3.141592653589793238</max>\n')
-            file.write('          <mu>0.0</mu>\n')
-            file.write('          <noiseAmp>0.0</noiseAmp>\n')
-            file.write('        </horizontal_angle>\n\n')
-            file.write('        <vertical_angle>\n')
-            file.write('          <mean>0</mean>\n')
-            file.write('          <min>-3.141592653589793238</min>\n')
-            file.write('          <max>3.141592653589793238</max>\n')
-            file.write('          <mu>0.0</mu>\n')
-            file.write('          <noiseAmp>0.0</noiseAmp>\n')
-            file.write('        </vertical_angle>\n')
-            file.write('      </constant_current>\n')
-            file.write('    </plugin>\n\n')
-            file.write('    <plugin name="sc_interface" filename="libuuv_sc_ros_interface_plugin.so"/>\n')
-            file.write('</world>')
-            file.write('</sdf>')
-            
-        
-            
+            file.write(template.format(turbines))
+    
     def set_scaled_turbines_as_ros_parameters(self, scaled_turbines_xy):
         scaled_list = [arr.tolist() for arr in scaled_turbines_xy]
         self.save_list_to_yaml(scaled_list, 'scaled_turbines_xy')

@@ -40,22 +40,7 @@
       <pose>0 0 -34 0 0 0</pose>
     </include>
       <!-- Turbines -->
-      <include>
-    <name>turbine0</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>9.638569075613557 10.818957178459451 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine1</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-28.80745963590178 -63.3288934183596 0 0 0 0</pose>
-  </include>
-  <include>
-    <name>turbine2</name>
-    <uri> model://turbine_rotor</uri>
-    <pose>-47.018736393990125 103.32889341835825 0 0 0 0</pose>
-  </include>
-
+    {}
     <plugin name="underwater_current_plugin" filename="libuuv_underwater_current_ros_plugin.so">
       <namespace>hydrodynamics</namespace>
       <constant_current>
