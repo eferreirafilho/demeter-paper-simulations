@@ -2,17 +2,16 @@
 (:domain demeter-domain)
 (:objects
     vehicle2 - vehicle
-    wp_init_auv2 waypoint26 waypoint6 waypoint2 - waypoint
-    data0 - data
+    wp_init_auv2 waypoint19 waypoint52 - waypoint
+    data10 - data
     currenttide - tide
-    turbine0 - turbine
+    turbine10 - turbine
 )
 (:init
-    (can-move wp_init_auv2 waypoint26)
-    (can-move waypoint26 waypoint6)
-    (can-move waypoint6 waypoint2)
+    (can-move wp_init_auv2 waypoint19)
+    (can-move waypoint19 waypoint52)
 
-    (is-in data0 turbine0)
+    (is-in data10 turbine10)
 
 
     (at vehicle2 wp_init_auv2)
@@ -22,21 +21,22 @@
 
     (empty vehicle2)
 
-    (not (tide-low currenttide))
+    (tide-low currenttide)
 
-    (at 358.33 (tide-low currenttide))
-    (at 478.4 (not (tide-low currenttide)))
-    (at 718.43 (tide-low currenttide))
-    (at 838.46 (not (tide-low currenttide)))
-    (at 1078.49 (tide-low currenttide))
-    (at 1198.53 (not (tide-low currenttide)))
-    (at 1438.63 (tide-low currenttide))
-    (at 1558.66 (not (tide-low currenttide)))
-    (at 1798.69 (tide-low currenttide))
-    (at 1918.74 (not (tide-low currenttide)))
+    (at 118.685 (not (tide-low currenttide)))
+    (at 358.72 (tide-low currenttide))
+    (at 478.735 (not (tide-low currenttide)))
+    (at 718.75 (tide-low currenttide))
+    (at 838.77 (not (tide-low currenttide)))
+    (at 1078.79 (tide-low currenttide))
+    (at 1198.8 (not (tide-low currenttide)))
+    (at 1438.81 (tide-low currenttide))
+    (at 1558.83 (not (tide-low currenttide)))
+    (at 1798.85 (tide-low currenttide))
+    (at 1918.87 (not (tide-low currenttide)))
 
 
-    (is-turbine-wp waypoint2 turbine0)
+    (is-turbine-wp waypoint52 turbine10)
 
     (idle vehicle2)
 
@@ -47,14 +47,13 @@
 
     (= (recharge-rate-dedicated vehicle2) 5)
 
-    (= (traverse-cost wp_init_auv2 waypoint26) 8.64)
-    (= (traverse-cost waypoint26 waypoint6) 62.59)
-    (= (traverse-cost waypoint6 waypoint2) 13.47)
+    (= (traverse-cost wp_init_auv2 waypoint19) 5.88)
+    (= (traverse-cost waypoint19 waypoint52) 33.16)
 
     (= (speed vehicle2) 0.35)
 
 )
 (:goal (and
-    (data-sent data0)
+    (data-sent data10)
 ))
 )

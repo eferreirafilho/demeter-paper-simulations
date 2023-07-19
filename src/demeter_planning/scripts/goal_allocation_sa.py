@@ -14,11 +14,11 @@ from time import sleep
 # random.seed(15)
 EXECUTE_TIME = 300 # Inspect turbine estimated execute time (Seconds)
 MAX_BALANCE_DIFFERENCE = 1 # Number of unbalance allowed
-MAX_ALLOCATION_ITERATION = 100000
+MAX_ALLOCATION_ITERATION = 50000
 
 # Weighted sum multi objective optimization
 BETA = 10000 # Focus on more allocations
-ALPHA = 100  # Focus on travelling less distances
+ALPHA = 100  # Focus on travelling less
 ZETA = 1 # Focus on visiting turbines not visited lately
         
 class Allocation(object):
@@ -260,11 +260,9 @@ class Allocation(object):
             time_since_start_of_current_cycle = current_time % (period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
             self.set_solution_to_ros_param([[] for _ in range(self.number_of_vehicles)])
 
-        # if time_since_start_of_current_cycle < period_of_tides * number_of_tides_until_next_high_waves:
         # We are currently not in a high wave
         time_to_next_high_wave = period_of_tides * number_of_tides_until_next_high_waves - time_since_start_of_current_cycle
         # rospy.loginfo('Not in high waves. Time to next: ' + str(int(time_to_next_high_wave)) + ' seconds')
-        
         return time_to_next_high_wave
         
     def objective_function(self, solution):

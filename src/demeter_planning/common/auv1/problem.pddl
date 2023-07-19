@@ -24,16 +24,16 @@
 
     (not (tide-low currenttide))
 
-    (at 358.54 (tide-low currenttide))
-    (at 478.57 (not (tide-low currenttide)))
-    (at 718.59 (tide-low currenttide))
-    (at 838.62 (not (tide-low currenttide)))
-    (at 1078.66 (tide-low currenttide))
-    (at 1198.68 (not (tide-low currenttide)))
-    (at 1438.7 (tide-low currenttide))
-    (at 1558.73 (not (tide-low currenttide)))
-    (at 1798.8 (tide-low currenttide))
-    (at 1918.82 (not (tide-low currenttide)))
+    (at 358.62 (tide-low currenttide))
+    (at 478.64 (not (tide-low currenttide)))
+    (at 718.665 (tide-low currenttide))
+    (at 838.695 (not (tide-low currenttide)))
+    (at 1078.75 (tide-low currenttide))
+    (at 1198.76 (not (tide-low currenttide)))
+    (at 1438.8 (tide-low currenttide))
+    (at 1558.81 (not (tide-low currenttide)))
+    (at 1798.86 (tide-low currenttide))
+    (at 1918.88 (not (tide-low currenttide)))
 
 
     (is-turbine-wp waypoint32 turbine6)

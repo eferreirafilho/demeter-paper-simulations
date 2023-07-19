@@ -14,7 +14,7 @@ class BuildRoadmaps(object):
         rospy.logwarn('Build Roadmaps')
         self._rate = rospy.Rate(10)
         self.DISTANCE_TO_TURBINE = 0.18
-        self.NUMBER_OF_TURBINES_CONSIDERED = 3
+        self.NUMBER_OF_TURBINES_CONSIDERED = 15
         self.VISIBILITY_RADIUS = 1.2
         self.BOUNDS_MAP = 50
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
@@ -315,7 +315,7 @@ class BuildRoadmaps(object):
         visibility_G, obstacles = self.create_visibility_graph(turbines_xy, corners_xy)
         visibility_G_unordered = self.remove_disconected_nodes(visibility_G)
         visibility_G = self.reorder_graph(visibility_G_unordered)
-        self.plot_visibility_graph(visibility_G, obstacles)
+        # self.plot_visibility_graph(visibility_G, obstacles)
         return visibility_G
     
     def remove_turbines_from_graph(self, graph):
@@ -382,7 +382,7 @@ class BuildRoadmaps(object):
         scaled_visibility_G_only_with_turbines = self.change_description(scaled_visibility_G_only_with_turbines)
                   
         self.save_graph_to_file(scaled_visibility_G_only_with_turbines, 'scaled_visibility_G_only_with_turbines')
-        self.plot_visibility_graph(scaled_visibility_G_only_with_turbines)
+        # self.plot_visibility_graph(scaled_visibility_G_only_with_turbines)
         self.print_nodes_and_attributes(scaled_visibility_G_only_with_turbines)
         
         if nx.is_connected(scaled_visibility_G_only_with_turbines):

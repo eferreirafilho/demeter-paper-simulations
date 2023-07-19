@@ -128,7 +128,7 @@ class DemeterInterface(object):
         # self._rate.sleep()
         current_time = rospy.get_rostime().to_sec()
         action_dispatch_time = start_time.secs + self.plan_start_time
-        rospy.loginfo('Dispatching %s action at %s with duration %s | current time %s' %(action_dispatch.name, str(action_dispatch_time), str(duration.to_sec()) , str(current_time)))   
+        rospy.loginfo(str(self.namespace) + ' | Dispatching %s action at %s with duration %s | current time %s' %(action_dispatch.name, str(action_dispatch_time), str(duration.to_sec()) , str(current_time)))   
         if action_dispatch_time > current_time:
             rospy.loginfo('Action ' +str(action_dispatch.name) + ' dispatch is ' + str(action_dispatch_time - current_time) + ' early | ' + str(self.namespace))
         else:

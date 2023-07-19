@@ -24,16 +24,16 @@
 
     (not (tide-low currenttide))
 
-    (at 358.51 (tide-low currenttide))
-    (at 478.54 (not (tide-low currenttide)))
-    (at 718.57 (tide-low currenttide))
-    (at 838.6 (not (tide-low currenttide)))
-    (at 1078.64 (tide-low currenttide))
-    (at 1198.67 (not (tide-low currenttide)))
-    (at 1438.68 (tide-low currenttide))
-    (at 1558.76 (not (tide-low currenttide)))
-    (at 1798.79 (tide-low currenttide))
-    (at 1918.83 (not (tide-low currenttide)))
+    (at 358.72 (tide-low currenttide))
+    (at 478.735 (not (tide-low currenttide)))
+    (at 718.75 (tide-low currenttide))
+    (at 838.775 (not (tide-low currenttide)))
+    (at 1078.81 (tide-low currenttide))
+    (at 1198.82 (not (tide-low currenttide)))
+    (at 1438.85 (tide-low currenttide))
+    (at 1558.86 (not (tide-low currenttide)))
+    (at 1798.88 (tide-low currenttide))
+    (at 1918.9 (not (tide-low currenttide)))
 
 
     (is-turbine-wp waypoint12 turbine2)
@@ -47,7 +47,7 @@
 
     (= (recharge-rate-dedicated vehicle0) 5)
 
-    (= (traverse-cost wp_init_auv0 waypoint19) 6.41)
+    (= (traverse-cost wp_init_auv0 waypoint19) 6.42)
     (= (traverse-cost waypoint19 waypoint16) 39.21)
     (= (traverse-cost waypoint16 waypoint12) 13.47)
 

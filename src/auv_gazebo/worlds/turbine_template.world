@@ -7,12 +7,12 @@
       <uri>model://sun</uri>
     </include>
     <physics type="ode">
-      <max_step_size>0.01</max_step_size>
+      <max_step_size>0.005</max_step_size>
       <real_time_factor>2.0</real_time_factor>
       <real_time_update_rate>0</real_time_update_rate> 
       <ode>
         <solver>
-          <iterations>10</iterations>
+          <iterations>20</iterations>
         </solver>
       </ode>
     </physics> 

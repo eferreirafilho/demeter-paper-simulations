@@ -5,6 +5,9 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
 from std_msgs.msg import Bool, Float32
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
+import os
+import pandas as pd
+
 
 class DemeterActionInterface(object):
 
@@ -132,6 +135,10 @@ class DemeterActionInterface(object):
             next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
             action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
 
+        # high_waves = self.compute_if_high_waves()
+        # while high_waves: # Wait for not high waves for safety
+        #     high_waves = self.compute_if_high_waves()
+
         # rospy.loginfo('Interface: \'Retrieve Data\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
@@ -163,12 +170,6 @@ class DemeterActionInterface(object):
     def do_upload_data_histograms(self, turbine_data_index, duration=rospy.Duration()):
         # rospy.logdebug('Interface: Mock \'Upload Data Histograms\' Action')
         start = rospy.Time.now()
-        data_histogram_upload_history_index = []
-        data_histogram_upload_history_time = []
-        if rospy.has_param(str(self.namespace) + 'data_histogram/index'):   
-            data_histogram_upload_history_index = rospy.get_param(str(self.namespace) + 'data_histogram/index')
-        if rospy.has_param(str(self.namespace) + 'data_histogram/time'):   
-            data_histogram_upload_history_time = rospy.get_param(str(self.namespace) + 'data_histogram/time')
         while (rospy.Time.now() - start < duration) and not (rospy.is_shutdown()):
             # self._rate.sleep()
             completion_percentage = 'Uploading Data Histograms: ' + "{0:.0%}".format(((rospy.Time.now() - start)/duration))
@@ -178,13 +179,8 @@ class DemeterActionInterface(object):
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         if response == self.ACTION_SUCCESS:
-            rospy.loginfo('Setting param data: ' + str(turbine_data_index) + ' Time: ' + str(rospy.Time.now().secs) + ' seconds')
-            data_histogram_upload_history_index.append(turbine_data_index)
-            data_histogram_upload_history_time.append(rospy.Time.now().secs)
-            rospy.loginfo('histogram: ' + str(data_histogram_upload_history_index) + ' Time: ' + str(data_histogram_upload_history_time) + ' seconds')
-            rospy.set_param(str(self.namespace) + 'data_histogram/index', data_histogram_upload_history_index)
-            rospy.set_param(str(self.namespace) + 'data_histogram/time', data_histogram_upload_history_time)
-
+            rospy.logwarn('Logging data: ' + str(turbine_data_index) + ' Time: ' + str(rospy.Time.now().secs) + ' seconds')
+            self.log_mission_data(turbine_data_index)
         return response
     
     def do_surface(self, duration=rospy.Duration()):
@@ -215,13 +211,34 @@ class DemeterActionInterface(object):
         response = self.ACTION_SUCCESS     
         # rospy.loginfo('Recharged!')
         # rospy.loginfo('Execution: Action HARVEST ENERGY took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
-
-        
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             self.recharging_dedicated_pub.publish(False) # Stop Recharging dedicated
             response = self.OUT_OF_DURATION        
         return response
     
+    def log_mission_data(self, turbine):
+        current_time = rospy.Time.now().secs
+        mission_data = {
+            'vehicle_name': self.namespace,
+            'allocated_goal': turbine,
+            'mission_success': 'completed',
+            'time': current_time
+        }
+        filename = 'missions.csv'
+        # Save the updated DataFrame to the CSV file
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        rospy.loginfo(script_dir)
+        csv_path = os.path.join(script_dir, filename)
+        rospy.loginfo(csv_path)
+
+        # Check if file exists to avoid writing header multiple times
+        file_exists = os.path.isfile(csv_path)
+
+        with open(csv_path, 'a') as f:
+            # Create a single-row DataFrame and directly write it to the CSV
+            df = pd.DataFrame([mission_data])
+            df.to_csv(f, sep=';', index=False, header=not file_exists)
+            
     def squared_distance(self, p1, p2):
         return (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2
     
@@ -426,3 +443,22 @@ class DemeterActionInterface(object):
             self.low_tide = False
             
         return next_shift_to_high_tide_time
+    
+    def compute_if_high_waves(self):
+        period_of_tides = rospy.get_param('/goal_allocation/period_of_tides')  # assumed to be duration of a single tide
+        number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        current_time = rospy.get_rostime().to_sec()
+        time_since_start_of_current_cycle = current_time % (period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
+        high_waves_start_time = period_of_tides * number_of_tides_until_next_high_waves
+        high_waves_end_time = period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves)
+    
+        if high_waves_start_time < time_since_start_of_current_cycle < high_waves_end_time: 
+            high_waves = True
+            rospy.loginfo_throttle(5,'We are in highs waves now, wait. Time to end high waves: ' + str(int(high_waves_end_time - time_since_start_of_current_cycle)) + ' seconds')
+        else:
+            # We are currently not in a high wave
+            high_waves = False
+            
+        # rospy.loginfo('Not in high waves. Time to next: ' + str(int(time_to_next_high_wave)) + ' seconds')
+        return high_waves

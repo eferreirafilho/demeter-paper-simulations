@@ -118,7 +118,8 @@ class PersistentPlanning:
                 rospy.loginfo('Mission Failed! ')
                 
             if mission_success:
-                self.log_mission_data(mission_success)
+                pass
+                # self.log_mission_data(mission_success)
             self.remove_first_allocated_goal()
         rospy.spin()
 

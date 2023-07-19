@@ -84,7 +84,7 @@ class PlotVehicles:
             if not x_vals or not y_vals: continue
 
             min_len = min(len(x_vals), len(y_vals))
-            marker_size = 3 * (1 / -z_vals[-1]) if z_vals else 3
+            marker_size = 3 * (1 / -z_vals[-1]) if z_vals and z_vals[-1] != 0 else 3
 
             main_ax.plot(x_vals[:min_len], y_vals[:min_len], colors[vehicle], alpha=0.5)
             main_ax.plot(x_vals[-1], y_vals[-1], colors[vehicle]+'o', markersize=marker_size)
