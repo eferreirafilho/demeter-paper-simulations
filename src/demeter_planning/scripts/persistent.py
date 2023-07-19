@@ -4,8 +4,6 @@ import rospy
 from exec_demeter import ExecDemeter 
 from create_problem_instance import PopulateKB
 from std_msgs.msg import Bool
-import pandas as pd
-import os
 import re
 
 class ReallocationTrigger:
@@ -15,9 +13,6 @@ class ReallocationTrigger:
     def trigger(self):
         rospy.loginfo('Trigger reallocation')
         self.publisher.publish(True)
-        allocation_max_iterations = rospy.get_param('/goal_allocation/max_allocation_iteration')
-        GAIN_ITERATIONS_VS_TIME = 400
-        # rospy.sleep(allocation_max_iterations/GAIN_ITERATIONS_VS_TIME) # Wait for new allocation, proportional to iterations
         
 class DemeterManager:
     def __init__(self):
@@ -26,9 +21,6 @@ class DemeterManager:
     def dispatch_mission_sequence(self):
         self.demeter = None
         self.demeter = ExecDemeter()
-        # KB_cleared = self.demeter.clear_KB()
-        # while not KB_cleared:
-            # rospy.sleep(1)
         PopulateKB()
         mission_success = self.demeter.execute_plan()
         return mission_success
@@ -40,44 +32,8 @@ class PersistentPlanning:
         self.reallocation_trigger = ReallocationTrigger('/reallocation_trigger', 10)
         self.demeter_manager = DemeterManager()
         self.mission_counter = 0
-        # Define the base filename
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        base_filename = os.path.join(script_dir, 'missions{}.csv')
-        counter = 0
-        while os.path.isfile(base_filename.format(counter)):
-            counter += 1
-        self.filename = base_filename.format(counter)
-        self.missions_df = pd.DataFrame(columns=['vehicle_name', 'allocated_goal', 'time'])
 
-    def log_mission_data(self, mission_sucess):
-        vehicle_name = int(self.extract_number_from_string(str(self.namespace)))
-        auv_data = rospy.get_param(str(self.namespace) + 'data_histogram')
-        allocated_goal = auv_data['index'][-1]  # Get last element
-        mission_time = auv_data['time'][-1]  # Get last element
-        # Append new mission data to DataFrame
-        self.missions_df = self.missions_df.append({
-            'vehicle_name': vehicle_name,
-            'allocated_goal': allocated_goal,
-            'mission_success': mission_sucess,
-            'time': mission_time
-        }, ignore_index=True)
-
-        # Save the updated DataFrame to the CSV file
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        rospy.loginfo(script_dir)
-        csv_path = os.path.join(script_dir, self.filename)
-        rospy.loginfo(csv_path)
-
-        # Check if file exists to avoid writing header multiple times
-        file_exists = os.path.isfile(csv_path)
-
-        with open(csv_path, 'a') as f:
-            self.missions_df.to_csv(f, sep=';', index=False, header=not file_exists)
-
-        # Clear the DataFrame after writing to file
-        self.missions_df = self.missions_df[0:0]
-
-    def remove_first_allocated_goal(self):
+    def check_and_trigger_reallocation(self):
         vehicle_id = self.extract_number_from_string(str(rospy.get_namespace()))
         global_allocation = rospy.get_param("/goals_allocated/allocation")
         param_name = str(rospy.get_namespace() + "goals_allocated")
@@ -114,13 +70,10 @@ class PersistentPlanning:
             mission_success = self.demeter_manager.dispatch_mission_sequence()
             if not mission_success:
                 rospy.logwarn('Mission Failed! ')
-            else:
-                rospy.loginfo('Mission Failed! ')
-                
             if mission_success:
-                pass
-                # self.log_mission_data(mission_success)
-            self.remove_first_allocated_goal()
+                rospy.loginfo('Mission Succeeded! ')
+
+            self.check_and_trigger_reallocation()
         rospy.spin()
 
 if __name__ == '__main__':

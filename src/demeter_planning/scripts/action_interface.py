@@ -134,6 +134,7 @@ class DemeterActionInterface(object):
         while not self.low_tide or action_finish_time >= next_shift_to_high_tide: # Wait the low tide for safety
             next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
             action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
+            rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for low tide. Next shift to highb tide: ' + str(next_shift_to_high_tide))
 
         # high_waves = self.compute_if_high_waves()
         # while high_waves: # Wait for not high waves for safety

@@ -34,11 +34,6 @@
       <pose>0 0 -0.95 0 0 0</pose>
     </include>
 
-    <!-- Heightmap -->
-    <include>
-      <uri>model://sand_heightmap</uri>
-      <pose>0 0 -34 0 0 0</pose>
-    </include>
       <!-- Turbines -->
       <include>
     <name>turbine0</name>

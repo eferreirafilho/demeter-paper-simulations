@@ -12,7 +12,7 @@ from std_msgs.msg import Bool
 from time import sleep
 
 # random.seed(15)
-EXECUTE_TIME = 300 # Inspect turbine estimated execute time (Seconds)
+EXECUTE_TIME = 360 # Inspect turbine estimated execute time (Seconds)
 MAX_BALANCE_DIFFERENCE = 1 # Number of unbalance allowed
 MAX_ALLOCATION_ITERATION = 50000
 
@@ -340,7 +340,7 @@ class Allocation(object):
             if new_cost > best_cost:
                 best_solution = copy.deepcopy(new_solution)
                 best_cost = self.objective_function(best_solution)
-                rospy.loginfo(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
+                # rospy.loginfo(f'Iter: {iteration} Best solution: {best_solution} Best cost: {best_cost}')            
                 # rospy.logwarn(f'Temp: {temperature}')  
      
             temperature *= COOLING_RATE
@@ -351,7 +351,7 @@ class Allocation(object):
                 reheated+=1
                 current_solution = self.random_allocation() # generate a new random solution
                 current_cost = self.objective_function(current_solution)
-                rospy.loginfo(f'Reheated, new initial temperature: {temperature}')  
+                # rospy.loginfo(f'Reheated, new initial temperature: {temperature}')  
                 
         return best_solution, best_cost
 
@@ -378,12 +378,11 @@ if __name__ == '__main__':
     goal_allocation = Allocation(reallocation)
     best_solution, best_cost = goal_allocation.simulated_annealing()
     rospy.loginfo(f'Last Best solution: {best_solution} Best cost: {best_cost}')
-    goal_allocation.high_wave_reallocation_trigger = False
     goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
 
     # Reallocation (disregard current dispatch)
     while not rospy.is_shutdown():        
-        while goal_allocation.reallocation_trigger == True or goal_allocation.high_wave_reallocation_trigger == True:
+        while goal_allocation.reallocation_trigger == True:
             reallocation = True
             goal_allocation = None
             goal_allocation = Allocation(reallocation)
@@ -394,20 +393,17 @@ if __name__ == '__main__':
             for idx, _ in enumerate(goal_allocation.vehicles):
                 if len(current_individual_allocation[idx]) < 1:
                     rospy.loginfo('Add all new allocation to auv' + str(idx))
-                    goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
-                else:
+                else: # send solution to be executed preserving first allocated goal
                     rospy.loginfo('keep only first allocation: ' + str(current_individual_allocation[idx][0]))
                     first_individual_allocation = current_individual_allocation[idx][0]
                     best_solution[idx].insert(0, first_individual_allocation)
-                    goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed preserving first allocated goal
-                    rospy.loginfo('best solution: ' + str(best_solution))
+            goal_allocation.set_solution_to_ros_param(best_solution) # send solution to be executed
             
             sleep(1)
-            rospy.logwarn(f'Realocation triggered: {goal_allocation.reallocation_trigger}')
+            rospy.logwarn(f'Reallocation triggered: {goal_allocation.reallocation_trigger}')
             if rospy.is_shutdown():
                 break
             # Reset the trigger
             goal_allocation.reallocation_trigger = False
-            goal_allocation.high_wave_reallocation_trigger = False
     goal_allocation = None
     rospy.spin()  
