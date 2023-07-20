@@ -19,9 +19,9 @@
 		<arg name="model_name" value="auv1"/>
 	</include>
 
-	<include file="$(find auv_control)/launch/position_hold.launch">
+	<!-- <include file="$(find auv_control)/launch/position_hold.launch">
 		<arg name="model_name" value="auv2"/>
-	</include>
+	</include> -->
 <!-- 
 
 	<include file="$(find auv_control)/launch/position_hold.launch">

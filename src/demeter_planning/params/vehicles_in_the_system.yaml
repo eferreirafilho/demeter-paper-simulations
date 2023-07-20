@@ -1,4 +1,4 @@
 # Index of vehicles in the system
 # vehicle_idx: [0]
-# vehicle_idx: [0, 1]
-vehicle_idx: [0, 1, 2]
+vehicle_idx: [0, 1]
+# vehicle_idx: [0, 1, 2]

@@ -136,9 +136,9 @@ class DemeterActionInterface(object):
             action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
             rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for low tide. Next shift to highb tide: ' + str(next_shift_to_high_tide))
 
-        # high_waves = self.compute_if_high_waves()
-        # while high_waves: # Wait for not high waves for safety
-        #     high_waves = self.compute_if_high_waves()
+        high_waves = self.compute_if_high_waves()
+        while high_waves: # Wait for not high waves for safety
+            high_waves = self.compute_if_high_waves()
 
         # rospy.loginfo('Interface: \'Retrieve Data\' Action')
         response = self.ACTION_FAIL

@@ -11,10 +11,15 @@ from matplotlib import gridspec
 
 
 class PlotVehicles:
-    PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
-    LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+    # PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
+    
+    # LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+    
+
+        
     def __init__(self):
         rospy.init_node('robot_plotter', anonymous=True)
+        self.wait_for_weather_parameters()
         
         self.current_state_x = 0
         self.low_tides = (2*(self.LOW_TIDES_THREDSHOLD/self.PERIOD_OF_TIDES))-1
@@ -30,7 +35,25 @@ class PlotVehicles:
             rospy.Subscriber('/auv' + str(vehicle) + '/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self.update_action, vehicle)
             rospy.Subscriber('/auv' + str(vehicle) + '/battery_level_emulated', Float32, self.update_battery, vehicle)
 
+    def wait_for_weather_parameters(self):
+        self.PERIOD_OF_TIDES = None
+        self.LOW_TIDES_THREDSHOLD = None
 
+       # Wait until parameters are available
+        while not rospy.is_shutdown():
+            try:
+                self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
+                self.LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+
+                # If the parameters are fetched successfully, break the loop
+                if self.PERIOD_OF_TIDES is not None and self.LOW_TIDES_THREDSHOLD is not None:
+                    break
+            except KeyError:
+                # Parameter not available yet, ignore the exception and retry
+                pass  
+
+            rospy.sleep(0.1)
+            
     def number_of_vehicles(self):
         return len(rospy.get_param("/goal_allocation/vehicle_idx"))
 

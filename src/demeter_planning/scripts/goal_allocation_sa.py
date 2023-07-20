@@ -12,13 +12,17 @@ from std_msgs.msg import Bool
 from time import sleep
 
 # random.seed(15)
-EXECUTE_TIME = 360 # Inspect turbine estimated execute time (Seconds)
+
 MAX_BALANCE_DIFFERENCE = 1 # Number of unbalance allowed
-MAX_ALLOCATION_ITERATION = 50000
+MAX_ALLOCATION_ITERATION = 30000
+allocation_processing_time = MAX_ALLOCATION_ITERATION/1000
+EXECUTE_TIME = 360 - allocation_processing_time # Inspect turbine estimated execute time (Seconds), discounted by allocation processing time
+
+LEAD_TIME = allocation_processing_time # Amount of time allocation may start before high waves have ended (seconds)
 
 # Weighted sum multi objective optimization
-BETA = 10000 # Focus on more allocations
-ALPHA = 100  # Focus on travelling less
+BETA = 500 # Focus on more allocations
+ALPHA = 10  # Focus on travelling less
 ZETA = 1 # Focus on visiting turbines not visited lately
         
 class Allocation(object):
@@ -84,7 +88,6 @@ class Allocation(object):
         self.reallocation_trigger = msg.data
     
     def _remove_current_dispatched_turbines(self, all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx):
-        rospy.loginfo(f'Starting _remove_current_dispatched_turbines with turbines: {all_turbines_to_be_allocated} and indexes: {all_turbines_to_be_allocated_idx}')
         for vehicle_idx in range(self.number_of_vehicles):
             param_name = "/auv" + str(vehicle_idx) + "/goals_allocated"
             rospy.loginfo(f'Checking parameter: {param_name}')
@@ -102,7 +105,6 @@ class Allocation(object):
                         remove_idx = all_turbines_to_be_allocated_idx.index(goal_to_remove)  # Changed line
                         all_turbines_to_be_allocated.pop(remove_idx)
                         all_turbines_to_be_allocated_idx.pop(remove_idx)
-                        # rospy.loginfo(f'Removed goal {goal_to_remove} from turbines. Current turbines: {all_turbines_to_be_allocated} and indexes: {all_turbines_to_be_allocated_idx}')
                     else:
                         rospy.loginfo(f'Goal {goal_to_remove} not found in the turbine list.')
             else:
@@ -254,16 +256,21 @@ class Allocation(object):
         high_waves_start_time = period_of_tides * number_of_tides_until_next_high_waves
         high_waves_end_time = period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves)
     
-        while high_waves_start_time < time_since_start_of_current_cycle < high_waves_end_time: 
+        while high_waves_start_time < time_since_start_of_current_cycle < high_waves_end_time - LEAD_TIME: 
             rospy.loginfo_throttle(5,'We are in highs waves now, wait. Time to end high waves: ' + str(int(high_waves_end_time - time_since_start_of_current_cycle)) + ' seconds')
             current_time = rospy.get_rostime().to_sec()
             time_since_start_of_current_cycle = current_time % (period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
-            self.set_solution_to_ros_param([[] for _ in range(self.number_of_vehicles)])
+            self.set_solution_to_ros_param([[] for _ in range(self.number_of_vehicles)])    
 
-        # We are currently not in a high wave
-        time_to_next_high_wave = period_of_tides * number_of_tides_until_next_high_waves - time_since_start_of_current_cycle
-        # rospy.loginfo('Not in high waves. Time to next: ' + str(int(time_to_next_high_wave)) + ' seconds')
-        return time_to_next_high_wave
+        # We are currently not in a high wave or in the lead time before a high wave ends
+        time_window = period_of_tides * number_of_tides_until_next_high_waves - time_since_start_of_current_cycle
+        # rospy.loginfo('Not in high waves. Time to next: ' + str(int(time_window)) + ' seconds')
+        
+        # We are currently in lead time
+        if time_window < 0:
+            time_window = period_of_tides * number_of_tides_until_next_high_waves + period_of_tides + time_window
+            
+        return time_window
         
     def objective_function(self, solution):
         '''For each allocated turbines, consider the cost of travelling to that turbine plus the time it takes to inspect that turbine
@@ -300,16 +307,16 @@ class Allocation(object):
         for individual_solution in solution:
             for allocated_turbine in individual_solution:
                 turbines_last_inspection += self.time_of_turbines_last_inspection[allocated_turbine]
-
         total_allocations = sum(len(sublist) for sublist in solution)
-        
         cost = ALPHA*total_distance - BETA*total_allocations - ZETA*turbines_last_inspection
         
         return float(-cost)
-    
+
     def simulated_annealing(self):
         self.time_window = self.compute_next_time_window()
         rospy.loginfo('Next High wave event in: ' + str(int(self.time_window)) + ' seconds')
+        if int(self.time_window) < 0:    
+            return self.empty_solution(), self.inf_cost()
         
         INITIAL_TEMPERATURE = 1000
         COOLING_RATE = 0.999
@@ -353,8 +360,19 @@ class Allocation(object):
                 current_cost = self.objective_function(current_solution)
                 # rospy.loginfo(f'Reheated, new initial temperature: {temperature}')  
                 
+        if best_cost < 0:    
+            return self.empty_solution(), self.inf_cost()
+                
         return best_solution, best_cost
 
+    def empty_solution(self):
+        empty_solution =  [[] for _ in range(len(self.vehicles))]
+        return empty_solution
+    
+    def inf_cost(self):
+        best_cost = -float('Inf') 
+        return best_cost
+    
     def get_solution_from_ros_param(self):
         current_individual_allocation = []
         current_global_allocation = []
@@ -366,7 +384,7 @@ class Allocation(object):
     def set_solution_to_ros_param(self, allocation):
         for idx, _ in enumerate(self.vehicles):
             rospy.set_param('auv' + str(idx) + '/goals_allocated', allocation[idx])
-        rospy.logwarn('Solution /goals_allocated/allocation: ' + str(allocation))
+        rospy.logwarn_throttle(10, 'Solution /goals_allocated/allocation: ' + str(allocation))
         rospy.set_param('/goals_allocated/allocation', allocation)
     
 if __name__ == '__main__':
@@ -405,5 +423,6 @@ if __name__ == '__main__':
                 break
             # Reset the trigger
             goal_allocation.reallocation_trigger = False
+        sleep(1)
     goal_allocation = None
     rospy.spin()  
