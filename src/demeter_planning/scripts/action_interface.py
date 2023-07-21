@@ -160,7 +160,7 @@ class DemeterActionInterface(object):
                 self.set_inspected_times(turbine)               
                 response = self.ACTION_SUCCESS   
                 
-            # rospy.loginfo('Execution: Action RETRIEVE DATA took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
+            rospy.loginfo('Execution: Action RETRIEVE DATA TURBINE ' + str(turbine) + ' took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
 
             # rospy.loginfo('Data acquired!')
                 

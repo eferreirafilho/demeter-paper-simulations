@@ -2,16 +2,16 @@
 (:domain demeter-domain)
 (:objects
     vehicle1 - vehicle
-    wp_init_auv1 waypoint2 - waypoint
-    data0 - data
+    wp_init_auv1 waypoint52 - waypoint
+    data10 - data
     currenttide - tide
     currentwaves - waves
-    turbine0 - turbine
+    turbine10 - turbine
 )
 (:init
-    (can-move wp_init_auv1 waypoint2)
+    (can-move wp_init_auv1 waypoint52)
 
-    (is-in data0 turbine0)
+    (is-in data10 turbine10)
 
 
     (at vehicle1 wp_init_auv1)
@@ -23,19 +23,19 @@
 
     (not (tide-low currenttide))
 
-    (at 25.355 (tide-low currenttide))
-    (at 185.385 (not (tide-low currenttide)))
-    (at 505.43 (tide-low currenttide))
-    (at 665.45 (not (tide-low currenttide)))
-    (at 985.47 (tide-low currenttide))
-    (at 1145.49 (not (tide-low currenttide)))
-    (at 1465.54 (tide-low currenttide))
-    (at 1625.57 (not (tide-low currenttide)))
-    (at 1945.59 (tide-low currenttide))
-    (at 2105.62 (not (tide-low currenttide)))
+    (at 18.85 (tide-low currenttide))
+    (at 178.91 (not (tide-low currenttide)))
+    (at 498.93 (tide-low currenttide))
+    (at 658.95 (not (tide-low currenttide)))
+    (at 978.97 (tide-low currenttide))
+    (at 1139 (not (tide-low currenttide)))
+    (at 1459.05 (tide-low currenttide))
+    (at 1619.06 (not (tide-low currenttide)))
+    (at 1939.08 (tide-low currenttide))
+    (at 2099.1 (not (tide-low currenttide)))
 
 
-    (is-turbine-wp waypoint2 turbine0)
+    (is-turbine-wp waypoint52 turbine10)
 
     (idle vehicle1)
 
@@ -48,12 +48,12 @@
 
     (= (recharge-rate-dedicated vehicle1) 5)
 
-    (= (traverse-cost wp_init_auv1 waypoint2) 4.85)
+    (= (traverse-cost wp_init_auv1 waypoint52) 6.71)
 
     (= (speed vehicle1) 0.65)
 
 )
 (:goal (and
-    (data-sent data0)
+    (data-sent data10)
 ))
 )

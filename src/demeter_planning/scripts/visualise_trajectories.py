@@ -14,9 +14,11 @@ class PlotVehicles:
     def __init__(self):
         rospy.init_node('robot_plotter', anonymous=True)
         self.wait_for_weather_parameters()
-        
+
         self.current_state_x = 0
-        self.low_tides = (2*(self.LOW_TIDES_THRESHOLD/self.PERIOD_OF_TIDES))-1
+        self.low_tides = (2 * (float(self.LOW_TIDES_THRESHOLD) / self.PERIOD_OF_TIDES)) - 1
+
+        rospy.logwarn('self.lowtides: ' + str(self.low_tides))
 
         number_of_vehicles = self.number_of_vehicles()
         self.positions = [([], [], []) for _ in range(number_of_vehicles)]

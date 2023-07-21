@@ -5,29 +5,30 @@ No semaphore facts found, returning
 [01;34mNo analytic limits found, not considering limit effects of goal-only operators[00m
 50% of the ground temporal actions in this problem are compression-safe
 Initial heuristic = 7.000, admissible cost estimate 0.000
-b (6.000 | 25.355)b (5.000 | 25.355)b (4.000 | 42.464)b (2.000 | 197.472)b (1.000 | 199.473)(G)
+b (6.000 | 18.850)b (5.000 | 30.325)b (4.000 | 55.327)b (2.000 | 210.335)b (1.000 | 212.336)(G)
 ; No metric specified - using makespan
 
-; Plan found with metric 199.473
-; States evaluated so far: 42
+; Plan found with metric 212.336
+; States evaluated so far: 46
 ; States pruned based on pre-heuristic cost lower bound: 0
-; Time 0.07
-0.000: (move vehicle1 wp_init_auv1 waypoint2)  [7.461]
-7.462: (harvest-energy vehicle1)  [10.000]
-17.463: (localize-cable vehicle1 waypoint2 turbine0)  [15.000]
-32.464: (harvest-energy vehicle1)  [10.000]
-42.465: (retrieve-data vehicle1 data0 waypoint2 currenttide currentwaves turbine0)  [55.000]
-97.466: (surface vehicle1)  [40.000]
-137.467: (harvest-energy vehicle1)  [10.000]
-147.468: (harvest-energy vehicle1)  [10.000]
-157.469: (harvest-energy vehicle1)  [10.000]
-167.470: (harvest-energy vehicle1)  [10.000]
-177.471: (harvest-energy vehicle1)  [10.000]
-187.472: (harvest-energy vehicle1)  [10.000]
-197.473: (upload-data-histograms vehicle1 data0)  [2.000]
+; Time 0.06
+0.000: (move vehicle1 wp_init_auv1 waypoint52)  [10.323]
+10.324: (harvest-energy vehicle1)  [10.000]
+20.325: (harvest-energy vehicle1)  [10.000]
+30.326: (localize-cable vehicle1 waypoint52 turbine10)  [15.000]
+45.327: (harvest-energy vehicle1)  [10.000]
+55.328: (retrieve-data vehicle1 data10 waypoint52 currenttide currentwaves turbine10)  [55.000]
+110.329: (surface vehicle1)  [40.000]
+150.330: (harvest-energy vehicle1)  [10.000]
+160.331: (harvest-energy vehicle1)  [10.000]
+170.332: (harvest-energy vehicle1)  [10.000]
+180.333: (harvest-energy vehicle1)  [10.000]
+190.334: (harvest-energy vehicle1)  [10.000]
+200.335: (harvest-energy vehicle1)  [10.000]
+210.336: (upload-data-histograms vehicle1 data10)  [2.000]
 
- * All goal deadlines now no later than 199.473
+ * All goal deadlines now no later than 212.336
 
 Resorting to best-first search
 Running WA* with W = 5.000, not restarting with goal states
-b (6.000 | 25.355)b (5.000 | 25.355)b (4.000 | 42.464)b (2.000 | 197.472)b (1.000 | 199.473)
+b (6.000 | 18.850)b (5.000 | 30.325)b (4.000 | 55.327)b (2.000 | 210.335)b (1.000 | 212.336)
