@@ -1,3 +1,4 @@
-period_of_tides: 360
+period_of_tides: 480
+low_tides_threshold: 160 # One third of period_of_tides
 number_of_tides_until_next_high_waves: 2
 number_of_tides_duration_high_waves: 1

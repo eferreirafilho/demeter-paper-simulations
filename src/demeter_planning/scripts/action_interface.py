@@ -430,17 +430,17 @@ class DemeterActionInterface(object):
             PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
         else:
             rospy.loginfo("Parameter period_of_tides not set")
-        if rospy.has_param('/low_tides_thredshold'):   
-            LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+        if rospy.has_param('/goal_allocation/low_tides_threshold'):   
+            LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         else:
-            rospy.loginfo("Parameter low_tides_thredshold not set")
+            rospy.loginfo("Parameter low_tides_threshold not set")
         time = rospy.get_rostime().to_sec()
         time_integer = time // PERIOD_OF_TIDES
-        if time < (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD):
-            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently low tide -> high tide is in this cycle
+        if time < (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD):
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD # Currently low tide -> high tide is in this cycle
             self.low_tide = True
         else:
-            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently high tide
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD # Currently high tide
             self.low_tide = False
             
         return next_shift_to_high_tide_time

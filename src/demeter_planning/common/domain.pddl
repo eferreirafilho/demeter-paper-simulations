@@ -4,7 +4,7 @@
     (:requirements :typing :fluents :timed-initial-literals :equality :constraints :durative-actions :duration-inequalities)
 
     (:types
-        vehicle waypoint data tide turbine
+        vehicle waypoint data tide waves turbine
     )
 
     (:functions
@@ -31,6 +31,7 @@
         (is-turbine-wp ?w - waypoint ?tu - turbine)
         (idle ?v - vehicle)
     (is-submerged ?v - vehicle)
+    (not-high-waves ?wa - waves)
 )
     ;define actions here
     (:durative-action move
@@ -91,12 +92,13 @@
     ; )
 
     (:durative-action retrieve-data
-        :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?tu - turbine)
+        :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?wa - waves ?tu - turbine)
         :duration(= ?duration 55)
         :condition (and 
             (over all (cable-localized ?tu))
             (over all (is-turbine-wp ?w ?tu))
             (over all (tide-low ?td))
+            (over all (not-high-waves ?wa))
             (over all (is-in ?d ?tu))
             (over all (at ?v ?w))
             (at start (empty ?v))

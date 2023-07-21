@@ -6,6 +6,9 @@
 
 	<node pkg="demeter_planning" type="battery.py" name="battery_controller" output="screen"/>
 
+   <!-- Launch visualizatioo tool -->
+  <include file="$(find demeter_planning)/launch/visualise.launch">  </include>
+
   <!-- Launch planning_ns.launch with namespace=auv0 -->
   <include file="$(find demeter_planning)/launch/planning_ns.launch">
     <arg name="namespace" value="auv0" />

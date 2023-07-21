@@ -17,8 +17,10 @@ class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
+        self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')  # Period in seconds
+        self.LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         self.SCALE_TRAVERSE_COSTS = 1
-        self.SPEED = 0.35 # Scale speed 
+        self.SPEED = 0.65 # Scale speed 
         self.FULL_BATTERY = 20
         self.RECHARGE_RATE = 0.05 # While doing other tasks #TODO: Change here and in battery controller at the same time
         self.RECHARGE_RATE_DEDICATED = 5 #TODO: Change here and in battery controller at the same time
@@ -87,6 +89,7 @@ class PopulateKB(object):
         self.add_reduced_can_move(reduced_waypoints)
         self.add_object('vehicle'+str(self.vehicle_id), 'vehicle')
         self.add_object('currenttide', 'tide')
+        self.add_object('currentwaves', 'waves')
         self.add_fact('is-surfaced', 'vehicle'+str(self.vehicle_id))
         self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
         # self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
@@ -99,6 +102,7 @@ class PopulateKB(object):
         self.update_functions('speed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.SPEED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.predict_next_tides() # All facts related to tides
         # rospy.loginfo('Tides: ' + str(self.current_tide_level))    
+        self.predict_next_waves() # All facts related to waves
 
     def add_goal_mission(self, target_turbine):   
         self.add_object('data'+str(target_turbine),'data')
@@ -357,26 +361,62 @@ class PopulateKB(object):
         self.battery_level = msg.data
 
     def predict_next_tides(self):
-        PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides') # Period in seconds
-        LOW_TIDES_THREDSHOLD = PERIOD_OF_TIDES/3.0
-        rospy.set_param('/low_tides_thredshold', LOW_TIDES_THREDSHOLD)
 
         time = rospy.get_rostime().to_sec()
-        time_in_tide_cycle = time % PERIOD_OF_TIDES  # get the current ROS time in seconds and use the remainder after dividing by P to simulate repeating cycle
-        time_integer = time // PERIOD_OF_TIDES
-        
-        self.add_timed_initial_literals(0, False, 'tide-low', 'currenttide') # Past tides
-        
-        # Bring time to present
-        if time_integer*PERIOD_OF_TIDES < time < time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD: 
-            self.add_timed_initial_literals(0, True, 'tide-low', 'currenttide') # Add tide low if it is low now
-            self.add_timed_initial_literals(LOW_TIDES_THREDSHOLD, False, 'tide-low', 'currenttide') # If its low now add next not low
 
-        # Add next tides transitions to problem.pddl        
-        TIDES_SIMULATION_CYCLES = 5
-        for i in range(TIDES_SIMULATION_CYCLES):
-            self.add_timed_initial_literals(PERIOD_OF_TIDES + PERIOD_OF_TIDES*i, True, 'tide-low', 'currenttide')
-            self.add_timed_initial_literals(PERIOD_OF_TIDES + PERIOD_OF_TIDES*i + LOW_TIDES_THREDSHOLD, False, 'tide-low', 'currenttide')
+        # Calculate the time within the current tide cycle
+        time_within_current_tide = time % self.PERIOD_OF_TIDES
+        rospy.logwarn('predict next tides in time: ' + str(time))
+        rospy.logwarn('predict next tides (time_within_current_tide): ' + str(time_within_current_tide))
+        # Check if current tide is low
+        if time_within_current_tide < self.LOW_TIDES_THRESHOLD:
+            self.add_timed_initial_literals(0, True, 'tide-low', 'currenttide')
+        else:
+            self.add_timed_initial_literals(0, False, 'tide-low', 'currenttide')
+
+        # Now add literals for the next 5 cycles
+        for i in range(1, 6):
+            # Calculate time remaining for the next tide
+            next_low_tide_time = i * self.PERIOD_OF_TIDES - time_within_current_tide
+            next_high_tide_time = next_low_tide_time + self.LOW_TIDES_THRESHOLD
+
+            # Add literal for when the tide will be low
+            self.add_timed_initial_literals(next_low_tide_time, True, 'tide-low', 'currenttide')
+
+            # Add literal for when the tide will no longer be low
+            self.add_timed_initial_literals(next_high_tide_time, False, 'tide-low', 'currenttide')
+
+
+    def predict_next_waves(self):
+        number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        current_time = rospy.get_rostime().to_sec()
+
+        # Compute the time until next high waves and its duration
+        time_until_next_high_waves = number_of_tides_until_next_high_waves * self.PERIOD_OF_TIDES / 2
+        duration_of_high_waves = number_of_tides_duration_high_waves * self.PERIOD_OF_TIDES / 2
+
+        # Compute the start and end time of the next high waves period
+        start_high_wave_period = time_until_next_high_waves
+        end_high_wave_period = start_high_wave_period + duration_of_high_waves
+
+        # Check if the current time is in the high wave period
+        are_high_waves_now = start_high_wave_period <= current_time < end_high_wave_period
+
+        # Add initial state based on the current wave state
+        if are_high_waves_now:
+            self.add_timed_initial_literals(0, False, 'not-high-waves', 'currentwaves')
+        else:
+            self.add_timed_initial_literals(0, True, 'not-high-waves', 'currentwaves')
+
+        # Add initial literals for every 4 changes in the wave states
+        next_period_start_time = (start_high_wave_period if current_time < start_high_wave_period else end_high_wave_period) + self.PERIOD_OF_TIDES / 2
+        for change_time in range(int(next_period_start_time), int(next_period_start_time + duration_of_high_waves), int(self.PERIOD_OF_TIDES/2)*4):
+            time_from_now = change_time - current_time
+            self.add_timed_initial_literals(time_from_now, True, 'not-high-waves', 'currentwaves')
+
+
+
 
 if __name__ == '__main__':
     rospy.loginfo('Populate KB for one vehicle, using its position')
