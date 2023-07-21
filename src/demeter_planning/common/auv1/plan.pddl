@@ -1,34 +1,12 @@
-Number of literals: 11
-Constructing lookup tables:
-Post filtering unreachable actions: 
+Number of literals: 19
+Constructing lookup tables: [10%] [20%] [30%] [40%] [50%] [60%] [70%] [80%] [90%] [100%] [110%] [120%] [130%]
+Post filtering unreachable actions:  [10%] [20%] [30%] [40%] [50%] [60%] [70%] [80%] [90%] [100%] [110%] [120%] [130%]
 No semaphore facts found, returning
 [01;34mNo analytic limits found, not considering limit effects of goal-only operators[00m
-50% of the ground temporal actions in this problem are compression-safe
-Initial heuristic = 7.000, admissible cost estimate 0.000
-b (6.000 | 18.850)b (5.000 | 30.325)b (4.000 | 55.327)b (2.000 | 210.335)b (1.000 | 212.336)(G)
-; No metric specified - using makespan
-
-; Plan found with metric 212.336
-; States evaluated so far: 46
-; States pruned based on pre-heuristic cost lower bound: 0
-; Time 0.06
-0.000: (move vehicle1 wp_init_auv1 waypoint52)  [10.323]
-10.324: (harvest-energy vehicle1)  [10.000]
-20.325: (harvest-energy vehicle1)  [10.000]
-30.326: (localize-cable vehicle1 waypoint52 turbine10)  [15.000]
-45.327: (harvest-energy vehicle1)  [10.000]
-55.328: (retrieve-data vehicle1 data10 waypoint52 currenttide currentwaves turbine10)  [55.000]
-110.329: (surface vehicle1)  [40.000]
-150.330: (harvest-energy vehicle1)  [10.000]
-160.331: (harvest-energy vehicle1)  [10.000]
-170.332: (harvest-energy vehicle1)  [10.000]
-180.333: (harvest-energy vehicle1)  [10.000]
-190.334: (harvest-energy vehicle1)  [10.000]
-200.335: (harvest-energy vehicle1)  [10.000]
-210.336: (upload-data-histograms vehicle1 data10)  [2.000]
-
- * All goal deadlines now no later than 212.336
-
+[i] Not abstracting out TIL (not-high-waves currentwaves)
+76% of the ground temporal actions in this problem are compression-safe
+Initial heuristic = 13.000, admissible cost estimate 0.000
+b (12.000 | 28.986)b (11.000 | 100.375)b (10.000 | 223.013)b (9.000 | 244.061)b (8.000 | 331.897)b (7.000 | 453.689)b (6.000 | 474.737)b (5.000 | 564.527)b (4.000 | 589.529)b (3.000 | 1134.589)
 Resorting to best-first search
 Running WA* with W = 5.000, not restarting with goal states
-b (6.000 | 18.850)b (5.000 | 30.325)b (4.000 | 55.327)b (2.000 | 210.335)b (1.000 | 212.336)
+b (12.000 | 28.986)b (11.000 | 100.375)b (10.000 | 223.013)b (9.000 | 244.061)b (8.000 | 331.897)b (7.000 | 453.689)b (6.000 | 474.737)

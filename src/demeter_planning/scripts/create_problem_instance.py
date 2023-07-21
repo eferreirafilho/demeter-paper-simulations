@@ -361,7 +361,6 @@ class PopulateKB(object):
         self.battery_level = msg.data
 
     def predict_next_tides(self):
-
         time = rospy.get_rostime().to_sec()
 
         # Calculate the time within the current tide cycle
@@ -375,7 +374,7 @@ class PopulateKB(object):
             self.add_timed_initial_literals(0, False, 'tide-low', 'currenttide')
 
         # Now add literals for the next 5 cycles
-        for i in range(1, 6):
+        for i in range(0, 6):
             # Calculate time remaining for the next tide
             next_low_tide_time = i * self.PERIOD_OF_TIDES - time_within_current_tide
             next_high_tide_time = next_low_tide_time + self.LOW_TIDES_THRESHOLD
@@ -392,31 +391,32 @@ class PopulateKB(object):
         number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
         current_time = rospy.get_rostime().to_sec()
 
-        # Compute the time until next high waves and its duration
-        time_until_next_high_waves = number_of_tides_until_next_high_waves * self.PERIOD_OF_TIDES / 2
-        duration_of_high_waves = number_of_tides_duration_high_waves * self.PERIOD_OF_TIDES / 2
+        total_not_high_waves_time = number_of_tides_until_next_high_waves * self.PERIOD_OF_TIDES
+        total_high_waves_time = number_of_tides_duration_high_waves * self.PERIOD_OF_TIDES
 
-        # Compute the start and end time of the next high waves period
-        start_high_wave_period = time_until_next_high_waves
-        end_high_wave_period = start_high_wave_period + duration_of_high_waves
+        time_since_last_change = current_time % (total_not_high_waves_time + total_high_waves_time)
 
-        # Check if the current time is in the high wave period
-        are_high_waves_now = start_high_wave_period <= current_time < end_high_wave_period
-
-        # Add initial state based on the current wave state
-        if are_high_waves_now:
-            self.add_timed_initial_literals(0, False, 'not-high-waves', 'currentwaves')
-        else:
+        if time_since_last_change < total_not_high_waves_time:
+            # We're currently in the not-high-waves state
             self.add_timed_initial_literals(0, True, 'not-high-waves', 'currentwaves')
+            next_change_time = total_not_high_waves_time - time_since_last_change
+            future_state = False  # The next state will be high-waves, so 'not-high-waves' is False
+        else:
+            # We're currently in the high-waves state
+            self.add_timed_initial_literals(0, False, 'not-high-waves', 'currentwaves')
+            next_change_time = total_high_waves_time + total_not_high_waves_time - time_since_last_change
+            future_state = True  # The next state will be not-high-waves, so 'not-high-waves' is True
 
-        # Add initial literals for every 4 changes in the wave states
-        next_period_start_time = (start_high_wave_period if current_time < start_high_wave_period else end_high_wave_period) + self.PERIOD_OF_TIDES / 2
-        for change_time in range(int(next_period_start_time), int(next_period_start_time + duration_of_high_waves), int(self.PERIOD_OF_TIDES/2)*4):
-            time_from_now = change_time - current_time
-            self.add_timed_initial_literals(time_from_now, True, 'not-high-waves', 'currentwaves')
-
-
-
+        # Loop for future state changes
+        future_time = next_change_time
+        for i in range(1, 5):  # replace 5 with the number of future states you want to predict
+            self.add_timed_initial_literals(future_time, future_state, 'not-high-waves', 'currentwaves')
+            if future_state:  # if the current future state is not-high-waves
+                future_time += total_not_high_waves_time
+                future_state = False  # The next state will be high-waves, so 'not-high-waves' is False
+            else:  # if the current future state is high-waves
+                future_time += total_high_waves_time
+                future_state = True  # The next state will be not-high-waves, so 'not-high-waves' is True
 
 if __name__ == '__main__':
     rospy.loginfo('Populate KB for one vehicle, using its position')
