@@ -18,7 +18,6 @@ class PlotVehicles:
         self.current_state_x = 0
         self.low_tides = (2 * (float(self.LOW_TIDES_THRESHOLD) / self.PERIOD_OF_TIDES)) - 1
 
-        rospy.logwarn('self.lowtides: ' + str(self.low_tides))
 
         number_of_vehicles = self.number_of_vehicles()
         self.positions = [([], [], []) for _ in range(number_of_vehicles)]
