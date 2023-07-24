@@ -98,7 +98,7 @@ class DemeterInterface(object):
             elif msg.name == 'surface':
                 self._action_threaded(msg, self.surface, [duration])
             elif msg.name == 'retrieve-data':
-                # Start a new thread to handle the retrieve-data action, waiting for tides to dispatch
+                # Start a new thread to handle the retrieve-data action, waiting for tides and waves to dispatch
                 retrieve_data_thread = threading.Thread(target=self._retrieve_data_action_threaded, args=[msg])
                 retrieve_data_thread.start()
                 # Store the thread in the running actions
@@ -112,12 +112,32 @@ class DemeterInterface(object):
         self.running_actions[action_dispatch.action_id] = action_thread
 
     def _retrieve_data_action_threaded(self, msg):
+        rospy.logwarn(str(self.namespace) + ' Time now: ' + str(rospy.Time.now().to_sec()))
+        
         duration = rospy.Duration(msg.duration)
         next_shift_to_high_tide = self.demeter.compute_next_shift_to_high_tide_time()
+        rospy.logwarn(str(self.namespace) + ' self.low_tide: ' + str(self.demeter.low_tide))
+        next_shift_to_high_waves_time = self.demeter.compute_next_shift_to_high_waves_time()
+        rospy.logwarn(str(self.namespace) + ' self.low_waves: ' + str(self.demeter.low_waves))
+        
         action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-        while not self.demeter.low_tide or action_finish_time >= next_shift_to_high_tide: # Wait the low tide for safety
+        rospy.logwarn_throttle(3,'not self.demeter.low_tide: ' + str(not self.demeter.low_tide) + ' | not self.demeter.low_waves: ' + str(not self.demeter.low_tide))
+    
+        while not self.demeter.low_tide or not self.demeter.low_waves or action_finish_time >= next_shift_to_high_tide or action_finish_time >= next_shift_to_high_waves_time: # Wait the low tides or low waves for safety
             next_shift_to_high_tide = self.demeter.compute_next_shift_to_high_tide_time()
+            next_shift_to_high_waves_time = self.demeter.compute_next_shift_to_high_waves_time()
             action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
+            rospy.loginfo_throttle(3,'not self.demeter.low_tide: ' + str(not self.demeter.low_tide) + ' | not self.demeter.low_waves: ' + str(not self.demeter.low_tide))
+            rospy.loginfo_throttle(3,'action_finish_time >= next_shift_to_high_tide: ' + str(action_finish_time >= next_shift_to_high_tide) + ' | action_finish_time >= next_shift_to_high_waves_time: ' + str(action_finish_time >= next_shift_to_high_waves_time))
+            if self.demeter.low_tide:
+                rospy.logwarn_throttle(3, str(self.namespace) + ' | Low Tides now | Next shift to high Tide: ' + str(next_shift_to_high_tide))
+            else:
+                rospy.logwarn_throttle(3, str(self.namespace) + ' | High Tides now')
+            if self.demeter.low_waves:
+                rospy.logwarn_throttle(3, str(self.namespace) + ' | Low Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
+            else:
+                rospy.logwarn_throttle(3, str(self.namespace) + ' | High Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
+            
         self._action_threaded(msg, self.retrieve_data, [msg.parameters, duration])
 
     def _action(self, action_dispatch, action_func, action_params=list()):

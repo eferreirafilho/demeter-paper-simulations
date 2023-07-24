@@ -129,41 +129,40 @@ class DemeterActionInterface(object):
         return response
     
     def do_retrieve_data(self, turbine, duration=rospy.Duration()):
-        self._rate.sleep()
-        rospy.logwarn(str(self.namespace) + ' Time now: ' + rospy.Time.now().to_sec())
+        # self._rate.sleep()
+        # rospy.logwarn(str(self.namespace) + ' Time now: ' + rospy.Time.now().to_sec())
+        
+        # next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
+        # next_shift_to_high_waves = self.compute_next_shift_to_high_waves_time()
+        
+        # action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
+        
+        # low_tide_safety_condition = self.low_tide and action_finish_time <= next_shift_to_high_tide
+        # low_waves_safety_condition = self.low_waves
+        # rospy.logwarn(str(self.namespace) + ' self.low_tide: ' + str(self.low_tide))
+        # rospy.logwarn(str(self.namespace) + ' low_tide_safety_condition: ' + str(low_tide_safety_condition))
+        
+        # rospy.logwarn(str(self.namespace) + ' self.low_waves: ' + str(self.low_waves))
+        # rospy.logwarn(str(self.namespace) + ' low_waves_safety_condition: ' + str(low_waves_safety_condition))
         
         
-        next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-        next_shift_to_high_waves = self.compute_next_shift_to_high_waves_time()
+        # rospy.logwarn(str(self.namespace) + ' next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
+        # rospy.logwarn(str(self.namespace) + ' next_shift_to_high_waves: ' + str(next_shift_to_high_waves))
         
-        action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-        
-        low_tide_safety_condition = self.low_tide and action_finish_time <= next_shift_to_high_tide
-        low_waves_safety_condition = self.low_waves
-        rospy.logwarn(str(self.namespace) + ' self.low_tide: ' + str(self.low_tide))
-        rospy.logwarn(str(self.namespace) + ' low_tide_safety_condition: ' + str(low_tide_safety_condition))
-        
-        rospy.logwarn(str(self.namespace) + ' self.low_waves: ' + str(self.low_waves))
-        rospy.logwarn(str(self.namespace) + ' low_waves_safety_condition: ' + str(low_waves_safety_condition))
-        
-        
-        rospy.logwarn(str(self.namespace) + ' next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
-        rospy.logwarn(str(self.namespace) + ' next_shift_to_high_waves: ' + str(next_shift_to_high_waves))
-        
-        while low_tide_safety_condition and low_waves_safety_condition: # Wait the low tide and high waves for safety
-            low_tide_safety_condition = self.low_tide and action_finish_time <= next_shift_to_high_tide
-            low_waves_safety_condition = self.low_waves
+        # while low_tide_safety_condition and low_waves_safety_condition: # Wait the low tide and high waves for safety
+        #     low_tide_safety_condition = self.low_tide and action_finish_time <= next_shift_to_high_tide
+        #     low_waves_safety_condition = self.low_waves
             
-            next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-            next_shift_to_high_waves = self.compute_next_shift_to_high_waves_time()
-            action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-            rospy.logwarn_throttle(4, str(self.namespace) + ' Low tide safety condition: ' + str(low_tide_safety_condition))
-            rospy.logwarn_throttle(4, str(self.namespace) + ' low_waves_safety_condition: ' + str(low_waves_safety_condition))
+        #     next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
+        #     next_shift_to_high_waves = self.compute_next_shift_to_high_waves_time()
+        #     action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
+        #     rospy.logwarn_throttle(4, str(self.namespace) + ' Low tide safety condition: ' + str(low_tide_safety_condition))
+        #     rospy.logwarn_throttle(4, str(self.namespace) + ' low_waves_safety_condition: ' + str(low_waves_safety_condition))
             
-            if low_tide_safety_condition:
-                rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for low tide. Next shift to high tide: ' + str(next_shift_to_high_tide))
-            if low_waves_safety_condition:
-                rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for high waves to pass. Next shift out of high waves: ' + str(next_shift_to_high_waves))
+        #     if low_tide_safety_condition:
+        #         rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for low tide. Next shift to high tide: ' + str(next_shift_to_high_tide))
+        #     if low_waves_safety_condition:
+        #         rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for high waves to pass. Next shift out of high waves: ' + str(next_shift_to_high_waves))
 
         # rospy.loginfo('Interface: \'Retrieve Data\' Action')
         response = self.ACTION_FAIL
@@ -487,20 +486,22 @@ class DemeterActionInterface(object):
             rospy.loginfo("Parameter number_of_tides_duration_high_waves not set")
         time = rospy.get_rostime().to_sec()
         total_cycle_time = (number_of_tides_duration_high_waves + number_of_tides_until_next_high_waves)*PERIOD_OF_TIDES
+        total_cycle_integer = time // total_cycle_time # How many cycles have passed
         time_in_this_cycle = time % total_cycle_time           
                     
-        rospy.logwarn_throttle(4,'time_in_this_cycle: ' + str(time_in_this_cycle))
-        rospy.logwarn_throttle(4,'total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES ' + str(total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES))
+        # rospy.logwarn_throttle(4, str(self.namespace) + ' | time_in_this_cycle: ' + str(time_in_this_cycle))
+        # rospy.logwarn_throttle(4, str(self.namespace) + ' | total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES ' + str(total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES))
         
         if time_in_this_cycle <= number_of_tides_until_next_high_waves*PERIOD_OF_TIDES:
             self.low_waves = True
             rospy.set_param('/goal_allocation/wave_state', 'low')
-            next_shift_to_high_waves_time = number_of_tides_until_next_high_waves*PERIOD_OF_TIDES - time_in_this_cycle
-            rospy.logwarn_throttle(2, 'Low Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
+            next_shift_to_high_waves_time = number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + total_cycle_time*(total_cycle_integer+1)
+            rospy.logwarn_throttle(2, str(self.namespace) + '| Low Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
         else:
             self.low_waves = False
             rospy.set_param('/goal_allocation/wave_state', 'high')
-            next_shift_to_high_waves_time = total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES
-            rospy.logwarn_throttle(2, 'High Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
+            next_shift_to_high_waves_time = total_cycle_time + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + (total_cycle_time*total_cycle_integer+1)
+            # next_shift_to_high_waves_time = total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES
+            rospy.logwarn_throttle(2, str(self.namespace) + ' | High Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
                 
         return next_shift_to_high_waves_time

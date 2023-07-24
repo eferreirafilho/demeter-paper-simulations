@@ -2,20 +2,19 @@
 (:domain demeter-domain)
 (:objects
     vehicle0 - vehicle
-    wp_init_auv0 waypoint27 waypoint22 waypoint20 waypoint19 waypoint42 - waypoint
-    data8 - data
+    wp_init_auv0 waypoint24 waypoint21 waypoint17 waypoint12 - waypoint
+    data2 - data
     currenttide - tide
     currentwaves - waves
-    turbine8 - turbine
+    turbine2 - turbine
 )
 (:init
-    (can-move wp_init_auv0 waypoint27)
-    (can-move waypoint27 waypoint22)
-    (can-move waypoint22 waypoint20)
-    (can-move waypoint20 waypoint19)
-    (can-move waypoint19 waypoint42)
+    (can-move wp_init_auv0 waypoint24)
+    (can-move waypoint24 waypoint21)
+    (can-move waypoint21 waypoint17)
+    (can-move waypoint17 waypoint12)
 
-    (is-in data8 turbine8)
+    (is-in data2 turbine2)
 
 
     (at vehicle0 wp_init_auv0)
@@ -25,32 +24,31 @@
 
     (empty vehicle0)
 
-    (tide-low currenttide)
+    (not (tide-low currenttide))
 
-    (at 55.01 (not (tide-low currenttide)))
-    (at 375.035 (tide-low currenttide))
-    (at 535.07 (not (tide-low currenttide)))
-    (at 855.095 (tide-low currenttide))
-    (at 1015.13 (not (tide-low currenttide)))
-    (at 1335.17 (tide-low currenttide))
-    (at 1495.2 (not (tide-low currenttide)))
-    (at 1815.22 (tide-low currenttide))
-    (at 1975.23 (not (tide-low currenttide)))
-    (at 2295.25 (tide-low currenttide))
-    (at 2455.28 (not (tide-low currenttide)))
+    (at 313.065 (tide-low currenttide))
+    (at 473.1 (not (tide-low currenttide)))
+    (at 793.265 (tide-low currenttide))
+    (at 953.405 (not (tide-low currenttide)))
+    (at 1273.49 (tide-low currenttide))
+    (at 1433.56 (not (tide-low currenttide)))
+    (at 1753.74 (tide-low currenttide))
+    (at 1913.75 (not (tide-low currenttide)))
+    (at 2233.92 (tide-low currenttide))
+    (at 2393.99 (not (tide-low currenttide)))
 
 
-    (is-turbine-wp waypoint42 turbine8)
+    (is-turbine-wp waypoint12 turbine2)
 
     (idle vehicle0)
 
 
-    (not (not-high-waves currentwaves))
+    (not-high-waves currentwaves)
 
-    (at 374.965 (not-high-waves currentwaves))
-    (at 1334.99 (not (not-high-waves currentwaves)))
-    (at 1815.03 (not-high-waves currentwaves))
-    (at 2775.06 (not (not-high-waves currentwaves)))
+    (at 792.855 (not (not-high-waves currentwaves)))
+    (at 1273.09 (not-high-waves currentwaves))
+    (at 2233.22 (not (not-high-waves currentwaves)))
+    (at 2713.25 (not-high-waves currentwaves))
 
     (= (battery-level vehicle0) 100)
 
@@ -58,16 +56,15 @@
 
     (= (recharge-rate-dedicated vehicle0) 5)
 
-    (= (traverse-cost wp_init_auv0 waypoint27) 8.01)
-    (= (traverse-cost waypoint27 waypoint22) 28.76)
-    (= (traverse-cost waypoint22 waypoint20) 26.07)
-    (= (traverse-cost waypoint20 waypoint19) 7.18)
-    (= (traverse-cost waypoint19 waypoint42) 31.11)
+    (= (traverse-cost wp_init_auv0 waypoint24) 5.78)
+    (= (traverse-cost waypoint24 waypoint21) 41.33)
+    (= (traverse-cost waypoint21 waypoint17) 13.47)
+    (= (traverse-cost waypoint17 waypoint12) 28.86)
 
     (= (speed vehicle0) 0.65)
 
 )
 (:goal (and
-    (data-sent data8)
+    (data-sent data2)
 ))
 )
