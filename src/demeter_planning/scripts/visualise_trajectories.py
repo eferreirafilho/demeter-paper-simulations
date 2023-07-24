@@ -61,19 +61,9 @@ class PlotVehicles:
         self.positions[vehicle][2].append(z)
 
         TRAIL_SIZE = 5000
-        # Only keep the last TRAIL-SIZE positions
-        # if len(self.positions[vehicle][0]) > TRAIL_SIZE:
-            # self.positions[vehicle][0] = self.positions[vehicle][0][-TRAIL_SIZE:]
-        # if len(self.positions[vehicle][1]) > TRAIL_SIZE:
-            # self.positions[vehicle][1] = self.positions[vehicle][1][-TRAIL_SIZE:]
-        # if len(self.positions[vehicle][2]) > TRAIL_SIZE:
-            # self.positions[vehicle][2] = self.positions[vehicle][2][-TRAIL_SIZE:]
-        # Only keep the last 100 positions
         for i in range(3):
             if len(self.positions[vehicle][i]) > TRAIL_SIZE:
                 self.positions[vehicle][i].pop(0)
-
-
 
     def update_action(self, data, vehicle):
         # Store the latest action for the vehicle
