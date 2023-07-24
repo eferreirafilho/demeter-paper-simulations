@@ -496,12 +496,12 @@ class DemeterActionInterface(object):
             self.low_waves = True
             rospy.set_param('/goal_allocation/wave_state', 'low')
             next_shift_to_high_waves_time = number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + total_cycle_time*(total_cycle_integer+1)
-            rospy.logwarn_throttle(2, str(self.namespace) + '| Low Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
+            # rospy.logwarn_throttle(2, str(self.namespace) + '| Low Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
         else:
             self.low_waves = False
             rospy.set_param('/goal_allocation/wave_state', 'high')
             next_shift_to_high_waves_time = total_cycle_time + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + (total_cycle_time*total_cycle_integer+1)
             # next_shift_to_high_waves_time = total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES
-            rospy.logwarn_throttle(2, str(self.namespace) + ' | High Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
+            # rospy.logwarn_throttle(2, str(self.namespace) + ' | High Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
                 
         return next_shift_to_high_waves_time

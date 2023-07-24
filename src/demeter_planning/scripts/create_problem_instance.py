@@ -365,8 +365,6 @@ class PopulateKB(object):
 
         # Calculate the time within the current tide cycle
         time_within_current_tide = time % self.PERIOD_OF_TIDES
-        rospy.logwarn('predict next tides in time: ' + str(time))
-        rospy.logwarn('predict next tides (time_within_current_tide): ' + str(time_within_current_tide))
         # Check if current tide is low
         if time_within_current_tide < self.LOW_TIDES_THRESHOLD:
             self.add_timed_initial_literals(0, True, 'tide-low', 'currenttide')

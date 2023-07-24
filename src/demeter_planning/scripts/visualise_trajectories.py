@@ -20,7 +20,9 @@ class PlotVehicles:
 
 
         number_of_vehicles = self.number_of_vehicles()
-        self.positions = [([], [], []) for _ in range(number_of_vehicles)]
+        self.positions = [[[], [], []] for _ in range(number_of_vehicles)]
+
+
         self.latest_actions = [None for _ in range(number_of_vehicles)] # Store the latest action for each vehicle
         self.battery_levels = [100 for _ in range(number_of_vehicles)]  # Store the battery levels for each vehicle
         
@@ -57,6 +59,21 @@ class PlotVehicles:
         self.positions[vehicle][0].append(x)
         self.positions[vehicle][1].append(y)
         self.positions[vehicle][2].append(z)
+
+        TRAIL_SIZE = 5000
+        # Only keep the last TRAIL-SIZE positions
+        # if len(self.positions[vehicle][0]) > TRAIL_SIZE:
+            # self.positions[vehicle][0] = self.positions[vehicle][0][-TRAIL_SIZE:]
+        # if len(self.positions[vehicle][1]) > TRAIL_SIZE:
+            # self.positions[vehicle][1] = self.positions[vehicle][1][-TRAIL_SIZE:]
+        # if len(self.positions[vehicle][2]) > TRAIL_SIZE:
+            # self.positions[vehicle][2] = self.positions[vehicle][2][-TRAIL_SIZE:]
+        # Only keep the last 100 positions
+        for i in range(3):
+            if len(self.positions[vehicle][i]) > TRAIL_SIZE:
+                self.positions[vehicle][i].pop(0)
+
+
 
     def update_action(self, data, vehicle):
         # Store the latest action for the vehicle
