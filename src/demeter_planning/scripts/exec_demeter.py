@@ -32,15 +32,9 @@ class ExecDemeter(object):
         self._dispatch_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan', DispatchService)
         rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch')
         self._cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch', Empty)
-        try:
-            rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
-            self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
-        except rospy.ServiceException as e:
-            rospy.logwarn("clear KB service error: %s", e)
-        try:
-            rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
-        except rospy.ServiceException as e:
-            rospy.logwarn("Service already registered: %s", e)
+        self.clear_KB()
+        self.resume_plan()
+      
         rospy.Subscriber(str(self.namespace)+'rosplan_plan_dispatcher/action_feedback', ActionFeedback, self.check_action_feedback, queue_size=10)
             
     def get_namespace(self):
@@ -55,7 +49,7 @@ class ExecDemeter(object):
         rospy.Timer(self._rate.sleep_dur, self.execute_plan, oneshot=True)
 
     def execute_plan(self):
-        rospy.logwarn('Generating mission plan ...')
+        rospy.loginfo('Generating mission plan ...')
         self._problem_proxy()
         try: 
             self._planner_proxy()
@@ -63,18 +57,33 @@ class ExecDemeter(object):
             rospy.logwarn('Planning attempt failed')
             self.mission_success=False
             return self.mission_success
-        rospy.logwarn('Execute mission plan ...')
+        rospy.loginfo('Execute mission plan ...')
         self._parser_proxy()
         response = self._dispatch_proxy()
-        rospy.logwarn('Response: ' + str(response))
+        rospy.loginfo('Response: ' + str(response))
             
         if response.goal_achieved:
-           rospy.logwarn('Mission Succeed')
+           rospy.loginfo('Mission Succeed')
            self.mission_success=True
         else:
-           rospy.logwarn('Mission Failed')
+           rospy.loginfo('Mission Failed')
            self.mission_success=False
         return self.mission_success  
     
     def clear_KB(self):
-        self._clear_KB_proxy()
+        KB_cleared = False
+        try:
+            rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
+            self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
+            self._clear_KB_proxy()
+            KB_cleared = True
+            # rospy.logwarn('KB cleared' + str(self.namespace))
+        except rospy.ServiceException as e:
+            rospy.logerr("clear KB service error: %s", e)
+        return KB_cleared
+
+    def resume_plan(self):
+        try:
+            rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
+        except rospy.ServiceException as e:
+            rospy.loginfo("Service already registered: %s", e)

@@ -36,8 +36,8 @@
       </script>
     </material>
   </visual>
-
-  <!--<visual name="ocean_below">
+<!-- 
+  <visual name="ocean_below">
     <pose>0 0 0 3.14 0 0</pose>
     <cast_shadows>false</cast_shadows>
     <geometry>
@@ -52,9 +52,9 @@
         <name>UUVSimulator/StaticWater</name>
       </script>
     </material>
-  </visual>
+  </visual> -->
 
-  <visual name="seafloor">
+  <!-- <visual name="seafloor">
     <cast_shadows>false</cast_shadows>
     <pose>0 0 -30 0 0 0</pose>
     <geometry>
@@ -80,9 +80,9 @@
         <size>2000 2000 .1</size>
       </box>
     </geometry>
-  </collision>-->
+  </collision> -->
 
-  <visual name="north">
+  <!-- <visual name="north">
     <pose>1000 0 -50 0 -1.5708 0</pose>
     <geometry><plane><normal>0 0 1</normal><size>100 2000</size></plane></geometry>
     <material>
@@ -94,9 +94,9 @@
         0.6 0.6 0.6 1.0
       </emissive>
     </material>
-  </visual>
+  </visual> -->
 
-  <visual name="south">
+  <!-- <visual name="south">
     <pose>-1000 0 -50 0 1.5708 0</pose>
     <geometry><plane><normal>0 0 1</normal><size>100 2000</size></plane></geometry>
     <material>
@@ -108,9 +108,9 @@
         0.6 0.6 0.6 1.0
       </emissive>
     </material>
-  </visual>
+  </visual> -->
 
-  <visual name="west">
+  <!-- <visual name="west">
     <pose>0 1000 -50 1.5708 0 0</pose>
     <geometry><plane><normal>0 0 1</normal><size>2000 100</size></plane></geometry>
     <material>
@@ -122,9 +122,9 @@
         0.6 0.6 0.6 1.0
       </emissive>
     </material>
-  </visual>
+  </visual> -->
 
-  <visual name="east">
+  <!-- <visual name="east">
     <pose>0 -1000 -50 -1.5708 0 0</pose>
     <geometry><plane><normal>0 0 1</normal><size>2000 100</size></plane></geometry>
     <material>
@@ -136,7 +136,7 @@
         0.6 0.6 0.6 1.0
       </emissive>
     </material>
-  </visual>
+  </visual> -->
   </link>
 </model>
 </sdf>

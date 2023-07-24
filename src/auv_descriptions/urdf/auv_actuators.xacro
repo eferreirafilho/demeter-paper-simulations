@@ -16,8 +16,8 @@
 -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   
-  <xacro:property name="prop_mesh_file" value="file://$(find auv_descriptions)/meshes/prop.dae"/>
-  <xacro:property name="fin_mesh_file" value="file://$(find auv_descriptions)/meshes/fin_scaled.dae"/>  
+  <xacro:property name="prop_mesh_file" value="file://$(find auv_descriptions)/meshes/prop_low.dae"/>
+  <xacro:property name="fin_mesh_file" value="file://$(find auv_descriptions)/meshes/fin_scaled_low.dae"/>  
 
   <!-- Thruster joint and link snippet -->
   <xacro:macro name="thruster_macro"

@@ -6,6 +6,7 @@
 		<rosparam file="$(find demeter_planning)/params/vehicles_in_the_system.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/scaled_turbines_xy.yaml" command="load"/>
 		<rosparam file="$(find demeter_planning)/params/waypoints.yaml" command="load"/>
+		<rosparam file="$(find demeter_planning)/params/tides.yaml" command="load"/>
 	</node>
 
 </launch>
