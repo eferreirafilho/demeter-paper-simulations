@@ -2,16 +2,22 @@
 from threading import Lock
 from cmath import sqrt
 from time import sleep
+from std_srvs.srv import Empty
 from std_msgs.msg import Float32
 import rospy
 from nav_msgs.msg import Odometry
 from rosplan_knowledge_msgs.srv import *
-from rosplan_knowledge_msgs.msg import *
+from rosplan_knowledge_msgs.msg import KnowledgeItem
 from diagnostic_msgs.msg import KeyValue
+from geometry_msgs.msg import Pose
+from action_interface import DemeterActionInterface
 import re
 import networkx as nx
+import matplotlib.pyplot as plt
 import pickle
+import math
 import roslib
+from rospkg import RosPack
 
 class PopulateKB(object):
 
@@ -41,27 +47,40 @@ class PopulateKB(object):
             self.waypoints_position = [X, Y, Z] 
         except rospy.ROSException:
             rospy.logfatal('waypoints not set in parameter')
+
         # Wait for position
         while not self.valid_pose_received and not rospy.is_shutdown():
             if self.valid_pose_received:
-                rospy.loginfo(str(self.namespace) + ' pose received')
+                rospy.logwarn(str(self.namespace) + ' pose received')
                 break    
+
+        # self.position = action_interface_object.get_position()
+        # rospy.logwarn(str(self.namespace) + ' | Current pos: x: ' + str(self.position.x) + ' y: ' + str(self.position.y) )
+        # action_interface_object.set_init_position_param(self.position)  
+        # self.closer_wp = action_interface_object.closer_wp([self.position.x, self.position.y, self.position.z])
         self.closer_wp = self.compute_closer_wp()
+        # rospy.logwarn(str(self.namespace) + ' | Closer waypoint: ' + str(self.closer_wp))
+        # rospy.logwarn(str(self.namespace) + ' | Position: ' + str(self.position))
         self.load_graph()
         self.remove_turbines_from_graph()
         self.add_distances_as_weights()
+
+        # rospy.logwarn(str(self.namespace) + ' | waypoints_position: ' + str(self.waypoints_position))
+        
         closer_wp_position = [self.waypoints_position[0][self.closer_wp], self.waypoints_position[1][self.closer_wp], self.waypoints_position[2][self.closer_wp]]
+        # rospy.logwarn(str(self.namespace) + ' | Closer waypoint position: ' + str(closer_wp_position))
+        
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
+        # rospy.logwarn('self.distance_to_closer_wp: ' + str(self.distance_to_closer_wp))
+        # sleep(1)
         self.allocated_goals = self.load_allocation()
-        # rospy.logwarn('Allocated goals in create problem: ' + str(self.allocated_goals) + ' | ' + str(self.namespace))
-        self.remove_all_data_goals_from_KB()
         
         if self.allocated_goals:
             self.add_goal_mission(self.allocated_goals[0])
             self.populate_KB()
         else:
-            rospy.loginfo('No more goals for vehicle: ' + str(self.namespace))
-               
+            rospy.logwarn('No more goals for vehicle: ' + str(self.namespace))
+                
     def _pose_gt_cb(self, msg):
         new_position = [msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z]
         if new_position != [0,0,0]:
@@ -79,9 +98,8 @@ class PopulateKB(object):
         return closer_wp
     
     def populate_KB(self):
-        self.remove_all_data_goals_from_KB()
         self.init_position_to_KB()
-        # rospy.loginfo(self.allocated_goals)
+        # rospy.logwarn(self.allocated_goals)
         target = self.get_sensor_contour_points(self.allocated_goals[0])
         reduced_waypoints = self.get_shortest_path_subgraph(int(self.closer_wp), 'general_waypoint', int(target))
         self.add_reduced_can_move(reduced_waypoints)
@@ -92,16 +110,17 @@ class PopulateKB(object):
         # self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
         self.add_fact('idle', 'vehicle'+str(self.vehicle_id))
         self.update_functions('battery-level', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.battery_level, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-        # rospy.loginfo('Battery: ' + str(self.battery_level))
+        # rospy.logwarn('Battery: ' + str(self.battery_level))
         self.update_functions('recharge-rate', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('recharge-rate-dedicated', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.RECHARGE_RATE_DEDICATED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         # self.update_functions('total-missions-completed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], 0, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.update_functions('speed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.SPEED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.predict_next_tides() # All facts related to tides
-        # rospy.loginfo('Tides: ' + str(self.current_tide_level))    
+        # rospy.logwarn('Tides: ' + str(self.current_tide_level))    
 
     def add_goal_mission(self, target_turbine):   
         self.add_object('data'+str(target_turbine),'data')
+        
         self.add_fact('is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
         self.add_goal('data-sent', 'data'+str(target_turbine))
         sensor_contour_point = self.get_sensor_contour_points(target_turbine)
@@ -128,11 +147,11 @@ class PopulateKB(object):
         turbine_nodes = [n for n, attrs in self.scaled_G.nodes(data=True) if attrs['description'] == 'turbine']
         self.scaled_G.remove_nodes_from(turbine_nodes)
         if nx.is_connected(self.scaled_G):
-            # rospy.loginfo('Graph is connected, ok!')
+            # rospy.logwarn('Graph is connected, ok!')
             pass
         else:
             pass
-            # rospy.loginfo('Graph is not connected, create another roadmap!')
+            # rospy.logwarn('Graph is not connected, create another roadmap!')
         
     def add_distances_as_weights(self):
         # Add distances as weights
@@ -194,6 +213,7 @@ class PopulateKB(object):
         # Load allocation of vehicles to goals from a goal allocation algorithm
         try:
             allocated_goals = rospy.get_param(self.namespace + 'goals_allocated')
+            self.NUMBER_OF_TURBINES = len(allocated_goals)
             return allocated_goals
         except rospy.ROSException as e:
             print("Error, goals not allocated: ", str(e))
@@ -268,7 +288,7 @@ class PopulateKB(object):
             rospy.loginfo("Service call failed") 
         self.mutex.release()
 
-    def add_goal(self, goal_fact, goal_obj):
+    def add_goal(self,goal_fact, goal_obj):
         self.mutex.acquire()
         rospy.wait_for_service('rosplan_knowledge_base/update')
         try:  
@@ -313,36 +333,6 @@ class PopulateKB(object):
             rospy.loginfo("Service call failed") 
         self.mutex.release()        
             
-    def try_query_state(self, request_list):
-        service_name = 'rosplan_knowledge_base/query_state'
-        rospy.wait_for_service(service_name)
-        query_state = rospy.ServiceProxy(service_name, KnowledgeQueryService)
-        response = KnowledgeQueryServiceResponse()
-        try:
-            response = query_state(request_list)
-        except rospy.ServiceException, e:
-            rospy.logwarn('Service call failed: %s', e)
-        return response
-    
-    def remove_all_data_goals_from_KB(self):
-        request_list = []
-        number_of_turbines = len(rospy.get_param('/goal_allocation/scaled_turbines_xy'))
-        for turbine in range(number_of_turbines):
-            knowledge = KnowledgeItem()
-            knowledge.knowledge_type = KnowledgeItem.FACT
-            knowledge.attribute_name = 'data-sent'
-            turbine_value = 'data' + str(turbine)
-            turbine_key_value = diagnostic_msgs.msg.KeyValue(key='d', value=turbine_value)
-            knowledge.values.append(turbine_key_value)
-            request_list.append(knowledge)
-        query_responses = self.try_query_state(request_list)
-        # rospy.logwarn(query_responses)
-        for index, _ in enumerate(request_list):
-            turbine_in_KB = query_responses.results[index]
-            if turbine_in_KB:
-                self.remove_goal('data-sent', 'data' + str(index))
-                rospy.logwarn(str(self.namespace) + 'REMOVED FROM KB: data-sent' + 'data' + str(index))
-        
     def extract_number_from_string(self, string):
         match = re.search(r'\d+', string)
         if match:
@@ -357,13 +347,17 @@ class PopulateKB(object):
         self.battery_level = msg.data
 
     def predict_next_tides(self):
-        PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides') # Period in seconds
+        PERIOD_OF_TIDES = 360 # Period in seconds
+        rospy.set_param('/period_of_tides', PERIOD_OF_TIDES)
         LOW_TIDES_THREDSHOLD = PERIOD_OF_TIDES/3.0
         rospy.set_param('/low_tides_thredshold', LOW_TIDES_THREDSHOLD)
 
         time = rospy.get_rostime().to_sec()
         time_in_tide_cycle = time % PERIOD_OF_TIDES  # get the current ROS time in seconds and use the remainder after dividing by P to simulate repeating cycle
         time_integer = time // PERIOD_OF_TIDES
+        # rospy.logwarn("time: " + str(time))
+        # rospy.logwarn("time in tide cycle: " + str(time_in_tide_cycle))
+        # rospy.logwarn("time integer: " + str(time_integer))
         
         self.add_timed_initial_literals(0, False, 'tide-low', 'currenttide') # Past tides
         
@@ -379,6 +373,6 @@ class PopulateKB(object):
             self.add_timed_initial_literals(PERIOD_OF_TIDES + PERIOD_OF_TIDES*i + LOW_TIDES_THREDSHOLD, False, 'tide-low', 'currenttide')
 
 if __name__ == '__main__':
-    rospy.loginfo('Populate KB for one vehicle, using its position')
+    rospy.logwarn('Populate KB for one vehicle, using its position')
     rospy.init_node('populate_KB', anonymous=True)
     problem = PopulateKB()

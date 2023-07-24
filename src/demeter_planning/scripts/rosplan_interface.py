@@ -128,11 +128,11 @@ class DemeterInterface(object):
         # self._rate.sleep()
         current_time = rospy.get_rostime().to_sec()
         action_dispatch_time = start_time.secs + self.plan_start_time
-        rospy.loginfo(str(self.namespace) + ' | Dispatching %s action at %s with duration %s | current time %s' %(action_dispatch.name, str(action_dispatch_time), str(duration.to_sec()) , str(current_time)))   
+        rospy.logwarn('Dispatching %s action at %s with duration %s | current time %s' %(action_dispatch.name, str(action_dispatch_time), str(duration.to_sec()) , str(current_time)))   
         if action_dispatch_time > current_time:
-            rospy.loginfo('Action ' +str(action_dispatch.name) + ' dispatch is ' + str(action_dispatch_time - current_time) + ' early | ' + str(self.namespace))
+            rospy.logwarn('Action ' +str(action_dispatch.name) + ' dispatch is ' + str(action_dispatch_time - current_time) + ' early | ' + str(self.namespace))
         else:
-            rospy.loginfo('Action ' +str(action_dispatch.name) + ' dispatch is ' + str(current_time - action_dispatch_time) + ' delayed | ' + str(self.namespace))
+            rospy.logwarn('Action ' +str(action_dispatch.name) + ' dispatch is ' + str(current_time - action_dispatch_time) + ' delayed | ' + str(self.namespace))
             
         if action_func(*action_params) == self.demeter.ACTION_SUCCESS:
             if self._apply_operator_effect(action_dispatch.name,action_dispatch.parameters):

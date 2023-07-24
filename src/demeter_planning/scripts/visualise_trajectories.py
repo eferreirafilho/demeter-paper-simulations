@@ -11,15 +11,10 @@ from matplotlib import gridspec
 
 
 class PlotVehicles:
-    # PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
-    
-    # LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
-    
-
-        
+    PERIOD_OF_TIDES = rospy.get_param('/period_of_tides')
+    LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
     def __init__(self):
         rospy.init_node('robot_plotter', anonymous=True)
-        self.wait_for_weather_parameters()
         
         self.current_state_x = 0
         self.low_tides = (2*(self.LOW_TIDES_THREDSHOLD/self.PERIOD_OF_TIDES))-1
@@ -35,25 +30,7 @@ class PlotVehicles:
             rospy.Subscriber('/auv' + str(vehicle) + '/rosplan_plan_dispatcher/action_dispatch', ActionDispatch, self.update_action, vehicle)
             rospy.Subscriber('/auv' + str(vehicle) + '/battery_level_emulated', Float32, self.update_battery, vehicle)
 
-    def wait_for_weather_parameters(self):
-        self.PERIOD_OF_TIDES = None
-        self.LOW_TIDES_THREDSHOLD = None
 
-       # Wait until parameters are available
-        while not rospy.is_shutdown():
-            try:
-                self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
-                self.LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
-
-                # If the parameters are fetched successfully, break the loop
-                if self.PERIOD_OF_TIDES is not None and self.LOW_TIDES_THREDSHOLD is not None:
-                    break
-            except KeyError:
-                # Parameter not available yet, ignore the exception and retry
-                pass  
-
-            rospy.sleep(0.1)
-            
     def number_of_vehicles(self):
         return len(rospy.get_param("/goal_allocation/vehicle_idx"))
 
@@ -80,18 +57,6 @@ class PlotVehicles:
 
     def get_scaled_turbine_coordinates(self):
         return rospy.get_param('/goal_allocation/scaled_turbines_xy')
-    
-    def high_waves(self):
-        number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
-        number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
-        current_time = rospy.get_rostime().to_sec()
-        time_since_start_of_current_cycle = current_time % (self.PERIOD_OF_TIDES * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
-        high_waves_start_time = self.PERIOD_OF_TIDES * number_of_tides_until_next_high_waves
-        high_waves_end_time = self.PERIOD_OF_TIDES * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves)
-        if high_waves_start_time < time_since_start_of_current_cycle < high_waves_end_time: 
-            return True
-        else:
-            return False
 
     def plot_positions(self):
         AXIS_LIMITS = 130
@@ -107,7 +72,7 @@ class PlotVehicles:
             if not x_vals or not y_vals: continue
 
             min_len = min(len(x_vals), len(y_vals))
-            marker_size = 3 * (1 / -z_vals[-1]) if z_vals and z_vals[-1] != 0 else 3
+            marker_size = 3 * (1 / -z_vals[-1]) if z_vals else 3
 
             main_ax.plot(x_vals[:min_len], y_vals[:min_len], colors[vehicle], alpha=0.5)
             main_ax.plot(x_vals[-1], y_vals[-1], colors[vehicle]+'o', markersize=marker_size)
@@ -156,11 +121,6 @@ class PlotVehicles:
         ax_tides.axhline(y=self.low_tides, color='k', linestyle='-')
         ax_tides.text(0.1 * self.PERIOD_OF_TIDES, self.low_tides+0.1, 'Low tide threshold', fontsize=8, color='black')
 
-        # Check for high waves and annotate if true
-        if self.high_waves():
-            # ax_tides.text(self.current_state_x, self.current_state_y, 'High Waves', fontsize=10, color='red')
-            ax_tides.text(0.50, 0.55, 'High Waves', fontsize=20, color='red', horizontalalignment='center', verticalalignment='center', transform=ax_tides.transAxes)
-
         # Mark the current tide state on the sine wave
         self.current_state_x = (rospy.get_rostime().to_sec() % self.PERIOD_OF_TIDES)
         self.current_state_y = self.get_tide_state()
@@ -178,7 +138,6 @@ class PlotVehicles:
         ax_tides.set_xticks(x_ticks)
         ax_tides.set_xticklabels(x_tick_labels)
         ax_tides.set_ylim(-1, 1)
-        
 
 if __name__ == '__main__':
     plotter = PlotVehicles()

@@ -17,8 +17,8 @@
           <rosparam file="$(find auv_autonomy)/launch/param/waypoints_params.yaml" command="load"/>	
         </node> 
 
-        <!-- Position control (launches uuv acceleration, velocity and position cascade control loops)
+        <!-- Position control (launches uuv acceleration, velocity and position cascade control loops) -->
 	<include file="$(find auv_autonomy)/launch/aruco.launch">
-	</include> -->
+	</include>
 
 </launch>
