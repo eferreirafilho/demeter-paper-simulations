@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
+
 from cmath import pi, sqrt
 import rospy
 from nav_msgs.msg import Odometry
@@ -125,14 +126,6 @@ class DemeterActionInterface(object):
         return response
     
     def do_retrieve_data(self, turbine, duration=rospy.Duration()):
-        next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-        action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-        
-        while not self.low_tide or action_finish_time >= next_shift_to_high_tide: # Wait the low tide for safety
-            next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-            action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-
-        rospy.logwarn('Interface: \'Retrieve Data\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position
@@ -152,10 +145,8 @@ class DemeterActionInterface(object):
                 self.set_inspected_times(turbine)               
                 response = self.ACTION_SUCCESS   
                 
-            rospy.logwarn('Action RETRIEVE DATA took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
+            rospy.loginfo('Execution: Action RETRIEVE DATA TURBINE ' + str(turbine) + ' took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
 
-            # rospy.loginfo('Data acquired!')
-                
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
@@ -411,18 +402,55 @@ class DemeterActionInterface(object):
         if rospy.has_param('/period_of_tides'):   
             PERIOD_OF_TIDES = rospy.get_param('/period_of_tides')
         else:
-            rospy.logwarn("Parameter period_of_tides not set")
-        if rospy.has_param('/low_tides_thredshold'):   
-            LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+            rospy.loginfo("Parameter period_of_tides not set")
+        if rospy.has_param('/goal_allocation/low_tides_threshold'):   
+            LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         else:
-            rospy.logwarn("Parameter low_tides_thredshold not set")
+            rospy.loginfo("Parameter low_tides_threshold not set")
         time = rospy.get_rostime().to_sec()
         time_integer = time // PERIOD_OF_TIDES
-        if time < (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD):
-            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently low tide -> high tide is in this cycle
-            self.low_tide = True
-        else:
-            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently high tide
+        if time > (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD):
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD # Currently high tide
             self.low_tide = False
+        else:
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD # Currently low tide -> high tide is in this cycle
+            self.low_tide = True
             
         return next_shift_to_high_tide_time
+    
+    def compute_next_shift_to_high_waves_time(self):
+        if rospy.has_param('/goal_allocation/period_of_tides'):   
+            PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
+        else:
+            rospy.loginfo("Parameter period_of_tides not set")
+
+        if rospy.has_param('/goal_allocation/number_of_tides_until_next_high_waves'):   
+            number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        else:
+            rospy.loginfo("Parameter number_of_tides_until_next_high_waves not set")
+            
+        if rospy.has_param('/goal_allocation/number_of_tides_duration_high_waves'):   
+            number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        else:
+            rospy.loginfo("Parameter number_of_tides_duration_high_waves not set")
+        time = rospy.get_rostime().to_sec()
+        total_cycle_time = (number_of_tides_duration_high_waves + number_of_tides_until_next_high_waves)*PERIOD_OF_TIDES
+        total_cycle_integer = time // total_cycle_time # How many cycles have passed
+        time_in_this_cycle = time % total_cycle_time           
+                    
+        # rospy.logwarn_throttle(4, str(self.namespace) + ' | time_in_this_cycle: ' + str(time_in_this_cycle))
+        # rospy.logwarn_throttle(4, str(self.namespace) + ' | total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES ' + str(total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES))
+        
+        if time_in_this_cycle <= number_of_tides_until_next_high_waves*PERIOD_OF_TIDES:
+            self.low_waves = True
+            rospy.set_param('/goal_allocation/wave_state', 'low')
+            next_shift_to_high_waves_time = number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + total_cycle_time*(total_cycle_integer+1)
+            # rospy.logwarn_throttle(2, str(self.namespace) + '| Low Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
+        else:
+            self.low_waves = False
+            rospy.set_param('/goal_allocation/wave_state', 'high')
+            next_shift_to_high_waves_time = total_cycle_time + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + (total_cycle_time*total_cycle_integer+1)
+            # next_shift_to_high_waves_time = total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES
+            # rospy.logwarn_throttle(2, str(self.namespace) + ' | High Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
+                
+        return next_shift_to_high_waves_time

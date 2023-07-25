@@ -55,7 +55,7 @@ class ExecDemeter(object):
         rospy.Timer(self._rate.sleep_dur, self.execute_plan, oneshot=True)
 
     def execute_plan(self):
-        rospy.logwarn('Generating mission plan ...')
+        rospy.loginfo('Generating mission plan ...')
         self._problem_proxy()
         try: 
             self._planner_proxy()
@@ -63,16 +63,16 @@ class ExecDemeter(object):
             rospy.logwarn('Planning attempt failed')
             self.mission_success=False
             return self.mission_success
-        rospy.logwarn('Execute mission plan ...')
+        rospy.loginfo('Execute mission plan ...')
         self._parser_proxy()
         response = self._dispatch_proxy()
-        rospy.logwarn('Response: ' + str(response))
+        rospy.loginfo('Response: ' + str(response))
             
         if response.goal_achieved:
-           rospy.logwarn('Mission Succeed')
+           rospy.loginfo('Mission Succeed')
            self.mission_success=True
         else:
-           rospy.logwarn('Mission Failed')
+           rospy.loginfo('Mission Failed')
            self.mission_success=False
         return self.mission_success  
     
