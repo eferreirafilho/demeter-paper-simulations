@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
 from threading import Lock
 from cmath import sqrt
 from time import sleep

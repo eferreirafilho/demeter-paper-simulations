@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
 # ROS
 import rospy
 from nav_msgs.msg import Odometry

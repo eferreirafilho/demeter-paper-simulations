@@ -29,10 +29,7 @@ class Allocation(object):
     def __init__(self, reallocation):
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self._rate = rospy.Rate(1)
-        self.period_of_tides = rospy.get_param('/goal_allocation/period_of_tides')  # assumed to be duration of a single tide
-        
-        EXECUTE_TIME = self.period_of_tides - allocation_processing_time # Inspect turbine estimated execute time (Seconds), discounted by allocation processing time
-        
+        self.period_of_tides = rospy.get_param('/goal_allocation/period_of_tides')  # assumed to be duration of a single tide        
 
         self.G_with_only_turbines = self.load_graph_with_only_turbines()
         self.turbines, self.turbines_idx = self.get_turbine_positions(self.G_with_only_turbines)
