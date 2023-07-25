@@ -129,42 +129,6 @@ class DemeterActionInterface(object):
         return response
     
     def do_retrieve_data(self, turbine, duration=rospy.Duration()):
-        # self._rate.sleep()
-        # rospy.logwarn(str(self.namespace) + ' Time now: ' + rospy.Time.now().to_sec())
-        
-        # next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-        # next_shift_to_high_waves = self.compute_next_shift_to_high_waves_time()
-        
-        # action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-        
-        # low_tide_safety_condition = self.low_tide and action_finish_time <= next_shift_to_high_tide
-        # low_waves_safety_condition = self.low_waves
-        # rospy.logwarn(str(self.namespace) + ' self.low_tide: ' + str(self.low_tide))
-        # rospy.logwarn(str(self.namespace) + ' low_tide_safety_condition: ' + str(low_tide_safety_condition))
-        
-        # rospy.logwarn(str(self.namespace) + ' self.low_waves: ' + str(self.low_waves))
-        # rospy.logwarn(str(self.namespace) + ' low_waves_safety_condition: ' + str(low_waves_safety_condition))
-        
-        
-        # rospy.logwarn(str(self.namespace) + ' next_shift_to_high_tide: ' + str(next_shift_to_high_tide))
-        # rospy.logwarn(str(self.namespace) + ' next_shift_to_high_waves: ' + str(next_shift_to_high_waves))
-        
-        # while low_tide_safety_condition and low_waves_safety_condition: # Wait the low tide and high waves for safety
-        #     low_tide_safety_condition = self.low_tide and action_finish_time <= next_shift_to_high_tide
-        #     low_waves_safety_condition = self.low_waves
-            
-        #     next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-        #     next_shift_to_high_waves = self.compute_next_shift_to_high_waves_time()
-        #     action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-        #     rospy.logwarn_throttle(4, str(self.namespace) + ' Low tide safety condition: ' + str(low_tide_safety_condition))
-        #     rospy.logwarn_throttle(4, str(self.namespace) + ' low_waves_safety_condition: ' + str(low_waves_safety_condition))
-            
-        #     if low_tide_safety_condition:
-        #         rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for low tide. Next shift to high tide: ' + str(next_shift_to_high_tide))
-        #     if low_waves_safety_condition:
-        #         rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for high waves to pass. Next shift out of high waves: ' + str(next_shift_to_high_waves))
-
-        # rospy.loginfo('Interface: \'Retrieve Data\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position
@@ -186,8 +150,6 @@ class DemeterActionInterface(object):
                 
             rospy.loginfo('Execution: Action RETRIEVE DATA TURBINE ' + str(turbine) + ' took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
 
-            # rospy.loginfo('Data acquired!')
-                
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response

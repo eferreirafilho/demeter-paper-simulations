@@ -14,7 +14,7 @@ from time import sleep
 # random.seed(15)
 
 MAX_BALANCE_DIFFERENCE = 1 # Number of unbalance allowed
-MAX_ALLOCATION_ITERATION = 30000
+MAX_ALLOCATION_ITERATION = 50000
 allocation_processing_time = MAX_ALLOCATION_ITERATION/1000
 EXECUTE_TIME = 120 - allocation_processing_time # Inspect turbine estimated execute time (Seconds), discounted by allocation processing time
 

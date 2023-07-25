@@ -6,51 +6,49 @@ No semaphore facts found, returning
 [i] Not abstracting out TIL (not-high-waves currentwaves)
 66% of the ground temporal actions in this problem are compression-safe
 Initial heuristic = 9.000, admissible cost estimate 0.000
-b (8.000 | 29.140)b (7.000 | 123.546)b (6.000 | 244.569)b (5.000 | 348.329)b (4.000 | 373.331)b (3.000 | 918.391)
+b (8.000 | 29.094)b (7.000 | 172.687)b (6.000 | 223.414)b (5.000 | 317.820)b (4.000 | 342.822)b (3.000 | 887.882)
 Resorting to best-first search
 Running WA* with W = 5.000, not restarting with goal states
-b (8.000 | 29.140)b (7.000 | 123.546)b (6.000 | 244.569)b (5.000 | 348.329)b (4.000 | 373.331)b (2.000 | 1001.682)b (1.000 | 1003.683)(G)
+b (8.000 | 29.094)b (7.000 | 172.687)b (6.000 | 223.414)b (5.000 | 317.820)b (4.000 | 342.822)b (2.000 | 638.067)b (1.000 | 640.068)(G)
 ; No metric specified - using makespan
 
-; Plan found with metric 1003.683
-; States evaluated so far: 6760
+; Plan found with metric 640.068
+; States evaluated so far: 6875
 ; States pruned based on pre-heuristic cost lower bound: 0
-; Time 8.17
-0.000: (move vehicle1 wp_init_auv1 waypoint14)  [9.138]
-9.139: (harvest-energy vehicle1)  [10.000]
-19.140: (harvest-energy vehicle1)  [10.000]
-29.141: (move vehicle1 waypoint14 waypoint19)  [44.400]
-73.542: (harvest-energy vehicle1)  [10.000]
-83.543: (harvest-energy vehicle1)  [10.000]
-93.544: (harvest-energy vehicle1)  [10.000]
-103.545: (harvest-energy vehicle1)  [10.000]
-113.546: (harvest-energy vehicle1)  [10.000]
-123.547: (move vehicle1 waypoint19 waypoint52)  [51.015]
-174.563: (harvest-energy vehicle1)  [10.000]
-184.564: (harvest-energy vehicle1)  [10.000]
-194.565: (harvest-energy vehicle1)  [10.000]
-204.566: (harvest-energy vehicle1)  [10.000]
-214.567: (harvest-energy vehicle1)  [10.000]
-224.568: (harvest-energy vehicle1)  [10.000]
-234.569: (harvest-energy vehicle1)  [10.000]
-244.570: (move vehicle1 waypoint52 waypoint57)  [43.753]
-288.324: (harvest-energy vehicle1)  [10.000]
-298.325: (harvest-energy vehicle1)  [10.000]
-308.326: (harvest-energy vehicle1)  [10.000]
-318.327: (harvest-energy vehicle1)  [10.000]
-328.328: (harvest-energy vehicle1)  [10.000]
-338.329: (harvest-energy vehicle1)  [10.000]
-348.330: (localize-cable vehicle1 waypoint57 turbine11)  [15.000]
-836.674: (harvest-energy vehicle1)  [10.000]
-846.675: (retrieve-data vehicle1 data11 waypoint57 currenttide currentwaves turbine11)  [55.000]
-901.676: (surface vehicle1)  [40.000]
-941.677: (harvest-energy vehicle1)  [10.000]
-951.678: (harvest-energy vehicle1)  [10.000]
-961.679: (harvest-energy vehicle1)  [10.000]
-971.680: (harvest-energy vehicle1)  [10.000]
-981.681: (harvest-energy vehicle1)  [10.000]
-991.682: (harvest-energy vehicle1)  [10.000]
-1001.683: (upload-data-histograms vehicle1 data11)  [2.000]
+; Time 7.83
+0.000: (move vehicle1 wp_init_auv1 waypoint24)  [9.092]
+9.093: (harvest-energy vehicle1)  [10.000]
+19.094: (harvest-energy vehicle1)  [10.000]
+29.095: (move vehicle1 waypoint24 waypoint21)  [63.584]
+92.680: (harvest-energy vehicle1)  [10.000]
+102.681: (harvest-energy vehicle1)  [10.000]
+112.682: (harvest-energy vehicle1)  [10.000]
+122.683: (harvest-energy vehicle1)  [10.000]
+132.684: (harvest-energy vehicle1)  [10.000]
+142.685: (harvest-energy vehicle1)  [10.000]
+152.686: (harvest-energy vehicle1)  [10.000]
+162.687: (harvest-energy vehicle1)  [10.000]
+172.688: (move vehicle1 waypoint21 waypoint17)  [20.723]
+193.412: (harvest-energy vehicle1)  [10.000]
+203.413: (harvest-energy vehicle1)  [10.000]
+213.414: (harvest-energy vehicle1)  [10.000]
+223.415: (move vehicle1 waypoint17 waypoint12)  [44.400]
+267.816: (harvest-energy vehicle1)  [10.000]
+277.817: (harvest-energy vehicle1)  [10.000]
+287.818: (harvest-energy vehicle1)  [10.000]
+297.819: (harvest-energy vehicle1)  [10.000]
+307.820: (harvest-energy vehicle1)  [10.000]
+317.821: (localize-cable vehicle1 waypoint12 turbine2)  [15.000]
+473.059: (harvest-energy vehicle1)  [10.000]
+483.060: (retrieve-data vehicle1 data2 waypoint12 currenttide currentwaves turbine2)  [55.000]
+538.061: (surface vehicle1)  [40.000]
+578.062: (harvest-energy vehicle1)  [10.000]
+588.063: (harvest-energy vehicle1)  [10.000]
+598.064: (harvest-energy vehicle1)  [10.000]
+608.065: (harvest-energy vehicle1)  [10.000]
+618.066: (harvest-energy vehicle1)  [10.000]
+628.067: (harvest-energy vehicle1)  [10.000]
+638.068: (upload-data-histograms vehicle1 data2)  [2.000]
 
- * All goal deadlines now no later than 1003.683
-b (0.000 | 1003.683)
+ * All goal deadlines now no later than 640.068
+b (0.000 | 640.068)

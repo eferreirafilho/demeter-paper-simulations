@@ -79,6 +79,28 @@ class PlotVehicles:
         tide_state = np.cos(2*np.pi/3 + 2 * np.pi * time_in_tide_cycle / self.PERIOD_OF_TIDES)  # compute tide state as a sine wave
         
         return tide_state
+    
+    def high_waves(self):
+        if rospy.has_param('/goal_allocation/number_of_tides_until_next_high_waves'):   
+            number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        else:
+            rospy.loginfo("Parameter number_of_tides_until_next_high_waves not set")
+            
+        if rospy.has_param('/goal_allocation/number_of_tides_duration_high_waves'):   
+            number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        else:
+            rospy.loginfo("Parameter number_of_tides_duration_high_waves not set")
+        time = rospy.get_rostime().to_sec()
+        total_cycle_time = (number_of_tides_duration_high_waves + number_of_tides_until_next_high_waves)*self.PERIOD_OF_TIDES
+        total_cycle_integer = time // total_cycle_time # How many cycles have passed
+        time_in_this_cycle = time % total_cycle_time           
+                    
+        if time_in_this_cycle <= number_of_tides_until_next_high_waves*self.PERIOD_OF_TIDES:
+            high_waves = False
+        else:
+            high_waves = True
+            
+        return high_waves
 
     def get_scaled_turbine_coordinates(self):
         return rospy.get_param('/goal_allocation/scaled_turbines_xy')
@@ -118,11 +140,15 @@ class PlotVehicles:
             action = self.latest_actions[vehicle]
             if action=='cancel_action':
                 action = 'planning'
-            if action=='retrieve-data' and self.get_tide_state() > self.low_tides:
-                action = 'retrieve-data (wait for low tide)'
-            if action=='retrieve-data' and self.get_tide_state() < self.low_tides:
-                
-                action = 'retrieve-data'
+            if action=='retrieve-data':
+                if self.get_tide_state() > self.low_tides and self.high_waves():
+                    action = 'retrieve-data (wait for low tides and low waves)'
+                elif self.get_tide_state() < self.low_tides and self.high_waves():
+                    action = 'retrieve-data (wait for low waves)'
+                elif self.get_tide_state() > self.low_tides and not self.high_waves():
+                    action = 'retrieve-data (wait for low tides)'
+                else:
+                    action = 'retrieve-data'
             battery_level = self.battery_levels[vehicle]
             main_ax.text(x_vals[-1], y_vals[-1], 'auv{} ({}): {}%'.format(vehicle, action, int(battery_level)), fontsize=8, color=colors[vehicle])
 
