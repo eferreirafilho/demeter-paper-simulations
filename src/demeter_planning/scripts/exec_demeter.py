@@ -32,9 +32,15 @@ class ExecDemeter(object):
         self._dispatch_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan', DispatchService)
         rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch')
         self._cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch', Empty)
-        self.clear_KB()
-        self.resume_plan()
-      
+        try:
+            rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
+            self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
+        except rospy.ServiceException as e:
+            rospy.logwarn("clear KB service error: %s", e)
+        try:
+            rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
+        except rospy.ServiceException as e:
+            rospy.logwarn("Service already registered: %s", e)
         rospy.Subscriber(str(self.namespace)+'rosplan_plan_dispatcher/action_feedback', ActionFeedback, self.check_action_feedback, queue_size=10)
             
     def get_namespace(self):
@@ -49,51 +55,26 @@ class ExecDemeter(object):
         rospy.Timer(self._rate.sleep_dur, self.execute_plan, oneshot=True)
 
     def execute_plan(self):
-        if self.vehicle_has_goals_to_be_executed():
-            rospy.loginfo('Generating mission plan ...')
-            self._problem_proxy()
-            try: 
-                self._planner_proxy()
-            except:
-                rospy.logwarn('Planning attempt failed')
-                self.mission_status=False
-                return self.mission_status
-            rospy.loginfo('Execute mission plan ...')
-            self._parser_proxy()
-            response = self._dispatch_proxy()
-            rospy.loginfo('Response: ' + str(response))
-            rospy.logwarn('Response.goal_achieved: ' + str(response.goal_achieved))
-                
-            if response.goal_achieved:
-                rospy.loginfo('Mission Succeed')
-                self.mission_status=True
-            else:
-                rospy.loginfo('Mission Failed')
-                self.mission_status=False
+        rospy.loginfo('Generating mission plan ...')
+        self._problem_proxy()
+        try: 
+            self._planner_proxy()
+        except:
+            rospy.logwarn('Planning attempt failed')
+            self.mission_success=False
+            return self.mission_success
+        rospy.loginfo('Execute mission plan ...')
+        self._parser_proxy()
+        response = self._dispatch_proxy()
+        rospy.loginfo('Response: ' + str(response))
+            
+        if response.goal_achieved:
+           rospy.loginfo('Mission Succeed')
+           self.mission_success=True
         else:
-            self.mission_status=True # Mission considered succesfull when there are no goals        
-        return self.mission_status  
-    
-    def vehicle_has_goals_to_be_executed(self):
-        goals_allocated = rospy.get_param(str(self.namespace) + 'goals_allocated')
-        if len(goals_allocated)>0:
-            return True
-        return False
+           rospy.loginfo('Mission Failed')
+           self.mission_success=False
+        return self.mission_success  
     
     def clear_KB(self):
-        KB_cleared = False
-        try:
-            rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
-            self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
-            self._clear_KB_proxy()
-            KB_cleared = True
-            # rospy.logwarn('KB cleared' + str(self.namespace))
-        except rospy.ServiceException as e:
-            rospy.logerr("clear KB service error: %s", e)
-        return KB_cleared
-
-    def resume_plan(self):
-        try:
-            rospy.Service('%s/resume_plan' % rospy.get_name(), Empty, self.resume_plan)
-        except rospy.ServiceException as e:
-            rospy.loginfo("Service already registered: %s", e)
+        self._clear_KB_proxy()

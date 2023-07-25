@@ -14,10 +14,10 @@
     </include>
 
     <!-- Heightmap -->
-    <include>
+    <!-- <include>
       <uri>model://sand_heightmap</uri>
       <pose>0 0 -34 0 0 0</pose>
-    </include>
+    </include> -->
 
     <!-- Turbine -->
     <include>

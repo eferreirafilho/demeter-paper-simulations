@@ -2,6 +2,7 @@
 import rospy
 from uuv_gazebo_ros_plugins_msgs.msg import FloatStamped
 from std_msgs.msg import Float32, Bool
+from threading import Lock
 
 INIT_BATTERY_LEVEL = 100 # %
 NUMBER_OF_THRUSTERS = 6
@@ -14,7 +15,7 @@ class BatteryController(object):
     def __init__(self):
         # Fetch AUV index and initialize variables
         self.vehicle_idx = rospy.get_param("/goal_allocation/vehicle_idx")
-        # rospy.loginfo(self.vehicle_idx)
+        # rospy.logwarn(self.vehicle_idx)
         # Initialize is_submerged status for each AUV
         self.is_submerged = [True] * len(self.vehicle_idx)
         self.vehicle_thruster_list = []
@@ -26,7 +27,7 @@ class BatteryController(object):
         self.received_battery_level = [False] * len(self.vehicle_idx)
         self.received_recharging_dedicated = [False] * len(self.vehicle_idx)
         self.received_is_surfaced = [False] * len(self.vehicle_idx)
-        # rospy.loginfo(self.mean_thruster_usage)
+        # rospy.logwarn(self.mean_thruster_usage)
         self.battery_level = [INIT_BATTERY_LEVEL] * len(self.vehicle_idx)
         self.battery_pub = []
         self.rate = rospy.Rate(5)  # ROS Rate at 5Hz
@@ -59,7 +60,7 @@ class BatteryController(object):
             recharging = RECHARGING_RATE*(self.recharging[idx])
             recharging_dedicated = RECHARGING_RATE_DEDICATED*(self.recharging_dedicated[idx])
             self.battery_level[idx] = (level - THRUSTERS_CONSUMPTION_FACTOR*(self.mean_thruster_usage[idx]) + recharging + recharging_dedicated)
-            # rospy.loginfo('auv: ' + str(idx) + 'self.battery: ' + str(recharging) + ' dedicated: ' +str(recharging_dedicated))
+            # rospy.logwarn('auv: ' + str(idx) + 'self.battery: ' + str(recharging) + ' dedicated: ' +str(recharging_dedicated))
             if self.battery_level[idx] >= 100:
                 self.battery_level[idx] = 100
             if self.battery_level[idx] <= 0:
@@ -105,6 +106,7 @@ class BatteryController(object):
         self.received_is_surfaced[vehicle_idx] = True
 
 if __name__ == '__main__':
+    rospy.loginfo('emulated_battery_monitor')
     rospy.init_node('emulated_battery_monitor')
     battery = BatteryController()
     battery.publish_battery_level()
