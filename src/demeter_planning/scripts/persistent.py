@@ -35,7 +35,7 @@ class PersistentPlanning:
    
     def check_and_trigger_reallocation(self):
         vehicle_id = self.extract_number_from_string(self.namespace)
-        global_allocation = rospy.get_param("/goals_allocated/allocation")
+        global_allocation = rospy.get_param("/goals_allocation/global_allocation")
         param_name = "{}goals_allocated".format(self.namespace)
 
         current_list = rospy.get_param(param_name)

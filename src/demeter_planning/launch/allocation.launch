@@ -9,4 +9,8 @@
 		<rosparam file="$(find demeter_planning)/params/tides.yaml" command="load"/>
 	</node>
 
+	<!-- Improve Allocation  - Simulated Annealing -->
+	<node pkg="demeter_planning" type="improve_allocation.py" name="improve_allocation" output="screen"> 	</node>
+
+
 </launch>
