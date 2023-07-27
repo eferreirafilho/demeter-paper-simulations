@@ -313,7 +313,7 @@ class Allocation(object):
     def simulated_annealing(self):
         rospy.set_param('/goals_allocation/allocating_now', True)
         self.time_window = self.compute_next_time_window()
-        rospy.loginfo('Next High wave event in: ' + str(int(self.time_window)) + ' seconds')
+        rospy.loginfo_throttle(20, 'Next High wave event in: ' + str(int(self.time_window)) + ' seconds')
         if int(self.time_window) < 0:    
             return self.empty_solution(), self.inf_cost()
         

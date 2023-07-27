@@ -8,7 +8,7 @@ class ImproveAllocation(object):
         self.load_parameters()
         while not rospy.is_shutdown():
             if not self.is_allocating_now:
-                rospy.loginfo("Improve Allocation!")
+                # rospy.loginfo("Improve Allocation!")
                 self.global_allocation = self.get_global_allocation()
                 self.individual_allocation = self.get_individual_allocation()
                 goal_allocation.time_window = goal_allocation.compute_next_time_window()
@@ -29,21 +29,23 @@ class ImproveAllocation(object):
         for idx, vehicle_allocation in enumerate(self.individual_allocation):
             # Getting the remaining tasks that should be at the beginning of the new allocation
             global_remaining_allocation = self.global_allocation[idx][:len(self.global_allocation[idx]) - len(vehicle_allocation)]
-        
+            
             # Compare initial part of new allocation with remaining global allocation
             initial_allocation_part = new_allocation[idx][:len(global_remaining_allocation)]
             rospy.logwarn('Global allocation: ' + str(self.global_allocation[idx]))
             rospy.logwarn('Individual allocation: ' + str(vehicle_allocation))
             rospy.logwarn('initial_allocation_part: ' + str(initial_allocation_part))
             rospy.logwarn('global_remaining_allocation: ' + str(global_remaining_allocation))
-            if initial_allocation_part == global_remaining_allocation:
-                rospy.set_param('/auv' + str(idx) + '/goals_allocated', new_allocation[idx])        
-                rospy.logwarn('Updated: ' + str(new_allocation[idx]))    
-            else:
+            if initial_allocation_part != global_remaining_allocation:
                 rospy.logwarn('Not Updated: The new allocation does not start with the remaining global allocation.')
                 set_global_allocation = False
+                break
         if set_global_allocation:
-            rospy.set_param('goals_allocated/global_allocation', new_allocation)        
+            rospy.logwarn('Setting Improved Allocation: ' + str(new_allocation))
+            
+            for idx, vehicle_allocation in enumerate(self.individual_allocation):
+                rospy.set_param('/auv' + str(idx) + '/goals_allocated', new_allocation[idx])        
+            rospy.set_param('/goals_allocation/global_allocation', new_allocation)
 
     def load_parameters(self):
         while not rospy.is_shutdown():
