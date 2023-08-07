@@ -1,6 +1,5 @@
 #!/usr/bin/env python3.8
 import rospy
-import time
 from goal_allocation_sa import Allocation
 
 class ImproveAllocation(object):
@@ -8,6 +7,7 @@ class ImproveAllocation(object):
         self.load_parameters()
         while not rospy.is_shutdown():
             if not self.is_allocating_now:
+                rospy.sleep(2)
                 # rospy.loginfo("Improve Allocation!")
                 self.global_allocation = self.get_global_allocation()
                 self.individual_allocation = self.get_individual_allocation()
@@ -32,14 +32,15 @@ class ImproveAllocation(object):
             
             # Compare initial part of new allocation with remaining global allocation
             initial_allocation_part = new_allocation[idx][:len(global_remaining_allocation)]
-            rospy.logwarn('Global allocation: ' + str(self.global_allocation[idx]))
-            rospy.logwarn('Individual allocation: ' + str(vehicle_allocation))
-            rospy.logwarn('initial_allocation_part: ' + str(initial_allocation_part))
-            rospy.logwarn('global_remaining_allocation: ' + str(global_remaining_allocation))
-            if initial_allocation_part != global_remaining_allocation:
-                rospy.logwarn('Not Updated: The new allocation does not start with the remaining global allocation.')
-                set_global_allocation = False
-                break
+            rospy.loginfo('Global allocation: ' + str(self.global_allocation[idx]))
+            rospy.loginfo('Individual allocation: ' + str(vehicle_allocation))
+            rospy.loginfo('initial_allocation_part: ' + str(initial_allocation_part))
+            rospy.loginfo('global_remaining_allocation: ' + str(global_remaining_allocation))
+            if initial_allocation_part != global_remaining_allocation or (len(self.global_allocation[idx]) > 0 and self.global_allocation[idx][0] != new_allocation[idx][0]):
+                    rospy.loginfo('Not Updated: The new allocation does not start with the remaining global allocation or the first goal does not match.')
+                    set_global_allocation = False
+                    break  # No need to check further as we already found a mismatch
+
         if set_global_allocation:
             rospy.logwarn('Setting Improved Allocation: ' + str(new_allocation))
             
@@ -52,17 +53,18 @@ class ImproveAllocation(object):
             try:
                 self.number_of_vehicles = self.get_number_of_vehicles()
                 self.global_allocation = self.get_global_allocation()
+                rospy.sleep(1)
                 self.individual_allocation = self.get_individual_allocation()
                 self.is_allocating_now = self.allocating_now()
                 break
             except KeyError:
                 rospy.logwarn_throttle(5, "Improve allocation: All parameters not set yet. Retrying in 1 second...")
-                time.sleep(1)
+                rospy.sleep(1)
 
     def print_params(self):
-        rospy.logwarn(self.number_of_vehicles)
-        rospy.logwarn(self.global_allocation)
-        rospy.logwarn(self.individual_allocation)
+        rospy.loginfo(self.number_of_vehicles)
+        rospy.loginfo(self.global_allocation)
+        rospy.loginfo(self.individual_allocation)
 
     def print_allocation(self):
         rospy.loginfo("Global Current Allocation: " + str(self.global_allocation) + " Current cost: " + str(self.current_cost))

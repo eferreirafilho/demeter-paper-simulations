@@ -47,7 +47,7 @@ class Allocation(object):
         self.number_of_vehicles = self.get_number_of_vehicles()
         self.original_turbines = self.turbines
         if reallocation:
-            self.turbines, self.turbines_idx = self._remove_current_dispatched_turbines(self.turbines, self.turbines_idx) # Prevent the current dispatched turbine to be in the allocation
+            self.turbines, self.turbines_idx = self.remove_current_dispatched_turbines(self.turbines, self.turbines_idx) # Prevent the current dispatched turbine to be in the allocation
         
         self.reallocation_trigger = False
         rospy.Subscriber("/reallocation_trigger", Bool, self._reallocation_trigger_callback)
@@ -86,7 +86,7 @@ class Allocation(object):
     def _reallocation_trigger_callback(self, msg):
         self.reallocation_trigger = msg.data
     
-    def _remove_current_dispatched_turbines(self, all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx):
+    def remove_current_dispatched_turbines(self, all_turbines_to_be_allocated, all_turbines_to_be_allocated_idx):
         for vehicle_idx in range(self.number_of_vehicles):
             param_name = "/auv" + str(vehicle_idx) + "/goals_allocated"
             rospy.loginfo(f'Checking parameter: {param_name}')
