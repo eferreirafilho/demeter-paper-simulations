@@ -59,7 +59,10 @@ class PopulateKB(object):
         # self.allocated_goals = self.load_allocation()
         # rospy.logwarn('Allocated goals in create problem: ' + str(self.allocated_goals) + ' | ' + str(self.namespace))
         
-        self.allocated_goals = [0,1,2]
+        # self.allocated_goals = list(range(self.number_of_turbines))
+        
+        how_many_turbines_considered = 2
+        self.allocated_goals = list(range(how_many_turbines_considered))
         self.remove_all_data_goals_from_KB()
         
         if self.allocated_goals:
@@ -93,16 +96,32 @@ class PopulateKB(object):
         rospy.loginfo('Allocated goals: ' + str(self.allocated_goals))
         rospy.logwarn(self.scaled_G)
             
-        for node1, node2, attrs in self.scaled_G.edges(data=True):
-            # rospy.logwarn("{}-{}: {}".format(node1, node2, attrs))
-            # node1 to node2
-            self.add_fact('can-move','waypoint'+str(node1),'waypoint'+str(node2))
-            dist = round(self.scaled_G.edges[node1, node2]['weight'],2)
-            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(node1)), KeyValue('w', 'waypoint'+str(node2))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
-            # node2 to node1
-            self.add_fact('can-move','waypoint'+str(node2),'waypoint'+str(node1))
-            dist = round(self.scaled_G.edges[node2, node1]['weight'],2)
-            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(node2)), KeyValue('w', 'waypoint'+str(node1))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        # for node1, node2, attrs in self.scaled_G.edges(data=True):
+        #     # rospy.logwarn("{}-{}: {}".format(node1, node2, attrs))
+        #     # node1 to node2
+        #     self.add_fact('can-move','waypoint'+str(node1),'waypoint'+str(node2))
+        #     dist = round(self.scaled_G.edges[node1, node2]['weight'],2)
+        #     self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(node1)), KeyValue('w', 'waypoint'+str(node2))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        #     # node2 to node1
+        #     self.add_fact('can-move','waypoint'+str(node2),'waypoint'+str(node1))
+        #     dist = round(self.scaled_G.edges[node2, node1]['weight'],2)
+        #     self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(node2)), KeyValue('w', 'waypoint'+str(node1))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+            
+        # From start to all allocated turbines
+        for turbine in self.allocated_goals:
+            turbine_contour_point = self.get_turbine_contour_points(turbine)
+            reduced_waypoints = self.get_shortest_path_subgraph(int(self.closer_wp), 'general_waypoint', int(turbine_contour_point))
+            self.add_reduced_can_move(reduced_waypoints)
+        
+        # From turbine to turbine
+        for turbine_i in self.allocated_goals:
+            for turbine_j in self.allocated_goals:
+                turbine_i_contour_point = self.get_turbine_contour_points(turbine_i)
+                turbine_j_contour_point = self.get_turbine_contour_points(turbine_j)
+                reduced_waypoints = self.get_shortest_path_subgraph(int(turbine_i_contour_point), 'general_waypoint', int(turbine_j_contour_point))
+                self.add_reduced_can_move(reduced_waypoints)
+                reduced_waypoints = self.get_shortest_path_subgraph(int(turbine_j_contour_point), 'general_waypoint', int(turbine_i_contour_point))
+                self.add_reduced_can_move(reduced_waypoints)
                 
         self.add_object('vehicle'+str(self.vehicle_id), 'vehicle')
         self.add_object('currenttide', 'tide')
@@ -121,15 +140,15 @@ class PopulateKB(object):
         self.add_object('data'+str(target_turbine),'data')
         self.add_fact('is-in','data'+str(target_turbine),'turbine'+str(target_turbine))
         self.add_goal('data-sent', 'data'+str(target_turbine))
-        sensor_contour_point = self.get_sensor_contour_points(target_turbine)
-        rospy.logwarn(sensor_contour_point)
-        self.add_fact('is-turbine-wp','waypoint'+str(sensor_contour_point),'turbine'+str(target_turbine))      
+        turbine_contour_point = self.get_turbine_contour_points(target_turbine)
+        rospy.logwarn(turbine_contour_point)
+        self.add_fact('is-turbine-wp','waypoint'+str(turbine_contour_point),'turbine'+str(target_turbine))      
         
     def init_position_to_KB(self):
         self.add_object('wp_init_auv'+str(self.vehicle_id),'waypoint') # Define waypoint object for initial position
 
         for waypoints, attrs in self.scaled_G.nodes(data=True):
-            self.add_object('waypoint'+str(waypoints),'waypoint') # Define waypoint object for initial position
+            self.add_object('waypoint'+str(waypoints),'waypoint') # Define waypoint objects
 
         for turbine in self.allocated_goals:
             self.add_object('turbine'+str(turbine),'turbine') # Define turbine objects
@@ -189,19 +208,30 @@ class PopulateKB(object):
                 min_distance = distance
         return shortest_path        
       
-    def get_sensor_contour_points(self, target_turbine):
+    def get_turbine_contour_points(self, target_turbine):
         # Get the countor point with greatest x
         contour_points = self.get_contour_points_list()
-        sensor_contour_point = None
+        turbine_contour_point = None
         max_x = float('-inf')
         for contour_point in contour_points:
             if self.scaled_G.nodes[contour_point]['related_to'] == target_turbine:
                 x_value = self.scaled_G.nodes[contour_point]['pos'][0]
                 if float(x_value) > float(max_x):
                     max_x = x_value
-                    sensor_contour_point = contour_point
-        return sensor_contour_point
+                    turbine_contour_point = contour_point
+        return turbine_contour_point
     
+    def add_reduced_can_move(self, reduced_waypoints):
+        # Add can-move and traverse-cost only of relevant waypoints
+        for i, wp in enumerate(reduced_waypoints[:-1]):
+            node_from = reduced_waypoints[i]
+            node_to = reduced_waypoints[i+1]
+            self.add_fact('can-move', 'waypoint'+str(node_from), 'waypoint'+str(node_to))
+            dist = round(self.scaled_G.edges[node_from, node_to]['weight'],2)
+            self.update_functions('traverse-cost', [KeyValue('w', 'waypoint'+str(node_from)), KeyValue('w', 'waypoint'+str(node_to))], self.SCALE_TRAVERSE_COSTS*dist.real, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
+        for wp in reduced_waypoints:
+            self.add_object('waypoint' + str(wp), 'waypoint')
+            
     def load_allocation(self):
         # Load allocation of vehicles to goals from a goal allocation algorithm
         try:
@@ -332,7 +362,7 @@ class PopulateKB(object):
         response = KnowledgeQueryServiceResponse()
         try:
             response = query_state(request_list)
-        except rospy.ServiceException, e:
+        except rospy.ServiceException as e:
             rospy.logwarn('Service call failed: %s', e)
         return response
     

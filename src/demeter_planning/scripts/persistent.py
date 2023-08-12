@@ -57,11 +57,6 @@ class PersistentPlanning:
     def trigger_reallocation_if_necessary(self, global_allocation, vehicle_id, current_list, updated_goal_list):
         if global_allocation[vehicle_id] == []:
             return
-
-        # if len(updated_goal_list) <= 1: 
-        #     self.reallocation_trigger.trigger()
-        #     rospy.loginfo('Trigger reallocation triggered by vehicle {} having no goals | global_allocation(this vehicle): {} current list: {} updated_goal_list: {}'.format(self.namespace, global_allocation[vehicle_id], current_list, updated_goal_list))
-        
         elif not current_list:
             self.reallocation_trigger.trigger()
             rospy.loginfo('Trigger reallocation triggered by vehicle {} | Last goal is being dispatched'.format(self.namespace))
