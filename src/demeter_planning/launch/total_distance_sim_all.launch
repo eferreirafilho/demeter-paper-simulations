@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch Gazebo and Vehicles -->
+  <include file="$(find auv_autonomy)/launch/position_demo.launch"></include>
+  
+  <!-- Launch Allocation Algorithm -->
+  <include file="$(find demeter_planning)/launch/allocation.launch"></include>
+
+  <!-- Launch Multi Auv Planning System -->
+  <include file="$(find demeter_planning)/launch/multi_auv_planning.launch"></include>
+
+  <!-- Launch visualization tool -->
+  <include file="$(find demeter_planning)/launch/visualise.launch"></include>
+
+  <!-- Launch distance tracker tool -->
+  <include file="$(find demeter_planning)/launch/distance_tracker.launch"></include>
+
+
+</launch>

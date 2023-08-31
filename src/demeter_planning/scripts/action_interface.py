@@ -27,6 +27,7 @@ class DemeterActionInterface(object):
         """
         # rospy.loginfo(namespace)
         self.namespace=namespace
+        self.clear_missions_file()
 
         self.wp_reached = -1
         self.init_position = []
@@ -203,6 +204,21 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
+    def get_csv_path(self):
+        filename = 'missions.csv'
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        return os.path.join(script_dir, filename)
+
+    def clear_missions_file(self):
+        csv_path = self.get_csv_path()
+        
+        # Check if the file exists
+        if os.path.isfile(csv_path):
+            os.remove(csv_path)
+            rospy.loginfo("%s has been cleared or deleted." % csv_path)
+        else:
+            rospy.loginfo("%s does not exist." % csv_path)
+
     def log_mission_data(self, turbine):
         current_time = rospy.Time.now().secs
         mission_data = {
@@ -211,11 +227,8 @@ class DemeterActionInterface(object):
             'mission_success': 'completed',
             'time': current_time
         }
-        filename = 'missions.csv'
-        # Save the updated DataFrame to the CSV file
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        rospy.loginfo(script_dir)
-        csv_path = os.path.join(script_dir, filename)
+        
+        csv_path = self.get_csv_path()
         rospy.loginfo(csv_path)
 
         # Check if file exists to avoid writing header multiple times
@@ -225,6 +238,7 @@ class DemeterActionInterface(object):
             # Create a single-row DataFrame and directly write it to the CSV
             df = pd.DataFrame([mission_data])
             df.to_csv(f, sep=';', index=False, header=not file_exists)
+
             
     def squared_distance(self, p1, p2):
         return (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2

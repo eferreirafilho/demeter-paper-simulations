@@ -1,13 +1,8 @@
 <launch>
 
-
-  <!-- <include file="$(find demeter_planning)/launch/allocation.launch"/> -->
-
-
 	<node pkg="demeter_planning" type="battery.py" name="battery_controller" output="screen"/>
 
-   <!-- Launch visualization tool -->
-  <include file="$(find demeter_planning)/launch/visualise.launch">  </include>
+
 
   <!-- Launch planning_ns.launch with namespace=auv0 -->
   <include file="$(find demeter_planning)/launch/planning_ns.launch">
@@ -18,6 +13,8 @@
   <include file="$(find demeter_planning)/launch/planning_ns.launch">
     <arg name="namespace" value="auv1" />
   </include>
+
+
 
   <!-- Launch planning_ns.launch with namespace=auv2 -->
   <!-- <include file="$(find demeter_planning)/launch/planning_ns.launch">

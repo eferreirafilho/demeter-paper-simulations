@@ -24,7 +24,7 @@ class Allocation(object):
 
         # Weighted sum multi objective optimization
         self.BETA = 500 # Focus on more allocations
-        self.ALPHA = 10  # Focus on travelling less
+        self.ALPHA = 15  # Focus on travelling less
         self.ZETA = 1 # Focus on visiting turbines not visited lately
         rospy.set_param('/goals_allocation/allocating_now', False)
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
