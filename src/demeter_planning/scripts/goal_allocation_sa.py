@@ -23,7 +23,7 @@ class Allocation(object):
         self.LEAD_TIME = allocation_processing_time # Amount of time allocation may start before high waves have ended (seconds)
 
         # Weighted sum multi objective optimization
-        self.BETA = 300 # Focus on more allocations
+        self.BETA = 400 # Focus on more allocations
         self.ALPHA = 15  # Focus on travelling less
         self.ZETA = 1 # Focus on visiting turbines not visited lately
         rospy.set_param('/goals_allocation/allocating_now', False)

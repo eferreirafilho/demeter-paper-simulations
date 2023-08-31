@@ -4,6 +4,8 @@
 
     <!-- Run the distance tracker node -->
     <node pkg="demeter_planning" type="monitor_sim_time.py" name="monitor_sim_time" output="screen">
+        <rosparam file="$(find demeter_planning)/params/sim_stop_time.yaml" command="load"/>
+
     </node>
 
 </launch>

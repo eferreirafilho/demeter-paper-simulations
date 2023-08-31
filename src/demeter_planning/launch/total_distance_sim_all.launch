@@ -16,5 +16,7 @@
   <!-- Launch distance tracker tool -->
   <include file="$(find demeter_planning)/launch/distance_tracker.launch"></include>
 
+  <!-- Monitor simulation time and kill everything after time has passed -->
+  <include file="$(find demeter_planning)/launch/monitor_sim_time.launch"></include>
 
 </launch>
