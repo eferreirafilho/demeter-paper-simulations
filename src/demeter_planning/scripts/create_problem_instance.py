@@ -195,12 +195,33 @@ class PopulateKB(object):
             self.add_object('waypoint' + str(wp), 'waypoint')
             
     def load_allocation(self):
-        # Load allocation of vehicles to goals from a goal allocation algorithm
-        try:
-            allocated_goals = rospy.get_param(self.namespace + 'goals_allocated')
-            return allocated_goals
-        except rospy.ROSException as e:
-            print("Error, goals not allocated: ", str(e))
+        # Define a timeout (e.g., 60 seconds)
+        timeout = rospy.Duration(60)
+        start_time = rospy.Time.now()
+        param_name = self.namespace + 'goals_allocated'
+
+        # Keep checking for the parameter until timeout or until ROS is shut down
+        while not rospy.is_shutdown() and (rospy.Time.now() - start_time) < timeout:
+            if rospy.has_param(param_name):
+                try:
+                    allocated_goals = rospy.get_param(param_name)
+                    return allocated_goals
+                except rospy.ROSException as e:
+                    print("Error fetching allocated goals, even though parameter exists: ", str(e))
+                    rospy.sleep(1)
+            else:
+                print("Waiting for goals to be allocated...")
+                rospy.sleep(1)
+
+        # If the timeout is reached or ROS is shut down without getting the parameter
+        if (rospy.Time.now() - start_time) >= timeout:
+            print("Timeout reached after waiting " + str(timeout.to_sec()) + " seconds for goals to be allocated.")
+        else:
+            print("ROS is shut down without getting the goals allocated.")
+        
+        raise Exception("Failed to get the goals allocation within the specified timeout.")
+
+
 
     def update_functions(self, func_name, params, func_values, update_type):
         self.mutex.acquire()

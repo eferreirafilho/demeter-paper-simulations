@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <!-- Run the distance tracker node -->
+    <node pkg="demeter_planning" type="monitor_sim_time.py" name="monitor_sim_time" output="screen">
+    </node>
+
+</launch>
+

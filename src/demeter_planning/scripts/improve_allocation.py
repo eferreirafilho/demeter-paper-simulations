@@ -8,13 +8,11 @@ class ImproveAllocation(object):
         while not rospy.is_shutdown():
             if not self.is_allocating_now:
                 rospy.sleep(2)
-                # rospy.loginfo("Improve Allocation!")
                 self.global_allocation = self.get_global_allocation()
                 self.individual_allocation = self.get_individual_allocation()
                 goal_allocation.time_window = goal_allocation.compute_next_time_window()
                 self.current_cost = goal_allocation.objective_function(self.global_allocation)
                 self.best_solution, self.best_cost = goal_allocation.simulated_annealing()
-                # self.print_allocation()
                 # if allocation improved and conditions respected, add the new allocation to individual parameters
                 # Cost should be smaller
                 if self.best_cost < self.current_cost:
@@ -32,17 +30,16 @@ class ImproveAllocation(object):
             
             # Compare initial part of new allocation with remaining global allocation
             initial_allocation_part = new_allocation[idx][:len(global_remaining_allocation)]
-            rospy.loginfo('Global allocation: ' + str(self.global_allocation[idx]))
-            rospy.loginfo('Individual allocation: ' + str(vehicle_allocation))
-            rospy.loginfo('initial_allocation_part: ' + str(initial_allocation_part))
-            rospy.loginfo('global_remaining_allocation: ' + str(global_remaining_allocation))
-            if initial_allocation_part != global_remaining_allocation or (len(self.global_allocation[idx]) > 0 and self.global_allocation[idx][0] != new_allocation[idx][0]):
-                    rospy.loginfo('Not Updated: The new allocation does not start with the remaining global allocation or the first goal does not match.')
-                    set_global_allocation = False
-                    break  # No need to check further as we already found a mismatch
+            global_allocation_not_empty = len(self.global_allocation[idx]) > 0
+            new_allocation_not_empty = len(new_allocation[idx]) > 0
+            different_first_element = global_allocation_not_empty and new_allocation_not_empty and self.global_allocation[idx][0] != new_allocation[idx][0]
+            if initial_allocation_part != global_remaining_allocation or different_first_element:
+                # rospy.loginfo('Not Updated: The new allocation does not start with the remaining global allocation or the first goal does not match.')
+                set_global_allocation = False
+                break  # No need to check further as we already found a mismatch
 
         if set_global_allocation:
-            rospy.logwarn('Setting Improved Allocation: ' + str(new_allocation))
+            # rospy.logwarn('Setting Improved Allocation: ' + str(new_allocation))
             
             for idx, vehicle_allocation in enumerate(self.individual_allocation):
                 rospy.set_param('/auv' + str(idx) + '/goals_allocated', new_allocation[idx])        

@@ -27,7 +27,6 @@ class DemeterActionInterface(object):
         """
         # rospy.loginfo(namespace)
         self.namespace=namespace
-        self.clear_missions_file()
 
         self.wp_reached = -1
         self.init_position = []
@@ -204,21 +203,6 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
-    def get_csv_path(self):
-        filename = 'missions.csv'
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        return os.path.join(script_dir, filename)
-
-    def clear_missions_file(self):
-        csv_path = self.get_csv_path()
-        
-        # Check if the file exists
-        if os.path.isfile(csv_path):
-            os.remove(csv_path)
-            rospy.loginfo("%s has been cleared or deleted." % csv_path)
-        else:
-            rospy.loginfo("%s does not exist." % csv_path)
-
     def log_mission_data(self, turbine):
         current_time = rospy.Time.now().secs
         mission_data = {
@@ -227,18 +211,21 @@ class DemeterActionInterface(object):
             'mission_success': 'completed',
             'time': current_time
         }
-        
-        csv_path = self.get_csv_path()
+        filename = 'missions.csv'
+        # Save the updated DataFrame to the CSV file
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        rospy.loginfo(script_dir)
+        csv_path = os.path.join(script_dir, filename)
         rospy.loginfo(csv_path)
 
         # Check if file exists to avoid writing header multiple times
         file_exists = os.path.isfile(csv_path)
-
+        rospy.logwarn("Log mission: " + str(turbine))
+    
         with open(csv_path, 'a') as f:
             # Create a single-row DataFrame and directly write it to the CSV
             df = pd.DataFrame([mission_data])
             df.to_csv(f, sep=';', index=False, header=not file_exists)
-
             
     def squared_distance(self, p1, p2):
         return (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2
@@ -286,7 +273,6 @@ class DemeterActionInterface(object):
         self.get_init_position_param()
         self.append_to_waypoint_position(self.init_position)
         wp_set=[item[wp_index] for item in self.waypoints_position] # Get specified waypoint
-        # rospy.loginfo('Setting target waypoint to: ' + str(wp_set))
         self.target_wp=wp_set
 
     def set_init_position_param(self, position):
@@ -304,7 +290,6 @@ class DemeterActionInterface(object):
         if dist_x.real<self.EPS_DISTANCE and dist_y.real<self.EPS_DISTANCE and dist_z.real<self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        # rospy.loginfo_throttle(5,'Distance to target: ' + str((dist.real,5)))
         
     def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      
@@ -340,7 +325,6 @@ class DemeterActionInterface(object):
         self.cmd_pose_pub.publish(cmd_pose)
     
     def get_position(self):
-        # rospy.loginfo(self.odom_pose.pose.pose.position)
         return self.odom_pose.pose.pose.position
 
     def get_orientation(self):
@@ -350,17 +334,9 @@ class DemeterActionInterface(object):
         return self.odom_pose.pose.pose.position
 
     def is_submerged(self):
-        # current_pos=self.get_position()
-        # rospy.loginfo('Position z' + str(self.odom_pose.pose.pose.position.z))
-        # rospy.loginfo('SUBMERGED Z' + str(self.SUBMERGED_Z))
         if float(self.odom_pose.pose.pose.position.z)<float(self.SUBMERGED_Z):
-            # rospy.loginfo(float(self.odom_pose.pose.pose.position.z))
-            # rospy.loginfo(float(self.SUBMERGED_Z))
-            # rospy.loginfo('submerged!!')
-            
             return True
         else:
-            # rospy.loginfo('surfaced!!')
             return False
         
     def goto_surface(self):
@@ -464,20 +440,14 @@ class DemeterActionInterface(object):
         total_cycle_time = (number_of_tides_duration_high_waves + number_of_tides_until_next_high_waves)*PERIOD_OF_TIDES
         total_cycle_integer = time // total_cycle_time # How many cycles have passed
         time_in_this_cycle = time % total_cycle_time           
-                    
-        # rospy.logwarn_throttle(4, str(self.namespace) + ' | time_in_this_cycle: ' + str(time_in_this_cycle))
-        # rospy.logwarn_throttle(4, str(self.namespace) + ' | total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES ' + str(total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES))
         
         if time_in_this_cycle <= number_of_tides_until_next_high_waves*PERIOD_OF_TIDES:
             self.low_waves = True
             rospy.set_param('/goal_allocation/wave_state', 'low')
             next_shift_to_high_waves_time = number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + total_cycle_time*(total_cycle_integer+1)
-            # rospy.logwarn_throttle(2, str(self.namespace) + '| Low Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
         else:
             self.low_waves = False
             rospy.set_param('/goal_allocation/wave_state', 'high')
             next_shift_to_high_waves_time = total_cycle_time + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + (total_cycle_time*total_cycle_integer+1)
-            # next_shift_to_high_waves_time = total_cycle_time - time_in_this_cycle + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES
-            # rospy.logwarn_throttle(2, str(self.namespace) + ' | High Waves now | Next shift to high waves: ' + str(next_shift_to_high_waves_time))
                 
         return next_shift_to_high_waves_time
