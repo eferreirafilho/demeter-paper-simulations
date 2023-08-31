@@ -71,5 +71,7 @@ class DistanceTracker:
 if __name__ == '__main__':
     rospy.init_node('distance_tracker', anonymous=True)
     tracker = DistanceTracker()
+    # rospy.get_param('')
+    # rospy.signal_shutdown()
     rospy.on_shutdown(tracker.save_data)
     rospy.spin()

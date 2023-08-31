@@ -5,7 +5,7 @@ from rosgraph_msgs.msg import Clock
 import os
 import rosnode
 
-MAX_SIM_TIME = 200
+MAX_SIM_TIME = rospy.get_param('/monitor_sim_time/sim_stop_time')
 
 def callback(msg):
     current_time = msg.clock.to_sec()
@@ -18,13 +18,10 @@ def main():
     rospy.spin()
 
 def kill_all_ros_nodes():
-    os.system("killall -9 python roslaunch rosmaster")
-    rospy.signal_shutdown("Time threshold reached!")
-    
-    nodes = rosnode.get_node_names()
-    for node in nodes:
-        rosnode.kill_nodes([node])
-    rospy.signal_shutdown("Time threshold reached!")
+    os.system('rosnode kill -a')  # Kills all nodes
+    os.system("killall -9 rosmaster")
+    os.system("killall -9 roscore")
+    os.system("killall -9 rosout")
         
 if __name__ == '__main__':
     main()
