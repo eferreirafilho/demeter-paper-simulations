@@ -4,11 +4,9 @@ from cmath import pi, sqrt
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
-from std_msgs.msg import Bool, Float32
+from std_msgs.msg import Bool, Float32, Int32MultiArray
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
-import os
-import pandas as pd
-
+import re
 
 class DemeterActionInterface(object):
 
@@ -49,14 +47,15 @@ class DemeterActionInterface(object):
         self.waypoints_position = [X, Y, Z] 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
-        # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10) # REAL ROBOT
         rospy.Subscriber(str(self.namespace)+'pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
         rospy.Subscriber(str(self.namespace)+'battery_level_emulated', Float32, self._battery_level_callback, queue_size=10)
 
         # Publishers
-        # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) # REAL ROBOT
         self.cmd_pose_pub=rospy.Publisher(str(self.namespace)+'cmd_pose', PoseStamped, queue_size=10)
         self.recharging_dedicated_pub = rospy.Publisher(str(self.namespace) + 'recharging_dedicated', Bool , queue_size=10)
+        
+        self.data_pub = rospy.Publisher('/data_topic', Int32MultiArray, queue_size=10)
+        
         self.recharging_dedicated_pub.publish(False) # Not recharging dedicated by default
         init_position = self.get_position()
 
@@ -167,7 +166,10 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         if response == self.ACTION_SUCCESS:
             rospy.logwarn('Logging data: ' + str(turbine_data_index) + ' Time: ' + str(rospy.Time.now().secs) + ' seconds')
-            self.log_mission_data(turbine_data_index)
+            log_msg = Int32MultiArray()
+            vehicle_id = self.extract_number_from_string(self.namespace)
+            log_msg.data = [int(vehicle_id), int(turbine_data_index), rospy.Time.now().secs]
+            self.data_pub.publish(log_msg)
         return response
     
     def do_surface(self, duration=rospy.Duration()):
@@ -203,29 +205,12 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
-    def log_mission_data(self, turbine):
-        current_time = rospy.Time.now().secs
-        mission_data = {
-            'vehicle_name': self.namespace,
-            'allocated_goal': turbine,
-            'mission_success': 'completed',
-            'time': current_time
-        }
-        filename = 'missions.csv'
-        # Save the updated DataFrame to the CSV file
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        rospy.loginfo(script_dir)
-        csv_path = os.path.join(script_dir, filename)
-        rospy.loginfo(csv_path)
-
-        # Check if file exists to avoid writing header multiple times
-        file_exists = os.path.isfile(csv_path)
-        rospy.logwarn("Log mission: " + str(turbine))
-    
-        with open(csv_path, 'a') as f:
-            # Create a single-row DataFrame and directly write it to the CSV
-            df = pd.DataFrame([mission_data])
-            df.to_csv(f, sep=';', index=False, header=not file_exists)
+    def extract_number_from_string(self, string):
+        match = re.search(r'\d+', string)
+        if match:
+            return int(match.group())
+        else:
+            return None
             
     def squared_distance(self, p1, p2):
         return (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2
