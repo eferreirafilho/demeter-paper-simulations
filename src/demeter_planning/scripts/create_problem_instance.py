@@ -12,11 +12,13 @@ import re
 import networkx as nx
 import pickle
 import roslib
+import random
 
 class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
+        self.RANDOM_ALLOCATION = False
         self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')  # Period in seconds
         self.LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         self.SCALE_TRAVERSE_COSTS = 1
@@ -58,12 +60,19 @@ class PopulateKB(object):
         # rospy.logwarn('Allocated goals in create problem: ' + str(self.allocated_goals) + ' | ' + str(self.namespace))
         self.remove_all_data_goals_from_KB()
         
+        
+        
+        if self.RANDOM_ALLOCATION:
+            number_of_turbines = len(rospy.get_param('/goal_allocation/scaled_turbines_xy'))
+            random_allocation = random.randint(0, number_of_turbines)
+            self.allocated_goals[0] = random_allocation 
+                        
         if self.allocated_goals:
             self.add_goal_mission(self.allocated_goals[0])
             self.populate_KB()
         else:
             rospy.loginfo('No more goals for vehicle: ' + str(self.namespace))
-               
+                
     def _pose_gt_cb(self, msg):
         new_position = [msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z]
         if new_position != [0,0,0]:
