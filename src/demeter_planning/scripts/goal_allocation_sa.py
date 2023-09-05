@@ -16,16 +16,16 @@ from time import sleep
 class Allocation(object):
     def __init__(self, reallocation):
         self.MAX_BALANCE_DIFFERENCE = 2 # Number of unbalance allowed
-        self.MAX_ALLOCATION_ITERATION = 10000
+        self.MAX_ALLOCATION_ITERATION = 25000
         allocation_processing_time = self.MAX_ALLOCATION_ITERATION/1000
         self.EXECUTE_TIME = 120 - allocation_processing_time # Inspect turbine estimated execute time (Seconds), discounted by allocation processing time
 
         self.LEAD_TIME = allocation_processing_time # Amount of time allocation may start before high waves have ended (seconds)
 
         # Weighted sum multi objective optimization
-        self.BETA = 400 # Focus on more allocations
-        self.ALPHA = 15  # Focus on travelling less
-        self.ZETA = 1 # Focus on visiting turbines not visited lately
+        self.BETA = 100 # Focus on more allocations
+        self.ALPHA = 10  # Focus on travelling less
+        self.ZETA = 0.1 # Focus on visiting turbines not visited lately
         rospy.set_param('/goals_allocation/allocating_now', False)
         self.package_path = roslib.packages.get_pkg_dir("demeter_planning")
         self._rate = rospy.Rate(1)
@@ -301,15 +301,22 @@ class Allocation(object):
         if max_time > self.time_window:
             return -float('Inf') 
         
+        
         turbines_last_inspection = 0
         for individual_solution in solution:
             for allocated_turbine in individual_solution:
                 turbines_last_inspection += self.time_of_turbines_last_inspection[allocated_turbine]
+        
         total_allocations = sum(len(sublist) for sublist in solution)
-        cost = self.ALPHA*total_distance - self.BETA*total_allocations + self.ZETA*turbines_last_inspection
-        rospy.logwarn_once('self.ALPHA*total_distance' + str(self.ALPHA*total_distance))
+        
+        # Return if none turbine alocated 
+        if total_allocations <= 0:
+            return -float('Inf') 
+        
+        cost = self.ALPHA*total_distance/total_allocations - self.BETA*total_allocations - self.ZETA*turbines_last_inspection/total_allocations
+        rospy.logwarn_once('self.ALPHA*total_distance normalized: ' + str(self.ALPHA*total_distance/total_allocations))
         rospy.logwarn_once('self.BETA*total_allocations' + str(self.BETA*total_allocations))
-        rospy.logwarn_once('self.ZETA*turbines_last_inspection' + str(self.ZETA*turbines_last_inspection))
+        rospy.logwarn_once('self.ZETA*turbines_last_inspection normalized: ' + str(self.ZETA*turbines_last_inspection/total_allocations))
         
         return float(-cost)
 

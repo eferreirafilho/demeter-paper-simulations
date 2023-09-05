@@ -18,7 +18,7 @@ class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
-        self.RANDOM_ALLOCATION = False
+        self.RANDOM_ALLOCATION = True
         self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')  # Period in seconds
         self.LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         self.SCALE_TRAVERSE_COSTS = 1
@@ -56,17 +56,29 @@ class PopulateKB(object):
         self.add_distances_as_weights()
         closer_wp_position = [self.waypoints_position[0][self.closer_wp], self.waypoints_position[1][self.closer_wp], self.waypoints_position[2][self.closer_wp]]
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
+        
+        
         self.allocated_goals = self.load_allocation()
         # rospy.logwarn('Allocated goals in create problem: ' + str(self.allocated_goals) + ' | ' + str(self.namespace))
         self.remove_all_data_goals_from_KB()
         
         
-        
         if self.RANDOM_ALLOCATION:
             number_of_turbines = len(rospy.get_param('/goal_allocation/scaled_turbines_xy'))
-            random_allocation = random.randint(0, number_of_turbines)
-            self.allocated_goals[0] = random_allocation 
-                        
+            random_allocation = random.randint(0, number_of_turbines-1)
+            
+            rospy.logwarn('self.allocated_goals before random allocation: ' + str(self.allocated_goals))
+            rospy.logwarn('Allocated randonly to turbine: ' + str(random_allocation))
+            rospy.logwarn('Allocated randonly to turbine type: ' + str(type(random_allocation)))
+            
+            if not self.allocated_goals:  # if the list is empty
+                self.allocated_goals.append(random_allocation)
+            else:
+                self.allocated_goals[0] = random_allocation
+                
+            rospy.logwarn('self.allocated_goals after random allocation: ' + str(self.allocated_goals))
+
+                                
         if self.allocated_goals:
             self.add_goal_mission(self.allocated_goals[0])
             self.populate_KB()
