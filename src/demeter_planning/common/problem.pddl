@@ -22,21 +22,21 @@
 
     (is-surfaced vehicle0)
 
+
     (empty vehicle0)
 
-    (tide-low currenttide)
+    (not (tide-low currenttide))
 
-    (at 124.02 (not (tide-low currenttide)))
-    (at 524.055 (tide-low currenttide))
-    (at 724.065 (not (tide-low currenttide)))
-    (at 1124.11 (tide-low currenttide))
-    (at 1324.13 (not (tide-low currenttide)))
-    (at 1724.18 (tide-low currenttide))
-    (at 1924.23 (not (tide-low currenttide)))
-    (at 2324.24 (tide-low currenttide))
-    (at 2524.29 (not (tide-low currenttide)))
-    (at 2924.37 (tide-low currenttide))
-    (at 3124.54 (not (tide-low currenttide)))
+    (at 297.305 (tide-low currenttide))
+    (at 497.32 (not (tide-low currenttide)))
+    (at 897.365 (tide-low currenttide))
+    (at 1097.38 (not (tide-low currenttide)))
+    (at 1497.4 (tide-low currenttide))
+    (at 1697.42 (not (tide-low currenttide)))
+    (at 2097.46 (tide-low currenttide))
+    (at 2297.52 (not (tide-low currenttide)))
+    (at 2697.56 (tide-low currenttide))
+    (at 2897.59 (not (tide-low currenttide)))
 
 
     (is-turbine-wp waypoint1 turbine0)
@@ -47,18 +47,18 @@
 
     (not-high-waves currentwaves)
 
-    (at 2323.96 (not (not-high-waves currentwaves)))
-    (at 2923.99 (not-high-waves currentwaves))
-    (at 5924.04 (not (not-high-waves currentwaves)))
-    (at 6524.08 (not-high-waves currentwaves))
+    (at 2697.14 (not (not-high-waves currentwaves)))
+    (at 3297.18 (not-high-waves currentwaves))
+    (at 6297.2 (not (not-high-waves currentwaves)))
+    (at 6897.28 (not-high-waves currentwaves))
 
-    (= (battery-level vehicle0) 97.4716)
+    (= (battery-level vehicle0) 100)
 
     (= (recharge-rate vehicle0) 0.05)
 
     (= (recharge-rate-dedicated vehicle0) 5)
 
-    (= (traverse-cost wp_init_auv0 waypoint2) 18.88)
+    (= (traverse-cost wp_init_auv0 waypoint2) 18.86)
     (= (traverse-cost waypoint2 waypoint1) 28.04)
     (= (traverse-cost waypoint1 waypoint6) 80.88)
     (= (traverse-cost waypoint6 waypoint1) 80.88)
@@ -68,6 +68,6 @@
 )
 (:goal (and
     (data-sent data0)
-    ; (data-sent data1)
+    (data-sent data1)
 ))
 )
