@@ -18,7 +18,7 @@ class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
-        self.RANDOM_ALLOCATION = True
+        self.RANDOM_ALLOCATION = False
         self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')  # Period in seconds
         self.LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         self.SCALE_TRAVERSE_COSTS = 1
