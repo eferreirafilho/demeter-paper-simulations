@@ -1,9 +1,5 @@
 <launch>
 
-
-  <!-- <include file="$(find demeter_planning)/launch/allocation.launch"/> -->
-
-
 	<node pkg="demeter_planning" type="battery.py" name="battery_controller" output="screen"/>
 
   <!-- Launch planning_ns.launch with namespace=auv0 -->

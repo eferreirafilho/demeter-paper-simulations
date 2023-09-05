@@ -1,13 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
+
 from cmath import pi, sqrt
 import rospy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist, Point
-from std_msgs.msg import Bool, Float32
+from std_msgs.msg import Bool, Float32, Int32MultiArray
 from tf.transformations import quaternion_from_euler, quaternion_multiply, euler_from_quaternion
-import os
-import pandas as pd
-
+import re
 
 class DemeterActionInterface(object):
 
@@ -48,14 +47,15 @@ class DemeterActionInterface(object):
         self.waypoints_position = [X, Y, Z] 
         # Subscribers
         rospy.loginfo('Connecting ROS and Vehicle ...')
-        # rospy.Subscriber('/mavros/local_position/odom', Odometry, self._pose_gt_cb, queue_size=10) # REAL ROBOT
         rospy.Subscriber(str(self.namespace)+'pose_gt', Odometry, self._pose_gt_cb, queue_size=10)
         rospy.Subscriber(str(self.namespace)+'battery_level_emulated', Float32, self._battery_level_callback, queue_size=10)
 
         # Publishers
-        # self.cmd_pose_pub=rospy.Publisher('/mavros/adsetpoint/send',PoseStamped, queue_size=10) # REAL ROBOT
         self.cmd_pose_pub=rospy.Publisher(str(self.namespace)+'cmd_pose', PoseStamped, queue_size=10)
         self.recharging_dedicated_pub = rospy.Publisher(str(self.namespace) + 'recharging_dedicated', Bool , queue_size=10)
+        
+        self.data_pub = rospy.Publisher('/data_topic', Int32MultiArray, queue_size=10)
+        
         self.recharging_dedicated_pub.publish(False) # Not recharging dedicated by default
         init_position = self.get_position()
 
@@ -128,19 +128,6 @@ class DemeterActionInterface(object):
         return response
     
     def do_retrieve_data(self, turbine, duration=rospy.Duration()):
-        next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-        action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-        
-        while not self.low_tide or action_finish_time >= next_shift_to_high_tide: # Wait the low tide for safety
-            next_shift_to_high_tide = self.compute_next_shift_to_high_tide_time()
-            action_finish_time = (rospy.Time.now().to_sec() + duration.to_sec())
-            rospy.logwarn_throttle(5, str(self.namespace) + ' Waiting for low tide. Next shift to highb tide: ' + str(next_shift_to_high_tide))
-
-        high_waves = self.compute_if_high_waves()
-        while high_waves: # Wait for not high waves for safety
-            high_waves = self.compute_if_high_waves()
-
-        # rospy.loginfo('Interface: \'Retrieve Data\' Action')
         response = self.ACTION_FAIL
         start = rospy.Time.now()
         start_pos = self.odom_pose.pose.pose.position
@@ -160,10 +147,8 @@ class DemeterActionInterface(object):
                 self.set_inspected_times(turbine)               
                 response = self.ACTION_SUCCESS   
                 
-            # rospy.loginfo('Execution: Action RETRIEVE DATA took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
+            rospy.loginfo('Execution: Action RETRIEVE DATA TURBINE ' + str(turbine) + ' took ' + str(rospy.Time.now().secs - start.secs) + ' seconds | Expected duration: ' + str(duration.secs) + ' seconds')
 
-            # rospy.loginfo('Data acquired!')
-                
         if (rospy.Time.now() - start) > self.OUT_OF_DURATION_FACTOR*duration:
             response = self.OUT_OF_DURATION        
         return response
@@ -181,7 +166,10 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         if response == self.ACTION_SUCCESS:
             rospy.logwarn('Logging data: ' + str(turbine_data_index) + ' Time: ' + str(rospy.Time.now().secs) + ' seconds')
-            self.log_mission_data(turbine_data_index)
+            log_msg = Int32MultiArray()
+            vehicle_id = self.extract_number_from_string(self.namespace)
+            log_msg.data = [int(vehicle_id), int(turbine_data_index), rospy.Time.now().secs]
+            self.data_pub.publish(log_msg)
         return response
     
     def do_surface(self, duration=rospy.Duration()):
@@ -217,28 +205,12 @@ class DemeterActionInterface(object):
             response = self.OUT_OF_DURATION        
         return response
     
-    def log_mission_data(self, turbine):
-        current_time = rospy.Time.now().secs
-        mission_data = {
-            'vehicle_name': self.namespace,
-            'allocated_goal': turbine,
-            'mission_success': 'completed',
-            'time': current_time
-        }
-        filename = 'missions.csv'
-        # Save the updated DataFrame to the CSV file
-        script_dir = os.path.dirname(os.path.realpath(__file__))
-        rospy.loginfo(script_dir)
-        csv_path = os.path.join(script_dir, filename)
-        rospy.loginfo(csv_path)
-
-        # Check if file exists to avoid writing header multiple times
-        file_exists = os.path.isfile(csv_path)
-
-        with open(csv_path, 'a') as f:
-            # Create a single-row DataFrame and directly write it to the CSV
-            df = pd.DataFrame([mission_data])
-            df.to_csv(f, sep=';', index=False, header=not file_exists)
+    def extract_number_from_string(self, string):
+        match = re.search(r'\d+', string)
+        if match:
+            return int(match.group())
+        else:
+            return None
             
     def squared_distance(self, p1, p2):
         return (p1.x - p2.x)**2 + (p1.y - p2.y)**2 + (p1.z - p2.z)**2
@@ -286,7 +258,6 @@ class DemeterActionInterface(object):
         self.get_init_position_param()
         self.append_to_waypoint_position(self.init_position)
         wp_set=[item[wp_index] for item in self.waypoints_position] # Get specified waypoint
-        # rospy.loginfo('Setting target waypoint to: ' + str(wp_set))
         self.target_wp=wp_set
 
     def set_init_position_param(self, position):
@@ -304,7 +275,6 @@ class DemeterActionInterface(object):
         if dist_x.real<self.EPS_DISTANCE and dist_y.real<self.EPS_DISTANCE and dist_z.real<self.EPS_DISTANCE:
             wp = waypoint          
         self._current_wp = wp
-        # rospy.loginfo_throttle(5,'Distance to target: ' + str((dist.real,5)))
         
     def publish_wp_cmd_pose_fixed_orientation(self,waypoint): 
         cmd_pose=PoseStamped()      
@@ -340,7 +310,6 @@ class DemeterActionInterface(object):
         self.cmd_pose_pub.publish(cmd_pose)
     
     def get_position(self):
-        # rospy.loginfo(self.odom_pose.pose.pose.position)
         return self.odom_pose.pose.pose.position
 
     def get_orientation(self):
@@ -350,17 +319,9 @@ class DemeterActionInterface(object):
         return self.odom_pose.pose.pose.position
 
     def is_submerged(self):
-        # current_pos=self.get_position()
-        # rospy.loginfo('Position z' + str(self.odom_pose.pose.pose.position.z))
-        # rospy.loginfo('SUBMERGED Z' + str(self.SUBMERGED_Z))
         if float(self.odom_pose.pose.pose.position.z)<float(self.SUBMERGED_Z):
-            # rospy.loginfo(float(self.odom_pose.pose.pose.position.z))
-            # rospy.loginfo(float(self.SUBMERGED_Z))
-            # rospy.loginfo('submerged!!')
-            
             return True
         else:
-            # rospy.loginfo('surfaced!!')
             return False
         
     def goto_surface(self):
@@ -430,36 +391,48 @@ class DemeterActionInterface(object):
             PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
         else:
             rospy.loginfo("Parameter period_of_tides not set")
-        if rospy.has_param('/low_tides_thredshold'):   
-            LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+        if rospy.has_param('/goal_allocation/low_tides_threshold'):   
+            LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         else:
-            rospy.loginfo("Parameter low_tides_thredshold not set")
+            rospy.loginfo("Parameter low_tides_threshold not set")
         time = rospy.get_rostime().to_sec()
         time_integer = time // PERIOD_OF_TIDES
-        if time < (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD):
-            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently low tide -> high tide is in this cycle
-            self.low_tide = True
-        else:
-            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD # Currently high tide
+        if time > (time_integer*PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD):
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD # Currently high tide
             self.low_tide = False
+        else:
+            next_shift_to_high_tide_time = time_integer*PERIOD_OF_TIDES + LOW_TIDES_THRESHOLD # Currently low tide -> high tide is in this cycle
+            self.low_tide = True
             
         return next_shift_to_high_tide_time
     
-    def compute_if_high_waves(self):
-        period_of_tides = rospy.get_param('/goal_allocation/period_of_tides')  # assumed to be duration of a single tide
-        number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
-        number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
-        current_time = rospy.get_rostime().to_sec()
-        time_since_start_of_current_cycle = current_time % (period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves))
-        high_waves_start_time = period_of_tides * number_of_tides_until_next_high_waves
-        high_waves_end_time = period_of_tides * (number_of_tides_until_next_high_waves + number_of_tides_duration_high_waves)
-    
-        if high_waves_start_time < time_since_start_of_current_cycle < high_waves_end_time: 
-            high_waves = True
-            rospy.loginfo_throttle(5,'We are in highs waves now, wait. Time to end high waves: ' + str(int(high_waves_end_time - time_since_start_of_current_cycle)) + ' seconds')
+    def compute_next_shift_to_high_waves_time(self):
+        if rospy.has_param('/goal_allocation/period_of_tides'):   
+            PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
         else:
-            # We are currently not in a high wave
-            high_waves = False
+            rospy.loginfo("Parameter period_of_tides not set")
+
+        if rospy.has_param('/goal_allocation/number_of_tides_until_next_high_waves'):   
+            number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        else:
+            rospy.loginfo("Parameter number_of_tides_until_next_high_waves not set")
             
-        # rospy.loginfo('Not in high waves. Time to next: ' + str(int(time_to_next_high_wave)) + ' seconds')
-        return high_waves
+        if rospy.has_param('/goal_allocation/number_of_tides_duration_high_waves'):   
+            number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        else:
+            rospy.loginfo("Parameter number_of_tides_duration_high_waves not set")
+        time = rospy.get_rostime().to_sec()
+        total_cycle_time = (number_of_tides_duration_high_waves + number_of_tides_until_next_high_waves)*PERIOD_OF_TIDES
+        total_cycle_integer = time // total_cycle_time # How many cycles have passed
+        time_in_this_cycle = time % total_cycle_time           
+        
+        if time_in_this_cycle <= number_of_tides_until_next_high_waves*PERIOD_OF_TIDES:
+            self.low_waves = True
+            rospy.set_param('/goal_allocation/wave_state', 'low')
+            next_shift_to_high_waves_time = number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + total_cycle_time*(total_cycle_integer+1)
+        else:
+            self.low_waves = False
+            rospy.set_param('/goal_allocation/wave_state', 'high')
+            next_shift_to_high_waves_time = total_cycle_time + number_of_tides_until_next_high_waves*PERIOD_OF_TIDES + (total_cycle_time*total_cycle_integer+1)
+                
+        return next_shift_to_high_waves_time

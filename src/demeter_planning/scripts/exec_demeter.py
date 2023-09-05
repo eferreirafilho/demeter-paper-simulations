@@ -49,26 +49,36 @@ class ExecDemeter(object):
         rospy.Timer(self._rate.sleep_dur, self.execute_plan, oneshot=True)
 
     def execute_plan(self):
-        rospy.loginfo('Generating mission plan ...')
-        self._problem_proxy()
-        try: 
-            self._planner_proxy()
-        except:
-            rospy.logwarn('Planning attempt failed')
-            self.mission_success=False
-            return self.mission_success
-        rospy.loginfo('Execute mission plan ...')
-        self._parser_proxy()
-        response = self._dispatch_proxy()
-        rospy.loginfo('Response: ' + str(response))
-            
-        if response.goal_achieved:
-           rospy.loginfo('Mission Succeed')
-           self.mission_success=True
+        if self.vehicle_has_goals_to_be_executed():
+            rospy.loginfo('Generating mission plan ...')
+            self._problem_proxy()
+            try: 
+                self._planner_proxy()
+            except:
+                rospy.logwarn('Planning attempt failed')
+                self.mission_status=False
+                return self.mission_status
+            rospy.loginfo('Execute mission plan ...')
+            self._parser_proxy()
+            response = self._dispatch_proxy()
+            rospy.loginfo('Response: ' + str(response))
+            rospy.logwarn('Response.goal_achieved: ' + str(response.goal_achieved))
+                
+            if response.goal_achieved:
+                rospy.loginfo('Mission Succeed')
+                self.mission_status=True
+            else:
+                rospy.loginfo('Mission Failed')
+                self.mission_status=False
         else:
-           rospy.loginfo('Mission Failed')
-           self.mission_success=False
-        return self.mission_success  
+            self.mission_status=True # Mission considered succesfull when there are no goals        
+        return self.mission_status  
+    
+    def vehicle_has_goals_to_be_executed(self):
+        goals_allocated = rospy.get_param(str(self.namespace) + 'goals_allocated')
+        if len(goals_allocated)>0:
+            return True
+        return False
     
     def clear_KB(self):
         KB_cleared = False

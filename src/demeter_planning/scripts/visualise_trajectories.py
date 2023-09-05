@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
 # ROS
 import rospy
 from nav_msgs.msg import Odometry
@@ -10,22 +10,19 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
 
-class PlotVehicles:
-    # PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
-    
-    # LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
-    
-
-        
+class PlotVehicles:       
     def __init__(self):
         rospy.init_node('robot_plotter', anonymous=True)
         self.wait_for_weather_parameters()
-        
+
         self.current_state_x = 0
-        self.low_tides = (2*(self.LOW_TIDES_THREDSHOLD/self.PERIOD_OF_TIDES))-1
+        self.low_tides = (2 * (float(self.LOW_TIDES_THRESHOLD) / self.PERIOD_OF_TIDES)) - 1
+
 
         number_of_vehicles = self.number_of_vehicles()
-        self.positions = [([], [], []) for _ in range(number_of_vehicles)]
+        self.positions = [[[], [], []] for _ in range(number_of_vehicles)]
+
+
         self.latest_actions = [None for _ in range(number_of_vehicles)] # Store the latest action for each vehicle
         self.battery_levels = [100 for _ in range(number_of_vehicles)]  # Store the battery levels for each vehicle
         
@@ -37,16 +34,16 @@ class PlotVehicles:
 
     def wait_for_weather_parameters(self):
         self.PERIOD_OF_TIDES = None
-        self.LOW_TIDES_THREDSHOLD = None
+        self.LOW_TIDES_THRESHOLD = None
 
        # Wait until parameters are available
         while not rospy.is_shutdown():
             try:
                 self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')
-                self.LOW_TIDES_THREDSHOLD = rospy.get_param('/low_tides_thredshold')
+                self.LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
 
                 # If the parameters are fetched successfully, break the loop
-                if self.PERIOD_OF_TIDES is not None and self.LOW_TIDES_THREDSHOLD is not None:
+                if self.PERIOD_OF_TIDES is not None and self.LOW_TIDES_THRESHOLD is not None:
                     break
             except KeyError:
                 # Parameter not available yet, ignore the exception and retry
@@ -63,6 +60,11 @@ class PlotVehicles:
         self.positions[vehicle][1].append(y)
         self.positions[vehicle][2].append(z)
 
+        TRAIL_SIZE = 5000
+        for i in range(3):
+            if len(self.positions[vehicle][i]) > TRAIL_SIZE:
+                self.positions[vehicle][i].pop(0)
+
     def update_action(self, data, vehicle):
         # Store the latest action for the vehicle
         self.latest_actions[vehicle] = data.name
@@ -77,6 +79,28 @@ class PlotVehicles:
         tide_state = np.cos(2*np.pi/3 + 2 * np.pi * time_in_tide_cycle / self.PERIOD_OF_TIDES)  # compute tide state as a sine wave
         
         return tide_state
+    
+    def high_waves(self):
+        if rospy.has_param('/goal_allocation/number_of_tides_until_next_high_waves'):   
+            number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        else:
+            rospy.loginfo("Parameter number_of_tides_until_next_high_waves not set")
+            
+        if rospy.has_param('/goal_allocation/number_of_tides_duration_high_waves'):   
+            number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        else:
+            rospy.loginfo("Parameter number_of_tides_duration_high_waves not set")
+        time = rospy.get_rostime().to_sec()
+        total_cycle_time = (number_of_tides_duration_high_waves + number_of_tides_until_next_high_waves)*self.PERIOD_OF_TIDES
+        total_cycle_integer = time // total_cycle_time # How many cycles have passed
+        time_in_this_cycle = time % total_cycle_time           
+                    
+        if time_in_this_cycle <= number_of_tides_until_next_high_waves*self.PERIOD_OF_TIDES:
+            high_waves = False
+        else:
+            high_waves = True
+            
+        return high_waves
 
     def get_scaled_turbine_coordinates(self):
         return rospy.get_param('/goal_allocation/scaled_turbines_xy')
@@ -116,11 +140,15 @@ class PlotVehicles:
             action = self.latest_actions[vehicle]
             if action=='cancel_action':
                 action = 'planning'
-            if action=='retrieve-data' and self.get_tide_state() > self.low_tides:
-                action = 'retrieve-data (wait for low tide)'
-            if action=='retrieve-data' and self.get_tide_state() < self.low_tides:
-                
-                action = 'retrieve-data'
+            if action=='retrieve-data':
+                if self.get_tide_state() > self.low_tides and self.high_waves():
+                    action = 'retrieve-data (wait for low tides and low waves)'
+                elif self.get_tide_state() < self.low_tides and self.high_waves():
+                    action = 'retrieve-data (wait for low waves)'
+                elif self.get_tide_state() > self.low_tides and not self.high_waves():
+                    action = 'retrieve-data (wait for low tides)'
+                else:
+                    action = 'retrieve-data'
             battery_level = self.battery_levels[vehicle]
             main_ax.text(x_vals[-1], y_vals[-1], 'auv{} ({}): {}%'.format(vehicle, action, int(battery_level)), fontsize=8, color=colors[vehicle])
 

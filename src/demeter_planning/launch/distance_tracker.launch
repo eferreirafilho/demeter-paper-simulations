@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <!-- Run the distance tracker node -->
+    <node pkg="demeter_planning" type="distance_tracker.py" name="distance_tracker_node" output="screen">
+    </node>
+
+</launch>
+

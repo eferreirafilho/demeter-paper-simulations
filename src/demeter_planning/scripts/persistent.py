@@ -35,7 +35,7 @@ class PersistentPlanning:
    
     def check_and_trigger_reallocation(self):
         vehicle_id = self.extract_number_from_string(self.namespace)
-        global_allocation = rospy.get_param("/goals_allocated/allocation")
+        global_allocation = rospy.get_param("/goals_allocation/global_allocation")
         param_name = "{}goals_allocated".format(self.namespace)
 
         current_list = rospy.get_param(param_name)
@@ -58,9 +58,9 @@ class PersistentPlanning:
         if global_allocation[vehicle_id] == []:
             return
 
-        if len(updated_goal_list) <= 1: 
-            self.reallocation_trigger.trigger()
-            rospy.loginfo('Trigger reallocation triggered by vehicle {} having no goals | global_allocation(this vehicle): {} current list: {} updated_goal_list: {}'.format(self.namespace, global_allocation[vehicle_id], current_list, updated_goal_list))
+        # if len(updated_goal_list) <= 1: 
+        #     self.reallocation_trigger.trigger()
+        #     rospy.loginfo('Trigger reallocation triggered by vehicle {} having no goals | global_allocation(this vehicle): {} current list: {} updated_goal_list: {}'.format(self.namespace, global_allocation[vehicle_id], current_list, updated_goal_list))
         
         elif not current_list:
             self.reallocation_trigger.trigger()

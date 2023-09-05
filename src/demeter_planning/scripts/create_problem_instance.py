@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
 from threading import Lock
 from cmath import sqrt
 from time import sleep
@@ -12,13 +12,17 @@ import re
 import networkx as nx
 import pickle
 import roslib
+import random
 
 class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
+        self.RANDOM_ALLOCATION = False
+        self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')  # Period in seconds
+        self.LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         self.SCALE_TRAVERSE_COSTS = 1
-        self.SPEED = 0.35 # Scale speed 
+        self.SPEED = 0.65 # Scale speed 
         self.FULL_BATTERY = 20
         self.RECHARGE_RATE = 0.05 # While doing other tasks #TODO: Change here and in battery controller at the same time
         self.RECHARGE_RATE_DEDICATED = 5 #TODO: Change here and in battery controller at the same time
@@ -52,16 +56,35 @@ class PopulateKB(object):
         self.add_distances_as_weights()
         closer_wp_position = [self.waypoints_position[0][self.closer_wp], self.waypoints_position[1][self.closer_wp], self.waypoints_position[2][self.closer_wp]]
         self.distance_to_closer_wp = self.distance(self.position, closer_wp_position)
+        
+        
         self.allocated_goals = self.load_allocation()
         # rospy.logwarn('Allocated goals in create problem: ' + str(self.allocated_goals) + ' | ' + str(self.namespace))
         self.remove_all_data_goals_from_KB()
         
+        
+        if self.RANDOM_ALLOCATION:
+            number_of_turbines = len(rospy.get_param('/goal_allocation/scaled_turbines_xy'))
+            random_allocation = random.randint(0, number_of_turbines-1)
+            
+            rospy.logwarn('self.allocated_goals before random allocation: ' + str(self.allocated_goals))
+            rospy.logwarn('Allocated randonly to turbine: ' + str(random_allocation))
+            rospy.logwarn('Allocated randonly to turbine type: ' + str(type(random_allocation)))
+            
+            if not self.allocated_goals:  # if the list is empty
+                self.allocated_goals.append(random_allocation)
+            else:
+                self.allocated_goals[0] = random_allocation
+                
+            rospy.logwarn('self.allocated_goals after random allocation: ' + str(self.allocated_goals))
+
+                                
         if self.allocated_goals:
             self.add_goal_mission(self.allocated_goals[0])
             self.populate_KB()
         else:
             rospy.loginfo('No more goals for vehicle: ' + str(self.namespace))
-               
+                
     def _pose_gt_cb(self, msg):
         new_position = [msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z]
         if new_position != [0,0,0]:
@@ -87,6 +110,7 @@ class PopulateKB(object):
         self.add_reduced_can_move(reduced_waypoints)
         self.add_object('vehicle'+str(self.vehicle_id), 'vehicle')
         self.add_object('currenttide', 'tide')
+        self.add_object('currentwaves', 'waves')
         self.add_fact('is-surfaced', 'vehicle'+str(self.vehicle_id))
         self.add_fact('empty', 'vehicle'+str(self.vehicle_id))
         # self.add_fact('not-recharging', 'vehicle'+str(self.vehicle_id))
@@ -99,6 +123,7 @@ class PopulateKB(object):
         self.update_functions('speed', [KeyValue('v', 'vehicle'+str(self.vehicle_id))], self.SPEED, KnowledgeUpdateServiceRequest.ADD_KNOWLEDGE)
         self.predict_next_tides() # All facts related to tides
         # rospy.loginfo('Tides: ' + str(self.current_tide_level))    
+        self.predict_next_waves() # All facts related to waves
 
     def add_goal_mission(self, target_turbine):   
         self.add_object('data'+str(target_turbine),'data')
@@ -191,12 +216,33 @@ class PopulateKB(object):
             self.add_object('waypoint' + str(wp), 'waypoint')
             
     def load_allocation(self):
-        # Load allocation of vehicles to goals from a goal allocation algorithm
-        try:
-            allocated_goals = rospy.get_param(self.namespace + 'goals_allocated')
-            return allocated_goals
-        except rospy.ROSException as e:
-            print("Error, goals not allocated: ", str(e))
+        # Define a timeout (e.g., 60 seconds)
+        timeout = rospy.Duration(60)
+        start_time = rospy.Time.now()
+        param_name = self.namespace + 'goals_allocated'
+
+        # Keep checking for the parameter until timeout or until ROS is shut down
+        while not rospy.is_shutdown() and (rospy.Time.now() - start_time) < timeout:
+            if rospy.has_param(param_name):
+                try:
+                    allocated_goals = rospy.get_param(param_name)
+                    return allocated_goals
+                except rospy.ROSException as e:
+                    print("Error fetching allocated goals, even though parameter exists: ", str(e))
+                    rospy.sleep(1)
+            else:
+                print("Waiting for goals to be allocated...")
+                rospy.sleep(1)
+
+        # If the timeout is reached or ROS is shut down without getting the parameter
+        if (rospy.Time.now() - start_time) >= timeout:
+            print("Timeout reached after waiting " + str(timeout.to_sec()) + " seconds for goals to be allocated.")
+        else:
+            print("ROS is shut down without getting the goals allocated.")
+        
+        raise Exception("Failed to get the goals allocation within the specified timeout.")
+
+
 
     def update_functions(self, func_name, params, func_values, update_type):
         self.mutex.acquire()
@@ -357,26 +403,60 @@ class PopulateKB(object):
         self.battery_level = msg.data
 
     def predict_next_tides(self):
-        PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides') # Period in seconds
-        LOW_TIDES_THREDSHOLD = PERIOD_OF_TIDES/3.0
-        rospy.set_param('/low_tides_thredshold', LOW_TIDES_THREDSHOLD)
-
         time = rospy.get_rostime().to_sec()
-        time_in_tide_cycle = time % PERIOD_OF_TIDES  # get the current ROS time in seconds and use the remainder after dividing by P to simulate repeating cycle
-        time_integer = time // PERIOD_OF_TIDES
-        
-        self.add_timed_initial_literals(0, False, 'tide-low', 'currenttide') # Past tides
-        
-        # Bring time to present
-        if time_integer*PERIOD_OF_TIDES < time < time_integer*PERIOD_OF_TIDES + LOW_TIDES_THREDSHOLD: 
-            self.add_timed_initial_literals(0, True, 'tide-low', 'currenttide') # Add tide low if it is low now
-            self.add_timed_initial_literals(LOW_TIDES_THREDSHOLD, False, 'tide-low', 'currenttide') # If its low now add next not low
 
-        # Add next tides transitions to problem.pddl        
-        TIDES_SIMULATION_CYCLES = 5
-        for i in range(TIDES_SIMULATION_CYCLES):
-            self.add_timed_initial_literals(PERIOD_OF_TIDES + PERIOD_OF_TIDES*i, True, 'tide-low', 'currenttide')
-            self.add_timed_initial_literals(PERIOD_OF_TIDES + PERIOD_OF_TIDES*i + LOW_TIDES_THREDSHOLD, False, 'tide-low', 'currenttide')
+        # Calculate the time within the current tide cycle
+        time_within_current_tide = time % self.PERIOD_OF_TIDES
+        # Check if current tide is low
+        if time_within_current_tide < self.LOW_TIDES_THRESHOLD:
+            self.add_timed_initial_literals(0, True, 'tide-low', 'currenttide')
+        else:
+            self.add_timed_initial_literals(0, False, 'tide-low', 'currenttide')
+
+        # Now add literals for the next 5 cycles
+        for i in range(0, 6):
+            # Calculate time remaining for the next tide
+            next_low_tide_time = i * self.PERIOD_OF_TIDES - time_within_current_tide
+            next_high_tide_time = next_low_tide_time + self.LOW_TIDES_THRESHOLD
+
+            # Add literal for when the tide will be low
+            self.add_timed_initial_literals(next_low_tide_time, True, 'tide-low', 'currenttide')
+
+            # Add literal for when the tide will no longer be low
+            self.add_timed_initial_literals(next_high_tide_time, False, 'tide-low', 'currenttide')
+
+
+    def predict_next_waves(self):
+        number_of_tides_until_next_high_waves = rospy.get_param('/goal_allocation/number_of_tides_until_next_high_waves')
+        number_of_tides_duration_high_waves = rospy.get_param('/goal_allocation/number_of_tides_duration_high_waves')
+        current_time = rospy.get_rostime().to_sec()
+
+        total_not_high_waves_time = number_of_tides_until_next_high_waves * self.PERIOD_OF_TIDES
+        total_high_waves_time = number_of_tides_duration_high_waves * self.PERIOD_OF_TIDES
+
+        time_since_last_change = current_time % (total_not_high_waves_time + total_high_waves_time)
+
+        if time_since_last_change < total_not_high_waves_time:
+            # We're currently in the not-high-waves state
+            self.add_timed_initial_literals(0, True, 'not-high-waves', 'currentwaves')
+            next_change_time = total_not_high_waves_time - time_since_last_change
+            future_state = False  # The next state will be high-waves, so 'not-high-waves' is False
+        else:
+            # We're currently in the high-waves state
+            self.add_timed_initial_literals(0, False, 'not-high-waves', 'currentwaves')
+            next_change_time = total_high_waves_time + total_not_high_waves_time - time_since_last_change
+            future_state = True  # The next state will be not-high-waves, so 'not-high-waves' is True
+
+        # Loop for future state changes
+        future_time = next_change_time
+        for i in range(1, 5):  # replace 5 with the number of future states you want to predict
+            self.add_timed_initial_literals(future_time, future_state, 'not-high-waves', 'currentwaves')
+            if future_state:  # if the current future state is not-high-waves
+                future_time += total_not_high_waves_time
+                future_state = False  # The next state will be high-waves, so 'not-high-waves' is False
+            else:  # if the current future state is high-waves
+                future_time += total_high_waves_time
+                future_state = True  # The next state will be not-high-waves, so 'not-high-waves' is True
 
 if __name__ == '__main__':
     rospy.loginfo('Populate KB for one vehicle, using its position')
