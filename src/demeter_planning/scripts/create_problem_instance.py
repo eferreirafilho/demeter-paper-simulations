@@ -22,7 +22,7 @@ class PopulateKB(object):
         self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')  # Period in seconds
         self.LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         self.SCALE_TRAVERSE_COSTS = 1
-        self.SPEED = 0.65 # Scale speed 
+        self.SPEED = 0.45 # Scale speed 
         self.FULL_BATTERY = 20
         self.RECHARGE_RATE = 0.05 # While doing other tasks #TODO: Change here and in battery controller at the same time
         self.RECHARGE_RATE_DEDICATED = 5 #TODO: Change here and in battery controller at the same time

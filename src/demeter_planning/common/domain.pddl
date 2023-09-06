@@ -66,7 +66,7 @@
 
     (:durative-action retrieve-data
         :parameters (?v - vehicle ?d - data ?w - waypoint ?td - tide ?wa - waves ?tu - turbine)
-        :duration(= ?duration 55)
+        :duration(= ?duration 75)
         :condition (and 
             (over all (cable-localized ?tu))
             (over all (is-turbine-wp ?w ?tu))
@@ -125,7 +125,7 @@
     )
     (:durative-action harvest-energy
     :parameters (?v - vehicle)
-    :duration (= ?duration 10)
+    :duration (= ?duration 20)
     :condition (and 
         (over all (is-surfaced ?v))
         (at start (< (battery-level ?v) 100))

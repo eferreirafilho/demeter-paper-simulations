@@ -16,7 +16,7 @@ from time import sleep
 class Allocation(object):
     def __init__(self, reallocation):
         self.MAX_BALANCE_DIFFERENCE = 2 # Number of unbalance allowed
-        self.MAX_ALLOCATION_ITERATION = 25000
+        self.MAX_ALLOCATION_ITERATION = 10000
         allocation_processing_time = self.MAX_ALLOCATION_ITERATION/1000
         self.EXECUTE_TIME = 120 - allocation_processing_time # Inspect turbine estimated execute time (Seconds), discounted by allocation processing time
 

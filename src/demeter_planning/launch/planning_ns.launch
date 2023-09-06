@@ -37,8 +37,8 @@
 		<arg name="domain_path"          value="$(arg domain_path)" />
 		<arg name="problem_path"         value="$(arg problem_path)" />
 		<arg name="data_path"            value="$(find demeter_planning)/common/$(arg namespace)" />
-		<arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/optic-cplex DOMAIN PROBLEM" />
-		<!-- <arg name="planner_command"      value="timeout 60 $(find rosplan_planning_system)/common/bin/popf -n DOMAIN PROBLEM" /> -->
+		<arg name="planner_command"      value="timeout 20 $(find rosplan_planning_system)/common/bin/optic-cplex DOMAIN PROBLEM" />
+		<!-- <arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/popf -n DOMAIN PROBLEM" /> -->
 		<!-- <arg name="planner_command"      value="timeout 10 $(find rosplan_planning_system)/common/bin/popf DOMAIN PROBLEM" /> -->
 	</include> 
 

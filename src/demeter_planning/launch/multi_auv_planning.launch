@@ -8,9 +8,9 @@
   </include>
 
   <!-- Launch planning_ns.launch with namespace=auv1 -->
-  <include file="$(find demeter_planning)/launch/planning_ns.launch">
+  <!-- <include file="$(find demeter_planning)/launch/planning_ns.launch">
     <arg name="namespace" value="auv1" />
-  </include>
+  </include> -->
 
   <!-- Launch planning_ns.launch with namespace=auv2 -->
   <!-- <include file="$(find demeter_planning)/launch/planning_ns.launch">
