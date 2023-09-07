@@ -32,7 +32,7 @@ class ExecDemeter(object):
         self._dispatch_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/dispatch_plan', DispatchService)
         rospy.wait_for_service(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch')
         self._cancel_plan_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_plan_dispatcher/cancel_dispatch', Empty)
-        self.clear_KB()
+        self.clear_KB(max_retries=3, delay_between_retries=1.0)
         self.resume_plan()
       
         rospy.Subscriber(str(self.namespace)+'rosplan_plan_dispatcher/action_feedback', ActionFeedback, self.check_action_feedback, queue_size=10)
@@ -80,16 +80,20 @@ class ExecDemeter(object):
             return True
         return False
     
-    def clear_KB(self):
+    def clear_KB(self, max_retries=3, delay_between_retries=1.0):
         KB_cleared = False
-        try:
-            rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
-            self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
-            self._clear_KB_proxy()
-            KB_cleared = True
-            # rospy.logwarn('KB cleared' + str(self.namespace))
-        except rospy.ServiceException as e:
-            rospy.logerr("clear KB service error: %s", e)
+        for _ in range(max_retries):
+            try:
+                rospy.wait_for_service(str(self.namespace)+'rosplan_knowledge_base/clear')
+                self._clear_KB_proxy = rospy.ServiceProxy(str(self.namespace)+'rosplan_knowledge_base/clear', Empty)
+                self._clear_KB_proxy()
+                KB_cleared = True
+                # rospy.logwarn('KB cleared' + str(self.namespace))
+                break  # If successful, break out of the loop
+            except rospy.ServiceException as e:
+                rospy.logerr("clear KB service error: %s", e)
+                if _ < max_retries - 1:  # Don't sleep after the last retry
+                    rospy.sleep(delay_between_retries)  # Wait before next attempt
         return KB_cleared
 
     def resume_plan(self):
