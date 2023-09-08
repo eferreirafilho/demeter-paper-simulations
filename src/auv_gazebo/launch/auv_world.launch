@@ -10,7 +10,7 @@
 
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find auv_gazebo)/worlds/turbine.world"/>
-    <arg name="gui" default="false"/>
+    <!-- <arg name="gui" default="false"/> -->
   </include>
 
 </launch>

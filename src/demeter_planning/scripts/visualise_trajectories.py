@@ -118,7 +118,7 @@ class PlotVehicles:
             return False
 
     def plot_positions(self):
-        AXIS_LIMITS = 130
+        AXIS_LIMITS = 200
         colors = ['r', 'b', 'c', 'g', 'm', 'y']  # list of colors
 
         plt.figure(1)
