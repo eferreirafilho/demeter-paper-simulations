@@ -217,7 +217,7 @@ class PopulateKB(object):
             
     def load_allocation(self):
         # Define a timeout (e.g., 60 seconds)
-        timeout = rospy.Duration(60)
+        timeout = rospy.Duration(100)
         start_time = rospy.Time.now()
         param_name = self.namespace + 'goals_allocated'
 

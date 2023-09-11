@@ -13,13 +13,13 @@
   </include>
 
   <!-- Launch planning_ns.launch with namespace=auv2 -->
-  <include file="$(find demeter_planning)/launch/planning_ns.launch">
+  <!-- <include file="$(find demeter_planning)/launch/planning_ns.launch">
     <arg name="namespace" value="auv2" />
   </include>
 
   <include file="$(find demeter_planning)/launch/planning_ns.launch">
     <arg name="namespace" value="auv3" />
-  </include>
+  </include> -->
 
   <!-- Add more instances of planning_ns.launch for additional robots -->
 
