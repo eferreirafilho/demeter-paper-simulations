@@ -9,7 +9,7 @@ import os
 import datetime
 import pandas as pd
 
-DATA_FILE = "/root/ws_demeter_rosplan/distance_data.xlsx"
+DATA_FILE = "/root/demeter-paper-simulations/distance_data.xlsx"
 DISTANCE_THRESHOLD = 0.05
 ACCUMULATION_THRESHOLD = 1.0
 
