@@ -18,7 +18,7 @@ class PopulateKB(object):
 
     mutex = Lock()
     def __init__(self):
-        self.RANDOM_ALLOCATION = False
+        self.RANDOM_ALLOCATION = True
         self.PERIOD_OF_TIDES = rospy.get_param('/goal_allocation/period_of_tides')  # Period in seconds
         self.LOW_TIDES_THRESHOLD = rospy.get_param('/goal_allocation/low_tides_threshold')
         self.SCALE_TRAVERSE_COSTS = 1
@@ -217,7 +217,7 @@ class PopulateKB(object):
             
     def load_allocation(self):
         # Define a timeout (e.g., 60 seconds)
-        timeout = rospy.Duration(100)
+        timeout = rospy.Duration(120)
         start_time = rospy.Time.now()
         param_name = self.namespace + 'goals_allocated'
 
